@@ -1,1 +1,1 @@
-x86/globals.s
+PowerPC/globals.s

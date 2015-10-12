@@ -1,1 +1,1 @@
-x86/libmincaml.S
+PowerPC/libmincaml.S

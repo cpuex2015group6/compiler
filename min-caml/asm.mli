@@ -1,1 +1,1 @@
-x86/asm.mli
+PowerPC/asm.mli
