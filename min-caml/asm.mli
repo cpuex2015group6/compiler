@@ -1,1 +1,1 @@
-PowerPC/asm.mli
+CpuEx/asm.mli
