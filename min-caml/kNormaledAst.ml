@@ -1,4 +1,4 @@
-(* print kNormaledAST K正規化後のASTを表示する。元のソースに追加 *)
+(* print kNormaledAST K正規化後のASTを表示する *)
 
 open KNormal
 

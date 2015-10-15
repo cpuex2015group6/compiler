@@ -1,1 +1,1 @@
-PowerPC/Makefile
+x86/Makefile

@@ -1,4 +1,4 @@
-(* print AST 元のソースに追加 *)
+(* print AST *)
 
 open Syntax
 
