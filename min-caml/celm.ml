@@ -10,8 +10,10 @@ let rec search history e =
     | (v, e1)::xs ->
        match e1 with
          | App(_) -> e
+         | _  when e1 = e ->
+            Var(v)
          | _ ->
-            if e1 = e then Var(v) else search xs e
+            search xs e
 
 let rec g history e =
   match e with

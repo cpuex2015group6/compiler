@@ -12,18 +12,14 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Mr of Id.t
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
+  | Xor of Id.t * id_or_imm
   | Sll of Id.t * id_or_imm
   | Srl of Id.t * id_or_imm
   | Ldw of Id.t * id_or_imm
   | Stw of Id.t * Id.t * id_or_imm
-  | FMr of Id.t 
-  | FNeg of Id.t
   | FAdd of Id.t * Id.t
-  | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
-  | Lfd of Id.t * id_or_imm
-  | Stfd of Id.t * Id.t * id_or_imm
   | Comment of string
   (* virtual instructions *)
   | IfEq of Id.t * id_or_imm * t * t
@@ -48,7 +44,7 @@ let fletd (x, e1, e2) = Let ((x, Type.Float), e1, e2)
 (* seq : exp * t -> t *)
 let seq (e1, e2) = Let ((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
-let regs = [| "%r02"; "%r05"; "%r06"; "%r07";
+let regs = [| "%r06"; "%r07";
               "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
               "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17"; 
               "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; "%r1F"
@@ -66,7 +62,8 @@ let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
 let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
 let reg_hp = "%r04"
 let reg_sp = "r03"
-let reg_tmp = "r00"
+let reg_tmp = "r02"
+let reg_imm = "r05"
 let reg_zero = "rFF"
 
 (* is_reg : Id.t -> bool *)
@@ -84,12 +81,12 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | FMr (x) | FNeg (x) | Save (x, _) -> [x]
-  | Add (x, y') | Sub (x, y') | Sll (x, y') | Srl (x, y') | Lfd (x, y') | Ldw (x, y') -> 
+  | Mr (x) | Save (x, _) -> [x]
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
-  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) ->
+  | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->
       [x; y]
-  | Stw (x, y, z') | Stfd (x, y, z') -> x :: y :: fv_id_or_imm z'
+  | Stw (x, y, z') -> x :: y :: fv_id_or_imm z'
   | IfEq (x, y', e1, e2) | IfLE (x, y', e1, e2) | IfGE (x, y', e1, e2) -> 
       x :: fv_id_or_imm y' @ remove_and_uniq S.empty (fv e1 @ fv e2)
   | IfFEq (x, y, e1, e2) | IfFLE (x, y, e1, e2) ->

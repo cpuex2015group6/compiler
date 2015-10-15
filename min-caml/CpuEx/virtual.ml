@@ -44,9 +44,14 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
      Let((y, Type.Int), Li (0), Ans(Sub(y, V(x))))
   | Closure.Add (x, y) -> Ans (Add (x, V (y)))
   | Closure.Sub (x, y) -> Ans (Sub (x, V (y)))
-  | Closure.FNeg (x) -> Ans (FNeg (x))
+  | Closure.FNeg (x) ->
+     let y = Id.genid "t" in
+     Let((y, Type.Float), Li (0x80000000), Ans(Xor(x, V(y))))
   | Closure.FAdd (x, y) -> Ans (FAdd (x, y))
-  | Closure.FSub (x, y) -> Ans (FSub (x, y))
+  | Closure.FSub (x, y) ->
+     let z = Id.genid "t" in
+     let w = Id.genid "t" in
+     Let((z, Type.Float), Li (0x80000000), Let((w, Type.Float), Xor(y, V(z)), Ans(FAdd(x, w))))
   | Closure.FMul (x, y) -> Ans (FMul (x, y))
   | Closure.FDiv (x, y) -> Ans (FDiv (x, y))
   | Closure.IfEq (x, y, e1, e2) -> 
@@ -66,7 +71,6 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Var (x) ->
      (match M.find x env with
 	    | Type.Unit -> Ans (Nop)
-	    | Type.Float -> Ans (FMr (x))
 	    | _ -> Ans (Mr (x)))
   | Closure.MakeCls ((x, t), {Closure.entry = l; Closure.actual_fv = ys}, e2) ->
      (* closure のアドレスをセットしてからストア *)
@@ -75,7 +79,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	     expand
 	       (List.map (fun y -> (y, M.find y env)) ys)
 	       (4, e2')
-	       (fun y offset store_fv -> seq (Stfd (y, x, C (offset)), store_fv))
+	       (fun y offset store_fv -> seq (Stw (y, x, C (offset)), store_fv))
 	       (fun y _ offset store_fv -> seq (Stw (y, x, C (offset)), store_fv)) in
 	   Let ((x, t), Mr (reg_hp), 
 	        Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), 
@@ -94,7 +98,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	     expand
 	       (List.map (fun x -> (x, M.find x env)) xs)
 	       (0, Ans (Mr (y)))
-	       (fun x offset store -> seq (Stfd (x, y, C (offset)), store))
+	       (fun x offset store -> seq (Stw (x, y, C (offset)), store))
 	       (fun x _ offset store -> seq (Stw (x, y, C (offset)), store))  in
 	   Let ((y, Type.Tuple (List.map (fun x -> M.find x env) xs)), Mr (reg_hp),
 	        Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), store))
@@ -106,7 +110,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	       (0, g (M.add_list xts env) e2)
 	       (fun x offset load ->
 	        if not (S.mem x s) then load 
-	        else fletd (x, Lfd (y, C (offset)), load))
+	        else fletd (x, Ldw (y, C (offset)), load))
 	       (fun x t offset load ->
 	        if not (S.mem x s) then load 
 	        else Let ((x, t), Ldw (y, C (offset)), load)) in
@@ -137,7 +141,7 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts;
     expand
       zts
       (4, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) e)
-      (fun z offset load -> fletd (z, Lfd (reg_cl, C (offset)), load))
+      (fun z offset load -> fletd (z, Ldw (reg_cl, C (offset)), load))
       (fun z t offset load -> Let ((z, t), Ldw (reg_cl, C (offset)), load)) in
     match t with
       | Type.Fun (_, t2) ->
