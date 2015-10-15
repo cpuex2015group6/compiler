@@ -10,11 +10,11 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | FLi of Id.l
   | SetL of Id.l
   | Mr of Id.t
-  | Neg of Id.t
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
-  | Slw of Id.t * id_or_imm
-  | Lwz of Id.t * id_or_imm
+  | Sll of Id.t * id_or_imm
+  | Srl of Id.t * id_or_imm
+  | Ldw of Id.t * id_or_imm
   | Stw of Id.t * Id.t * id_or_imm
   | FMr of Id.t 
   | FNeg of Id.t
@@ -66,7 +66,8 @@ let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
 let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
 let reg_hp = "%r04"
 let reg_sp = "r03"
-let reg_tmp = "r31"
+let reg_tmp = "r00"
+let reg_zero = "rFF"
 
 (* is_reg : Id.t -> bool *)
 let is_reg x = x.[0] = '%'
@@ -83,8 +84,8 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | Neg (x) | FMr (x) | FNeg (x) | Save (x, _) -> [x]
-  | Add (x, y') | Sub (x, y') | Slw (x, y') | Lfd (x, y') | Lwz (x, y') -> 
+  | Mr (x) | FMr (x) | FNeg (x) | Save (x, _) -> [x]
+  | Add (x, y') | Sub (x, y') | Sll (x, y') | Srl (x, y') | Lfd (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
   | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) ->
       [x; y]

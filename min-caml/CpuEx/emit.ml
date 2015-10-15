@@ -55,13 +55,16 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
     (* 末尾でなかったら計算結果を dest にセット *)
   | (NonTail(_), Nop) -> ()
   | (NonTail(x), Li(i)) when i >= -32768 && i < 32768 -> 
-      Printf.fprintf oc "\tli\t%s, %d\n" (reg x) i
+      Printf.fprintf oc "\tlimm\t%s, %d\n" (reg x) i
   | (NonTail(x), Li(i)) ->
       let n = i lsr 16 in
       let m = i lxor (n lsl 16) in
       let r = reg x in
-	Printf.fprintf oc "\tlis\t%s, %d\n" r n;
-	Printf.fprintf oc "\tori\t%s, %s, %d\n" r r m
+	    Printf.fprintf oc "\tlimm\t%s, %d\n" r n;
+	    Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp 16;
+	    Printf.fprintf oc "\tsll\t%s, %s, %s\n" r r reg_tmp;
+	    Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp m;
+	    Printf.fprintf oc "\tori\t%s, %s, %s\n" r r reg_tmp
   | (NonTail(x), FLi(Id.L(l))) ->
       let s = load_label reg_tmp l in
       Printf.fprintf oc "%s\tlfd\t%s, 0(%s)\n" s (reg x) reg_tmp
@@ -69,28 +72,42 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
       let s = load_label x y in
       Printf.fprintf oc "%s" s
   | (NonTail(x), Mr(y)) when x = y -> ()
-  | (NonTail(x), Mr(y)) -> Printf.fprintf oc "\tmr\t%s, %s\n" (reg x) (reg y)
-  | (NonTail(x), Neg(y)) -> Printf.fprintf oc "\tneg\t%s, %s\n" (reg x) (reg y)
+  | (NonTail(x), Mr(y)) ->
+     Printf.fprintf oc "\tor\t%s, %s, %s\n" (reg x) (reg y) reg_zero
   | (NonTail(x), Add(y, V(z))) -> 
       Printf.fprintf oc "\tadd\t%s, %s, %s\n" (reg x) (reg y) (reg z)
   | (NonTail(x), Add(y, C(z))) -> 
-      Printf.fprintf oc "\taddi\t%s, %s, %d\n" (reg x) (reg y) z
+      Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp z;
+      Printf.fprintf oc "\tadd\t%s, %s, %s\n" (reg x) (reg y) reg_tmp
   | (NonTail(x), Sub(y, V(z))) -> 
       Printf.fprintf oc "\tsub\t%s, %s, %s\n" (reg x) (reg y) (reg z)
   | (NonTail(x), Sub(y, C(z))) -> 
-      Printf.fprintf oc "\tsubi\t%s, %s, %d\n" (reg x) (reg y) z
-  | (NonTail(x), Slw(y, V(z))) -> 
-      Printf.fprintf oc "\tslw\t%s, %s, %s\n" (reg x) (reg y) (reg z)
-  | (NonTail(x), Slw(y, C(z))) -> 
-      Printf.fprintf oc "\tslwi\t%s, %s, %d\n" (reg x) (reg y) z
-  | (NonTail(x), Lwz(y, V(z))) ->
-      Printf.fprintf oc "\tlwzx\t%s, %s, %s\n" (reg x) (reg y) (reg z)
-  | (NonTail(x), Lwz(y, C(z))) -> 
-      Printf.fprintf oc "\tlwz\t%s, %d(%s)\n" (reg x) z (reg y)
+      Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp z;
+      Printf.fprintf oc "\tsub\t%s, %s, %s\n" (reg x) (reg y) reg_tmp
+  | (NonTail(x), Sll(y, V(z))) -> 
+      Printf.fprintf oc "\tsll\t%s, %s, %s\n" (reg x) (reg y) (reg z)
+  | (NonTail(x), Sll(y, C(z))) -> 
+      Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp z;
+      Printf.fprintf oc "\tsll\t%s, %s, %s\n" (reg x) (reg y) reg_tmp
+  | (NonTail(x), Srl(y, V(z))) -> 
+      Printf.fprintf oc "\tsll\t%s, %s, %s\n" (reg x) (reg y) (reg z)
+  | (NonTail(x), Srl(y, C(z))) -> 
+      Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp z;
+      Printf.fprintf oc "\tsll\t%s, %s, %s\n" (reg x) (reg y) reg_tmp
+  | (NonTail(x), Ldw(y, V(z))) ->
+      Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp (reg y) (reg z);
+      Printf.fprintf oc "\tldw\t%s, %s\n" (reg x) reg_tmp
+  | (NonTail(x), Ldw(y, C(z))) -> 
+      Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp z;
+      Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp (reg y) reg_tmp;
+      Printf.fprintf oc "\tldw\t%s, %s\n" (reg x) reg_tmp
   | (NonTail(_), Stw(x, y, V(z))) ->
-      Printf.fprintf oc "\tstwx\t%s, %s, %s\n" (reg x) (reg y) (reg z)
+      Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp (reg y) (reg z);
+      Printf.fprintf oc "\tstw\t%s, %s\n" (reg x) reg_tmp
   | (NonTail(_), Stw(x, y, C(z))) -> 
-      Printf.fprintf oc "\tstw\t%s, %d(%s)\n" (reg x) z (reg y)
+      Printf.fprintf oc "\tlimm\t%s, %d\n" reg_tmp z;
+      Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp (reg y) reg_tmp;
+      Printf.fprintf oc "\tstw\t%s, %s\n" (reg x) reg_tmp
   | (NonTail(x), FMr(y)) when x = y -> ()
   | (NonTail(x), FMr(y)) -> Printf.fprintf oc "\tfmr\t%s, %s\n" (reg x) (reg y)
   | (NonTail(x), FNeg(y)) -> 
@@ -132,8 +149,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (Tail, (Nop | Stw _ | Stfd _ | Comment _ | Save _ as exp)) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tblr\n";
-  | (Tail, (Li _ | SetL _ | Mr _ | Neg _ | Add _ | Sub _ | Slw _ |
-            Lwz _ as exp)) -> 
+  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Sll _ | Srl _ |
+            Ldw _ as exp)) -> 
       g' oc (NonTail(regs.(0)), exp);
       Printf.fprintf oc "\tblr\n";
   | (Tail, (FLi _ | FMr _ | FNeg _ | FAdd _ | FSub _ | FMul _ | FDiv _ |

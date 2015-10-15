@@ -8,11 +8,11 @@ and exp =
   | FLi of Id.l
   | SetL of Id.l
   | Mr of Id.t
-  | Neg of Id.t
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
-  | Slw of Id.t * id_or_imm
-  | Lwz of Id.t * id_or_imm
+  | Sll of Id.t * id_or_imm
+  | Srl of Id.t * id_or_imm
+  | Ldw of Id.t * id_or_imm
   | Stw of Id.t * Id.t * id_or_imm
   | FMr of Id.t 
   | FNeg of Id.t
@@ -51,6 +51,7 @@ val reg_fsw : Id.t
 val reg_hp : Id.t
 val reg_sp : Id.t
 val reg_tmp : Id.t
+val reg_zero : Id.t
 val is_reg : Id.t -> bool
 
 val fv : t -> Id.t list

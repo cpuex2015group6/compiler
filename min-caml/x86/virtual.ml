@@ -35,17 +35,17 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
   | Closure.Unit -> Ans(Nop)
   | Closure.Int(i) -> Ans(Set(i))
   | Closure.Float(d) ->
-      let l =
-	try
-	  (* すでに定数テーブルにあったら再利用 *)
-	  let (l, _) = List.find (fun (_, d') -> d = d') !data in
-	  l
-	with Not_found ->
-	  let l = Id.L(Id.genid "l") in
-	  data := (l, d) :: !data;
-	  l in
-      let x = Id.genid "l" in
-      Let((x, Type.Int), SetL(l), Ans(LdDF(x, C(0), 1)))
+     let l =
+	     try
+	       (* すでに定数テーブルにあったら再利用 *)
+	       let (l, _) = List.find (fun (_, d') -> d = d') !data in
+	       l
+	     with Not_found ->
+	       let l = Id.L(Id.genid "l") in
+	       data := (l, d) :: !data;
+	       l in
+     let x = Id.genid "l" in
+     Let((x, Type.Int), SetL(l), Ans(LdDF(x, C(0), 1)))
   | Closure.Neg(x) -> Ans(Neg(x))
   | Closure.Add(x, y) -> Ans(Add(x, V(y)))
   | Closure.Sub(x, y) -> Ans(Sub(x, V(y)))

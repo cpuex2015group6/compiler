@@ -2,9 +2,6 @@
 
 open Syntax
 
-exception Unify of Type.t * Type.t
-exception Error of t * Type.t * Type.t
-
 let rec g indent e = (* AST表示ルーチン *)
   match e with
   | Unit ->
