@@ -326,4 +326,6 @@ let f oc (Prog(data, fundefs, e)) =
   stackmap := [];
   g oc (NonTail("_R_00"), e);
   Printf.fprintf oc "   # main program end\n";
-  Printf.fprintf oc "\thalt %s, 0\n" reg_zero
+  llabel oc reg_imm "_min_caml_end";
+	Printf.fprintf oc "%s:_min_caml_end\n";
+  op3 oc "jr" reg_tmp reg_imm reg_zero
