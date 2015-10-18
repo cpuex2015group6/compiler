@@ -44,8 +44,7 @@ let fletd (x, e1, e2) = Let ((x, Type.Float), e1, e2)
 (* seq : exp * t -> t *)
 let seq (e1, e2) = Let ((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
-let regs = [| "%r06"; "%r07";
-              "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
+let regs = [| "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
               "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17"; 
               "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; "%r1F"
              |]
@@ -62,8 +61,10 @@ let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
 let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
 let reg_hp = "%r04"
 let reg_sp = "r03"
-let reg_tmp = "r02"
-let reg_imm = "r05"
+let reg_tmp = "r05"
+let reg_imm = "r06"
+let reg_cond = "r07"
+let reg_lr = "r02"
 let reg_zero = "rFF"
 
 (* is_reg : Id.t -> bool *)
