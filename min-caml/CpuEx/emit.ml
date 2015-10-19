@@ -42,9 +42,6 @@ let limm oc r1 imm =
      limm_sub oc reg_imm m;
      op3 oc "or" r r reg_imm
 
-let load_label oc r1 label =
-  Printf.fprintf oc "\tlimm\t%s, %s\n" r1 label
-
 (* 関数呼び出しのために引数を並べ替える (register shuffling) *)
 let rec shuffle sw xys = 
   (* remove identical moves *)
@@ -69,10 +66,10 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), Li(i)) -> 
      limm oc (reg x) i
   | (NonTail(x), FLi(Id.L(l))) ->
-     load_label oc reg_imm l;
+     llabel oc reg_imm l;
      op3 oc "ldw" (reg x) reg_imm reg_zero
   | (NonTail(x), SetL(Id.L(y))) -> 
-     load_label oc x y
+     llabel oc (reg x) y
   | (NonTail(x), Mr(y)) when x = y -> ()
   | (NonTail(x), Mr(y)) ->
      op3 oc "or" (reg x) (reg y) reg_zero
@@ -247,7 +244,7 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "add" reg_sp reg_sp reg_imm;
      llabel oc reg_imm x;
      op3 oc "or" reg_tmp reg_imm reg_zero;
-     op3 oc "jr" reg_tmp reg_tmp reg_zero;
+     op3 oc "jr" reg_lr reg_tmp reg_zero;
      limm oc reg_imm ss;
      op3 oc "sub" reg_sp reg_sp reg_imm;
      limm oc reg_imm (ss - 4);
@@ -307,6 +304,11 @@ let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
 
 let f oc (Prog(data, fundefs, e)) =
   Format.eprintf "generating assembly...@.";
+  Printf.fprintf oc "\t.text\n";
+  Printf.fprintf oc "\t.globl  _min_caml_start\n";
+  Printf.fprintf oc "\t.align 2\n";
+  llabel oc reg_imm "_min_caml_start";
+  op3 oc "jr" reg_tmp reg_imm reg_zero;
   (if data <> [] then
     (Printf.fprintf oc "\t.data\n\t.literal8\n";
      List.iter
@@ -316,10 +318,7 @@ let f oc (Prog(data, fundefs, e)) =
 	      Printf.fprintf oc "\t.long\t%fd\n" d)
        data));
   Printf.fprintf oc "\t.text\n";
-  Printf.fprintf oc "\t.globl  _min_caml_start\n";
   Printf.fprintf oc "\t.align 2\n";
-  llabel oc reg_imm "_min_caml_start";
-  op3 oc "jr" reg_tmp reg_imm reg_zero;
   List.iter (fun fundef -> h oc fundef) fundefs;
   Printf.fprintf oc "_min_caml_start: # main entry point\n";
   Printf.fprintf oc "   # stack start from 16MB - 5MB (11534336)\n";
