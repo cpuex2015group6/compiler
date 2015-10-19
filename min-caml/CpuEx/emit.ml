@@ -245,7 +245,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "stw" reg_imm reg_tmp reg_zero;
      limm oc reg_imm ss;
      op3 oc "add" reg_sp reg_sp reg_imm;
-     op3 oc "or" reg_tmp x reg_zero;
+     llabel oc reg_imm x;
+     op3 oc "or" reg_tmp reg_imm reg_zero;
      op3 oc "jr" reg_tmp reg_tmp reg_zero;
      limm oc reg_imm ss;
      op3 oc "sub" reg_sp reg_sp reg_imm;
@@ -259,7 +260,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "or" reg_lr reg_tmp reg_zero
 and g'_tail_if oc e1 e2 b bn = 
   let b_else = Id.genid (b ^ "_else") in
-  op3 oc bn reg_tmp reg_cond b_else;
+  llabel oc reg_imm b_else;
+  op3 oc bn reg_tmp reg_cond reg_imm;
   let stackset_back = !stackset in
   g oc (Tail, e1);
   Printf.fprintf oc "%s:\n" b_else;
@@ -268,7 +270,8 @@ and g'_tail_if oc e1 e2 b bn =
 and g'_non_tail_if oc dest e1 e2 b bn = 
   let b_else = Id.genid (b ^ "_else") in
   let b_cont = Id.genid (b ^ "_cont") in
-  op3 oc bn reg_tmp reg_cond b_else;
+  llabel oc reg_imm b_else;
+  op3 oc bn reg_tmp reg_cond reg_imm;
   let stackset_back = !stackset in
   g oc (dest, e1);
   let stackset1 = !stackset in
@@ -315,17 +318,19 @@ let f oc (Prog(data, fundefs, e)) =
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_start\n";
   Printf.fprintf oc "\t.align 2\n";
+  llabel oc reg_imm "_min_caml_start";
+  op3 oc "jr" reg_tmp reg_imm reg_zero;
   List.iter (fun fundef -> h oc fundef) fundefs;
   Printf.fprintf oc "_min_caml_start: # main entry point\n";
   Printf.fprintf oc "   # stack start from 16MB - 5MB (11534336)\n";
   limm oc reg_sp ((16-5)*1024*1024);
   Printf.fprintf oc "   # heap start from 16MB - 4MB (12582912)\n";
-  limm oc reg_hp ((16-4)*1024*1024);
+  limm oc (reg reg_hp) ((16-4)*1024*1024);
   Printf.fprintf oc "   # main program start\n";
   stackset := S.empty;
   stackmap := [];
   g oc (NonTail("_R_00"), e);
   Printf.fprintf oc "   # main program end\n";
   llabel oc reg_imm "_min_caml_end";
-	Printf.fprintf oc "%s:_min_caml_end\n";
+	Printf.fprintf oc "_min_caml_end: # infinite loop\n";
   op3 oc "jr" reg_tmp reg_imm reg_zero

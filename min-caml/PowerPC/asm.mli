@@ -51,7 +51,6 @@ val reg_fsw : Id.t
 val reg_hp : Id.t
 val reg_sp : Id.t
 val reg_tmp : Id.t
-val reg_lr : Id.t
 val is_reg : Id.t -> bool
 
 val fv : t -> Id.t list
