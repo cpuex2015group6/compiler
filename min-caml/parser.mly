@@ -11,10 +11,19 @@ let addtyp x = (x, Type.gentyp ())
 %token NOT
 %token MINUS
 %token PLUS
+%token XOR
+%token OR
+%token AND
+%token SLL
+%token SRL
 %token MINUS_DOT
 %token PLUS_DOT
 %token AST_DOT
 %token SLASH_DOT
+%token SIN
+%token COS
+%token ATAN
+%token SQRT
 %token EQUAL
 %token LESS_GREATER
 %token LESS_EQUAL
@@ -45,7 +54,8 @@ let addtyp x = (x, Type.gentyp ())
 %left COMMA
 %left EQUAL LESS_GREATER LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left PLUS MINUS PLUS_DOT MINUS_DOT
-%left AST_DOT SLASH_DOT
+%left AST_DOT SLASH_DOT XOR OR AND
+%left SLL SRL
 %right prec_unary_minus
 %left prec_app
 %left DOT
@@ -87,6 +97,16 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
     { Add($1, $3) }
 | exp MINUS exp
     { Sub($1, $3) }
+| exp XOR exp
+    { Xor($1, $3) }
+| exp OR exp
+    { Or($1, $3) }
+| exp AND exp
+    { And($1, $3) }
+| exp SLL exp
+    { Sll($1, $3) }
+| exp SRL exp
+    { Srl($1, $3) }
 | exp EQUAL exp
     { Eq($1, $3) }
 | exp LESS_GREATER exp
@@ -133,6 +153,18 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
 | ARRAY_CREATE simple_exp simple_exp
     %prec prec_app
     { Array($2, $3) }
+| SIN simple_exp
+    %prec prec_app
+    { Sin($2) }
+| COS simple_exp
+    %prec prec_app
+    { Cos($2) }
+| ATAN simple_exp
+    %prec prec_app
+    { Atan($2) }
+| SQRT simple_exp
+    %prec prec_app
+    { Sqrt($2) }
 | error
     { failwith
 	(Printf.sprintf "parse error near characters %d-%d"

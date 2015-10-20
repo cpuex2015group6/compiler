@@ -13,6 +13,8 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
   | Xor of Id.t * id_or_imm
+  | Or of Id.t * id_or_imm
+  | And of Id.t * id_or_imm
   | Sll of Id.t * id_or_imm
   | Srl of Id.t * id_or_imm
   | Ldw of Id.t * id_or_imm
@@ -20,6 +22,10 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | Sin of Id.t
+  | Cos of Id.t
+  | Atan of Id.t
+  | Sqrt of Id.t
   | Comment of string
   (* virtual instructions *)
   | IfEq of Id.t * id_or_imm * t * t
@@ -82,8 +88,8 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | Save (x, _) -> [x]
-  | Add (x, y') | Sub (x, y') | Xor (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') -> 
+  | Mr (x) | Save (x, _) | Sin (x) | Cos (x) | Atan (x) | Sqrt (x) -> [x]
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
   | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->
       [x; y]

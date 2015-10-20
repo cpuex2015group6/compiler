@@ -11,6 +11,8 @@ and exp =
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
   | Xor of Id.t * id_or_imm
+  | Or of Id.t * id_or_imm
+  | And of Id.t * id_or_imm
   | Sll of Id.t * id_or_imm
   | Srl of Id.t * id_or_imm
   | Ldw of Id.t * id_or_imm
@@ -18,6 +20,10 @@ and exp =
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | Sin of Id.t
+  | Cos of Id.t
+  | Atan of Id.t
+  | Sqrt of Id.t
   | Comment of string
   (* virtual instructions *)
   | IfEq of Id.t * id_or_imm * t * t

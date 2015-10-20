@@ -34,6 +34,16 @@ rule token = parse
     { MINUS }
 | '+' (* +.より後回しにしなくても良い? 最長一致? *)
     { PLUS }
+| "lxor"
+    { XOR }
+| "lor"
+    { OR }
+| "land"
+    { AND }
+| "lsl"
+    { SLL }
+| "lsr"
+    { SRL }
 | "-."
     { MINUS_DOT }
 | "+."
@@ -42,6 +52,14 @@ rule token = parse
     { AST_DOT }
 | "/."
     { SLASH_DOT }
+| "sin"
+    { SIN }
+| "cos"
+    { COS }
+| "atan"
+    { ATAN }
+| "sqrt"
+    { SQRT }
 | '='
     { EQUAL }
 | "<>"

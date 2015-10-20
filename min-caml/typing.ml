@@ -27,6 +27,11 @@ let rec deref_term = function
   | Neg(e) -> Neg(deref_term e)
   | Add(e1, e2) -> Add(deref_term e1, deref_term e2)
   | Sub(e1, e2) -> Sub(deref_term e1, deref_term e2)
+  | Xor(e1, e2) -> Xor(deref_term e1, deref_term e2)
+  | Or(e1, e2) -> Or(deref_term e1, deref_term e2)
+  | And(e1, e2) -> And(deref_term e1, deref_term e2)
+  | Sll(e1, e2) -> Sll(deref_term e1, deref_term e2)
+  | Srl(e1, e2) -> Srl(deref_term e1, deref_term e2)
   | Eq(e1, e2) -> Eq(deref_term e1, deref_term e2)
   | LE(e1, e2) -> LE(deref_term e1, deref_term e2)
   | FNeg(e) -> FNeg(deref_term e)
@@ -34,6 +39,10 @@ let rec deref_term = function
   | FSub(e1, e2) -> FSub(deref_term e1, deref_term e2)
   | FMul(e1, e2) -> FMul(deref_term e1, deref_term e2)
   | FDiv(e1, e2) -> FDiv(deref_term e1, deref_term e2)
+  | Sin(e1) -> Sin(deref_term e1)
+  | Cos(e1) -> Cos(deref_term e1)
+  | Atan(e1) -> Atan(deref_term e1)
+  | Sqrt(e1) -> Sqrt(deref_term e1)
   | If(e1, e2, e3) -> If(deref_term e1, deref_term e2, deref_term e3)
   | Let(xt, e1, e2) -> Let(deref_id_typ xt, deref_term e1, deref_term e2)
   | LetRec({ name = xt; args = yts; body = e1 }, e2) ->
@@ -93,7 +102,7 @@ let rec g env e = (* ·¿¿äÏÀ¥ë¡¼¥Á¥ó (caml2html: typing_g) *)
     | Neg(e) ->
 	     unify Type.Int (g env e);
 	     Type.Int
-    | Add(e1, e2) | Sub(e1, e2) -> (* Â­¤·»»¡Ê¤È°ú¤­»»¡Ë¤Î·¿¿äÏÀ (caml2html: typing_add) *)
+    | Add(e1, e2) | Sub(e1, e2) | Xor(e1, e2) | Or(e1, e2) | And(e1, e2) | Sll(e1, e2) | Srl(e1, e2)-> (* ³Æ¼ïÀ°¿ô±é»»¤Î·¿¿äÏÀ (caml2html: typing_add) *)
 	                   unify Type.Int (g env e1);
 	                   unify Type.Int (g env e2);
 	                   Type.Int
@@ -104,6 +113,9 @@ let rec g env e = (* ·¿¿äÏÀ¥ë¡¼¥Á¥ó (caml2html: typing_g) *)
 	                                                  unify Type.Float (g env e1);
 	                                                  unify Type.Float (g env e2);
 	                                                  Type.Float
+    | Sin(e1) | Cos(e1) | Atan(e1) | Sqrt(e1) ->
+	                                    unify Type.Float (g env e1);
+	                                    Type.Float
     | Eq(e1, e2) | LE(e1, e2) ->
 	                  unify (g env e1) (g env e2);
 	                  Type.Bool

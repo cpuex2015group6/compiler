@@ -88,6 +88,16 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), Xor(y, C(z))) -> 
      limm oc reg_imm z;
      op3 oc "xor" (reg x) (reg y) reg_imm
+  | (NonTail(x), Or(y, V(z))) -> 
+     op3 oc "or" (reg x) (reg y) (reg z)
+  | (NonTail(x), Or(y, C(z))) -> 
+     limm oc reg_imm z;
+     op3 oc "or" (reg x) (reg y) reg_imm
+  | (NonTail(x), And(y, V(z))) -> 
+     op3 oc "and" (reg x) (reg y) (reg z)
+  | (NonTail(x), And(y, C(z))) -> 
+     limm oc reg_imm z;
+     op3 oc "and" (reg x) (reg y) reg_imm
   | (NonTail(x), Sll(y, V(z))) -> 
      op3 oc "sll" (reg x) (reg y) (reg z)
   | (NonTail(x), Sll(y, C(z))) -> 
@@ -118,6 +128,14 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "fmul" (reg x) (reg y) (reg z)
   | (NonTail(x), FDiv(y, z)) -> 
      op3 oc "fdiv" (reg x) (reg y) (reg z)
+  | (NonTail(x), Sin(y)) -> 
+     op3 oc "fsin" (reg x) (reg y) reg_zero
+  | (NonTail(x), Cos(y)) -> 
+     op3 oc "fcos" (reg x) (reg y) reg_zero
+  | (NonTail(x), Atan(y)) -> 
+     op3 oc "fatan" (reg x) (reg y) reg_zero
+  | (NonTail(x), Sqrt(y)) -> 
+     op3 oc "fsqrt" (reg x) (reg y) reg_zero
   | (NonTail(_), Comment(s)) -> Printf.fprintf oc "#\t%s\n" s
   (* 退避の仮想命令の実装 *)
   | (NonTail(_), Save(x, y))
@@ -136,11 +154,11 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (Tail, (Nop | Stw _ | Comment _ | Save _ as exp)) ->
      g' oc (NonTail(Id.gentmp Type.Unit), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Sll _ | Srl _ |
+  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ |
             Ldw _ as exp)) -> 
      g' oc (NonTail(regs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ as exp)) ->
+  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ as exp)) ->
      g' oc (NonTail(fregs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, (Restore(x) as exp)) ->

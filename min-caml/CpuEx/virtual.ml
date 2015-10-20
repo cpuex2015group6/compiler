@@ -44,6 +44,11 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
      Let((y, Type.Int), Li (0), Ans(Sub(y, V(x))))
   | Closure.Add (x, y) -> Ans (Add (x, V (y)))
   | Closure.Sub (x, y) -> Ans (Sub (x, V (y)))
+  | Closure.Xor (x, y) -> Ans (Xor (x, V (y)))
+  | Closure.Or (x, y) -> Ans (Or (x, V (y)))
+  | Closure.And (x, y) -> Ans (And (x, V (y)))
+  | Closure.Sll (x, y) -> Ans (Sll (x, V (y)))
+  | Closure.Srl (x, y) -> Ans (Srl (x, V (y)))
   | Closure.FNeg (x) ->
      let y = Id.genid "t" in
      Let((y, Type.Float), Li (0x80000000), Ans(Xor(x, V(y))))
@@ -54,6 +59,10 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
      Let((z, Type.Float), Li (0x80000000), Let((w, Type.Float), Xor(y, V(z)), Ans(FAdd(x, w))))
   | Closure.FMul (x, y) -> Ans (FMul (x, y))
   | Closure.FDiv (x, y) -> Ans (FDiv (x, y))
+  | Closure.Sin (x) -> Ans (Sin (x))
+  | Closure.Cos (x) -> Ans (Cos (x))
+  | Closure.Atan (x) -> Ans (Atan (x))
+  | Closure.Sqrt (x) -> Ans (Sqrt (x))
   | Closure.IfEq (x, y, e1, e2) -> 
      (match M.find x env with
 	    | Type.Bool | Type.Int -> Ans (IfEq (x, V (y), g env e1, g env e2))

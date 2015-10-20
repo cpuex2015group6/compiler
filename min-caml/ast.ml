@@ -45,6 +45,31 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "Sub\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
+  | Xor(e1, e2) ->
+     print_string indent;
+     print_string "Xor\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
+  | Or(e1, e2) ->
+     print_string indent;
+     print_string "Or\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
+  | And(e1, e2) ->
+     print_string indent;
+     print_string "And\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
+  | Sll(e1, e2) ->
+     print_string indent;
+     print_string "Sll\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
+  | Srl(e1, e2) ->
+     print_string indent;
+     print_string "Srl\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
   | FNeg(e) ->
      print_string indent;
      print_string "FNeg\n";
@@ -69,6 +94,22 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "FDiv\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
+  | Sin(e1) ->
+     print_string indent;
+     print_string "Sin\n";
+     g (indent ^ "  ") e1
+  | Cos(e1) ->
+     print_string indent;
+     print_string "Cos\n";
+     g (indent ^ "  ") e1
+  | Atan(e1) ->
+     print_string indent;
+     print_string "Atan\n";
+     g (indent ^ "  ") e1
+  | Sqrt(e1) ->
+     print_string indent;
+     print_string "Sqrt\n";
+     g (indent ^ "  ") e1
   | Eq(e1, e2) ->
      print_string indent;
      print_string "Eq\n";

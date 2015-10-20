@@ -20,6 +20,16 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Add " ^ e1 ^ " " ^ e2 ^ "\n")
   | Sub(e1, e2) ->
      print_string (indent ^ "Sub " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Xor(e1, e2) ->
+     print_string (indent ^ "Xor " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Or(e1, e2) ->
+     print_string (indent ^ "Or " ^ e1 ^ " " ^ e2 ^ "\n")
+  | And(e1, e2) ->
+     print_string (indent ^ "And " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Sll(e1, e2) ->
+     print_string (indent ^ "Sll " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Srl(e1, e2) ->
+     print_string (indent ^ "Srl " ^ e1 ^ " " ^ e2 ^ "\n")
   | FNeg(e) ->
      print_string (indent ^ "FNeg " ^ e ^ "\n")
   | FAdd(e1, e2) ->
@@ -30,6 +40,14 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FMul " ^ e1 ^ " " ^ e2 ^ "\n")
   | FDiv(e1, e2) ->
      print_string (indent ^ "FDiv " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Sin(e1) ->
+     print_string (indent ^ "Sin " ^ e1 ^ "\n")
+  | Cos(e1) ->
+     print_string (indent ^ "Cos " ^ e1 ^ "\n")
+  | Atan(e1) ->
+     print_string (indent ^ "Atan " ^ e1 ^ "\n")
+  | Sqrt(e1) ->
+     print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
   | IfEq(e1, e2, t1, t2) ->
      print_string (indent ^ "IfEq " ^ e1 ^ " " ^ e2 ^ "\n");
      g (indent ^ "  ") t1;
