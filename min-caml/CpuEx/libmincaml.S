@@ -8,14 +8,21 @@ min_caml_print_newline:
   jr  r05, r02, rFF
 #	print_int
 #let rec print_int a =
-#  if a < 10 then
-#    print_byte (a + 48);
-#    print_byte 0
-#  else
-#    (print_int (div a 10);
-#     print_byte (a - (mul (div a 10) 10) + 48))
+#    let rec print_int_sub a =
+#      if a < 10 then
+#        print_byte (a + 48)
+#      else
+#        (print_int (div a 10)   ;
+#         print_byte (a - (mul (div a 10) 10) + 48))
 #    in
-#    print_int 15
+#    if a < 0 then
+#      print_byte 45             ;
+#      print_int_sub (-a)
+#    else
+#      print_int_sub a           ;
+#    print_byte 0
+#      in
+#      print_int 15
 	.text
 	.align 	2
 	.globl	min_caml_print_int
@@ -113,7 +120,7 @@ jrge_else.print_int54:
   add r08, r08, r06
   limm  r06, min_caml_print_byte
   jr  r05, r06, rFF
-print_int.print_int21:
+min_caml_print_int:
   limm  r06, 0
   cmp r07, r08, r06
   limm  r06, jrge_else.print_int55
