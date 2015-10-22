@@ -19,11 +19,11 @@ min_caml_print_newline:
 	.text
 	.align 	2
 	.globl	min_caml_print_int
-min_caml_print_int:
+print_int_sub.print_int:
   limm  r09, 10
   limm  r06, 10
   cmp r07, r08, r06
-  limm  r06, jrge_else.print_int
+  limm  r06, jrge_else.print_int54
   jrlt  r05, r07, r06
   limm  r06, 0
   add r05, r03, r06
@@ -108,24 +108,75 @@ min_caml_print_int:
   add r08, r08, r06
   limm  r06, min_caml_print_byte
   jr  r05, r06, rFF
-jrge_else.print_int:
+jrge_else.print_int54:
   limm  r06, 48
   add r08, r08, r06
+  limm  r06, min_caml_print_byte
+  jr  r05, r06, rFF
+print_int.print_int21:
+  limm  r06, 0
+  cmp r07, r08, r06
+  limm  r06, jrge_else.print_int55
+  jrlt  r05, r07, r06
   or  r05, r02, rFF
-  limm  r06, 12
+  limm  r06, 4
   add r06, r03, r06
   stw r06, r05, rFF
-  limm  r06, 16
+  limm  r06, 8
+  add r03, r03, r06
+  limm  r06, print_int_sub.print_int
+  or  r05, r06, rFF
+  jr  r02, r05, rFF
+  limm  r06, 8
+  sub r03, r03, r06
+  limm  r06, 4
+  add r05, r03, r06
+  ldw r05, r05, rFF
+  or  r02, r05, rFF
+  limm  r06, jrge_cont.print_int56
+  jr  r05, r06, rFF
+jrge_else.print_int55:
+  limm  r09, 45
+  limm  r06, 0
+  add r05, r03, r06
+  stw r05, r08, rFF
+  or  r05, r02, rFF
+  or  r08, r09, rFF
+  limm  r06, 4
+  add r06, r03, r06
+  stw r06, r05, rFF
+  limm  r06, 8
   add r03, r03, r06
   limm  r06, min_caml_print_byte
   or  r05, r06, rFF
   jr  r02, r05, rFF
-  limm  r06, 16
+  limm  r06, 8
   sub r03, r03, r06
-  limm  r06, 12
+  limm  r06, 4
   add r05, r03, r06
   ldw r05, r05, rFF
   or  r02, r05, rFF
+  limm  r08, 0
+  limm  r06, 0
+  add r05, r03, r06
+  ldw r09, r05, rFF
+  sub r08, r08, r09
+  or  r05, r02, rFF
+  limm  r06, 4
+  add r06, r03, r06
+  stw r06, r05, rFF
+  limm  r06, 8
+  add r03, r03, r06
+  limm  r06, print_int_sub.print_int
+  or  r05, r06, rFF
+  jr  r02, r05, rFF
+  limm  r06, 8
+  sub r03, r03, r06
+  limm  r06, 4
+  add r05, r03, r06
+  ldw r05, r05, rFF
+  or  r02, r05, rFF
+jrge_cont.print_int56:
   limm  r08, 0
   limm  r06, min_caml_print_byte
   jr  r05, r06, rFF
