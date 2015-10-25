@@ -12,7 +12,7 @@ min_caml_print_newline:
 #      if a < 10 then
 #        print_byte (a + 48)
 #      else
-#        (print_int (div a 10)   ;
+#        (print_int_sub (div a 10)   ;
 #         print_byte (a - (mul (div a 10) 10) + 48))
 #    in
 #    if a < 0 then
@@ -59,7 +59,7 @@ print_int_sub.print_int:
   stw r06, r05, rFF
   limm  r06, 16
   add r03, r03, r06
-  limm  r06, min_caml_print_int
+  limm  r06, print_int_sub.print_int
   or  r05, r06, rFF
   jr  r02, r05, rFF
   limm  r06, 16
@@ -336,98 +336,279 @@ min_caml_prerr_byte:
 	.align 	2
 #	.globl 	min_caml_prerr_float
 #	read_int
-#let rec read_int x =
-#  let b = read_byte ()
-#  in
-#  if b = 0 then
-#    0
-#  else
-#    let i = b - 48 in
-#    let j = if i >= 0 then
-#              if i < 10 then
-#                i
-#              else
-#                1
-#            else
-#              1
+#let rec read_int u =
+#  let rec read_int_sub x =
+#    let b = read_byte ()
 #    in
-#    div j (read_int ())
+#    if b = 0 then
+#      0
+#    else
+#      read_int_sub ((mul x 10) + (b - 48))
+#  in
+#  read_int_sub 0
 #    in
 #    print_int (read_int ())
 	.text
 	.align 	2
 	.globl	min_caml_read_int
-min_caml_read_int:  
-  or  r05, r02, rFF
+read_int_sub.min_caml_read_int15:
+  limm  r06, 0
+  add r05, r03, r06
+  stw r05, r08, r1F
+  or  r05, r02, r1F
   limm  r06, 4
   add r06, r03, r06
-  stw r06, r05, rFF
+  stw r06, r05, r1F
   limm  r06, 8
   add r03, r03, r06
   limm  r06, min_caml_read_byte
-  or  r05, r06, rFF
-  jr  r02, r05, rFF
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
   limm  r06, 8
   sub r03, r03, r06
   limm  r06, 4
   add r05, r03, r06
-  ldw r05, r05, rFF
-  or  r02, r05, rFF
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
   limm  r06, 0
   cmp r07, r08, r06
-  limm  r06, jreq_else.read_int0
+  limm  r06, jreq_else.min_caml_read_int29
   jrneq r05, r07, r06
   limm  r08, 0
-  jr  r05, r02, rFF
-jreq_else.read_int0:
-  limm  r06, 48
-  sub r08, r08, r06
-  limm  r06, 0
-  cmp r07, r08, r06
-  limm  r06, jrge_else.read_int1
-  jrlt  r05, r07, r06
-  limm  r06, 10
-  cmp r07, r08, r06
-  limm  r06, jrge_else.read_int3
-  jrlt  r05, r07, r06
-  limm  r08, 1
-  limm  r06, jrge_cont.read_int4
-  jr  r05, r06, rFF
-jrge_else.read_int3:
-jrge_cont.read_int4:
-  limm  r06, jrge_cont.read_int2
-  jr  r05, r06, rFF
-jrge_else.read_int1:
-  limm  r08, 1
-jrge_cont.read_int2:
+  jr  r05, r02, r1F
+jreq_else.min_caml_read_int29:
+  limm  r09, 10
   limm  r06, 0
   add r05, r03, r06
-  stw r05, r08, rFF
-  or  r05, r02, rFF
+  ldw r0A, r05, r1F
+  limm  r06, 4
+  add r05, r03, r06
+  stw r05, r08, r1F
+  or  r05, r02, r1F
+  or  r08, r0A, r1F
+  limm  r06, 12
+  add r06, r03, r06
+  stw r06, r05, r1F
+  limm  r06, 16
+  add r03, r03, r06
+  limm  r06, min_caml_mul
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
+  limm  r06, 16
+  sub r03, r03, r06
+  limm  r06, 12
+  add r05, r03, r06
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
+  limm  r06, 4
+  add r05, r03, r06
+  ldw r09, r05, r1F
+  limm  r06, 48
+  sub r09, r09, r06
+  add r08, r08, r09
+  limm  r06, read_int_sub.min_caml_read_int15
+  jr  r05, r06, r1F
+min_caml_read_int:
+  limm  r08, 0
+  limm  r06, read_int_sub.min_caml_read_int15
+  jr  r05, r06, r1F
+# 	read_float
+#let rec read_float u =
+#  let rec read_float_sub1 f = 
+#    let b = read_byte ()
+#    in
+#    if b = 0 then
+#      0.0
+#    else
+#      if b = 46 then
+#        let rec read_float_sub2 f p =
+#          let b = read_byte ()
+#          in
+#          if b = 0 then
+#            0.0
+#          else
+#            read_float_sub2 (f +. p *. (int_of_float (b - 48))) (p *. 0.1)
+#        in
+#        read_float_sub2 f 0.1
+#      else
+#        read_float_sub1 ((f *. 10.0) +. (int_of_float (b - 48)))
+#  in 
+#  read_float_sub1 0.0
+#    in
+#    print_float (read_float ())
+  .data
+l.min_caml_read_float56:   # 10.000000
+  .long 10.000000d
+  .align 3
+l.min_caml_read_float55:   # 0.000000
+  .long 0.000000d
+  .align 3
+l.min_caml_read_float54:   # 0.100000
+  .long 0.100000d
+	.text
+	.align	2
+	.globl	min_caml_read_float
+read_float_sub2.min_caml_read_float39:
+  limm  r06, 4
+  add r06, r17, r06
+  ldw r08, r06, r1F
+  limm  r06, 0
+  add r05, r03, r06
+  stw r05, r17, r1F
+  limm  r06, 4
+  add r05, r03, r06
+  stw r05, r18, r1F
+  limm  r06, 8
+  add r05, r03, r06
+  stw r05, r19, r1F
+  limm  r06, 12
+  add r05, r03, r06
+  stw r05, r08, r1F
+  or  r05, r02, r1F
+  limm  r06, 20
+  add r06, r03, r06
+  stw r06, r05, r1F
+  limm  r06, 24
+  add r03, r03, r06
+  limm  r06, min_caml_read_byte
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
+  limm  r06, 24
+  sub r03, r03, r06
+  limm  r06, 20
+  add r05, r03, r06
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
+  limm  r06, 12
+  add r05, r03, r06
+  ldw r09, r05, r1F
+  cmp r07, r08, r09
+  limm  r06, jreq_else.min_caml_read_float67
+  jrneq r05, r07, r06
+  limm  r06, l.55
+  ldw r18, r06, r1F
+  jr  r05, r02, r1F
+jreq_else.min_caml_read_float67:
+  limm  r06, 48
+  sub r08, r08, r06
+  or  r05, r02, r1F
+  limm  r06, 20
+  add r06, r03, r06
+  stw r06, r05, r1F
+  limm  r06, 24
+  add r03, r03, r06
+  limm  r06, min_caml_int_of_float
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
+  limm  r06, 24
+  sub r03, r03, r06
+  limm  r06, 20
+  add r05, r03, r06
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
+  limm  r06, 8
+  add r05, r03, r06
+  ldw r19, r05, r1F
+  fmul  r18, r19, r18
+  limm  r06, 4
+  add r05, r03, r06
+  ldw r1A, r05, r1F
+  fadd  r18, r1A, r18
+  limm  r06, l.54
+  ldw r1A, r06, r1F
+  fmul  r19, r19, r1A
+  limm  r06, 0
+  add r05, r03, r06
+  ldw r17, r05, r1F
+  ldw r16, r17, r1F
+  jr  r05, r16, r1F
+read_float_sub1.min_caml_read_float27:
+  limm  r06, 0
+  add r05, r03, r06
+  stw r05, r18, r1F
+  or  r05, r02, r1F
   limm  r06, 4
   add r06, r03, r06
-  stw r06, r05, rFF
+  stw r06, r05, r1F
   limm  r06, 8
   add r03, r03, r06
-  limm  r06, min_caml_read_int
-  or  r05, r06, rFF
-  jr  r02, r05, rFF
+  limm  r06, min_caml_read_byte
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
   limm  r06, 8
   sub r03, r03, r06
   limm  r06, 4
   add r05, r03, r06
-  ldw r05, r05, rFF
-  or  r09, r08, rFF
-  or  r02, r05, rFF
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
+  limm  r09, 0
+  limm  r06, 0
+  cmp r07, r08, r06
+  limm  r06, jreq_else.min_caml_read_float68
+  jrneq r05, r07, r06
+  limm  r06, l.55
+  ldw r18, r06, r1F
+  jr  r05, r02, r1F
+jreq_else.min_caml_read_float68:
+  limm  r06, 46
+  cmp r07, r08, r06
+  limm  r06, jreq_else.min_caml_read_float69
+  jrneq r05, r07, r06
+  or  r17, r04, r1F
+  limm  r06, 8
+  add r04, r04, r06
+  limm  r08, read_float_sub2.min_caml_read_float39
+  limm  r06, 0
+  add r06, r17, r06
+  stw r06, r08, r1F
+  limm  r06, 4
+  add r06, r17, r06
+  stw r06, r09, r1F
+  limm  r06, l.54
+  ldw r19, r06, r1F
   limm  r06, 0
   add r05, r03, r06
-  ldw r08, r05, rFF
-  limm  r06, min_caml_div
-  jr  r05, r06, rFF
-# 	read_float
-	.text
-	.align	2
-#	.globl	min_caml_read_float
+  ldw r18, r05, r1F
+  ldw r16, r17, r1F
+  jr  r05, r16, r1F
+jreq_else.min_caml_read_float69:
+  limm  r06, l.56
+  ldw r18, r06, r1F
+  limm  r06, 0
+  add r05, r03, r06
+  ldw r19, r05, r1F
+  fmul  r18, r19, r18
+  limm  r06, 48
+  sub r08, r08, r06
+  limm  r06, 4
+  add r05, r03, r06
+  stw r05, r18, r1F
+  or  r05, r02, r1F
+  limm  r06, 12
+  add r06, r03, r06
+  stw r06, r05, r1F
+  limm  r06, 16
+  add r03, r03, r06
+  limm  r06, min_caml_int_of_float
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
+  limm  r06, 16
+  sub r03, r03, r06
+  limm  r06, 12
+  add r05, r03, r06
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
+  limm  r06, 4
+  add r05, r03, r06
+  ldw r19, r05, r1F
+  fadd  r18, r19, r18
+  limm  r06, read_float_sub1.min_caml_read_float27
+  jr  r05, r06, r1F
+min_caml_read_float:
+  limm  r06, l.55
+  ldw r18, r06, r1F
+  limm  r06, read_float_sub1.min_caml_read_float27
+  jr  r05, r06, r1F
 #	create_array
 	.text
 	.align	2
@@ -653,17 +834,21 @@ jrle_cont.min_caml_float_of_int2:
 	.text
 	.align	2
   .globl min_caml_div
-div_sub.min_caml_div:
-  limm  r06, -1
+div_sub.min_caml_div23:
+  limm  r06, 65535
+  limm  r06, 16
+  sll r06, r06, r06
+  limm  r06, 65535
+  or  r06, r06, r06
   cmp r07, r0A, r06
-  limm  r06, jreq_else.min_caml_div0
+  limm  r06, jreq_else.min_caml_div42
   jrneq r05, r07, r06
   limm  r08, 0
-  jr  r05, r02, rFF
-jreq_else.min_caml_div0:
+  jr  r05, r02, r1F
+  jreq_else.min_caml_div42:
   srl r0B, r08, r0A
   cmp r07, r09, r0B
-  limm  r06, jrle_else.min_caml_div1
+  limm  r06, jrle_else.min_caml_div43
   jrgt  r05, r07, r06
   limm  r0B, 1
   sll r0B, r0B, r0A
@@ -673,36 +858,36 @@ jreq_else.min_caml_div0:
   sub r0A, r0A, r06
   limm  r06, 0
   add r05, r03, r06
-  stw r05, r0B, rFF
-  or  r05, r02, rFF
+  stw r05, r0B, r1F
+  or  r05, r02, r1F
   limm  r06, 4
   add r06, r03, r06
-  stw r06, r05, rFF
+  stw r06, r05, r1F
   limm  r06, 8
   add r03, r03, r06
-  limm  r06, div_sub.min_caml_div
-  or  r05, r06, rFF
-  jr  r02, r05, rFF
+  limm  r06, div_sub.min_caml_div23
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
   limm  r06, 8
   sub r03, r03, r06
   limm  r06, 4
   add r05, r03, r06
-  ldw r05, r05, rFF
-  or  r02, r05, rFF
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
   limm  r06, 0
   add r05, r03, r06
-  ldw r09, r05, rFF
+  ldw r09, r05, r1F
   add r08, r09, r08
-  jr  r05, r02, rFF
-jrle_else.min_caml_div1:
+  jr  r05, r02, r1F
+  jrle_else.min_caml_div43:
   limm  r06, 1
   sub r0A, r0A, r06
-  limm  r06, div_sub.min_caml_div
-  jr  r05, r06, rFF
+  limm  r06, div_sub.min_caml_div23
+  jr  r05, r06, r1F
 min_caml_div:
   limm  r0A, 31
-  limm  r06, div_sub.min_caml_div
-  jr  r05, r06, rFF
+  limm  r06, div_sub.min_caml_div23
+  jr  r05, r06, r1F
 # mul
 #let rec mul a b =
 #  let rec mul_sub a b i =
@@ -720,53 +905,57 @@ min_caml_div:
 	.text
 	.align	2
   .globl min_caml_mul
-mul_sub.min_caml_mul:
-  limm  r06, -1
+mul_sub.min_caml_mul23:
+  limm  r06, 65535
+  limm  r06, 16
+  sll r06, r06, r06
+  limm  r06, 65535
+  or  r06, r06, r06
   cmp r07, r0A, r06
-  limm  r06, jreq_else.min_caml_mul0
+  limm  r06, jreq_else.min_caml_mul42
   jrneq r05, r07, r06
   limm  r08, 0
-  jr  r05, r02, rFF
-jreq_else.min_caml_mul0:
+  jr  r05, r02, r1F
+  jreq_else.min_caml_mul42:
   limm  r0B, 1
   sll r0B, r0B, r0A
   and r0B, r09, r0B
   limm  r06, 0
   cmp r07, r0B, r06
-  limm  r06, jreq_else.min_caml_mul1
+  limm  r06, jreq_else.min_caml_mul43
   jrneq r05, r07, r06
   limm  r06, 1
   sub r0A, r0A, r06
-  limm  r06, mul_sub.min_caml_mul
-  jr  r05, r06, rFF
-jreq_else.min_caml_mul1:
+  limm  r06, mul_sub.min_caml_mul23
+  jr  r05, r06, r1F
+  jreq_else.min_caml_mul43:
   sll r0B, r08, r0A
   limm  r06, 1
   sub r0A, r0A, r06
   limm  r06, 0
   add r05, r03, r06
-  stw r05, r0B, rFF
-  or  r05, r02, rFF
+  stw r05, r0B, r1F
+  or  r05, r02, r1F
   limm  r06, 4
   add r06, r03, r06
-  stw r06, r05, rFF
+  stw r06, r05, r1F
   limm  r06, 8
   add r03, r03, r06
-  limm  r06, mul_sub.min_caml_mul
-  or  r05, r06, rFF
-  jr  r02, r05, rFF
+  limm  r06, mul_sub.min_caml_mul23
+  or  r05, r06, r1F
+  jr  r02, r05, r1F
   limm  r06, 8
   sub r03, r03, r06
   limm  r06, 4
   add r05, r03, r06
-  ldw r05, r05, rFF
-  or  r02, r05, rFF
+  ldw r05, r05, r1F
+  or  r02, r05, r1F
   limm  r06, 0
   add r05, r03, r06
-  ldw r09, r05, rFF
+  ldw r09, r05, r1F
   add r08, r09, r08
-  jr  r05, r02, rFF
+  jr  r05, r02, r1F
 min_caml_mul:
   limm  r0A, 31
-  limm  r06, mul_sub.min_caml_mul
-  jr  r05, r06, rFF
+  limm  r06, mul_sub.min_caml_mul23
+  jr  r05, r06, r1F

@@ -52,13 +52,10 @@ let seq (e1, e2) = Let ((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
 let regs = [| "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
               "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17"; 
-              "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; "%r1F"
+              
              |]
 (* let regs = Array.init 27 (fun i -> Printf.sprintf "_R_%d" i) *)
-let fregs = [| "%r20"; "%r21"; "%r22"; "%r23"; "%r24"; "%r25"; "%r26"; "%r27"; 
-               "%r28"; "%r29"; "%r2A"; "%r2B"; "%r2C"; "%r2D"; "%r2E"; "%r2F";
-               "%r30"; "%r31"; "%r32"; "%r33"; "%r34"; "%r35"; "%r36"; "%r37"; 
-               "%r38"; "%r39"; "%r3A"; "%r3B"; "%r3C"; "%r3D"; "%r3E"; "%r3F"
+let fregs = [| "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"
               |]
 let allregs = Array.to_list regs
 let allfregs = Array.to_list fregs
@@ -71,7 +68,7 @@ let reg_tmp = "r05"
 let reg_imm = "r06"
 let reg_cond = "r07"
 let reg_lr = "r02"
-let reg_zero = "rFF"
+let reg_zero = "r1F"
 
 (* is_reg : Id.t -> bool *)
 let is_reg x = x.[0] = '%'

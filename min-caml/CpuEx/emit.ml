@@ -26,12 +26,14 @@ let llabel oc r1 label =
 let op3 oc inst r1 r2 r3 =
   Printf.fprintf oc "\t%s\t%s, %s, %s\n" inst r1 r2 r3
 
-let limm oc r1 imm =
+let rec limm oc r1 imm =
   let limm_sub oc r1 imm =
       Printf.fprintf oc "\tlimm\t%s, %d\n" r1 imm in
   match imm with
-  | _ when imm >= -32768 && imm < 32768 -> 
+  | _ when imm >= 0 && imm < 32768 -> 
      limm_sub oc r1 imm
+  | _ when imm < 0 -> 
+     limm oc r1 (0x100000000 + imm)
   | _ ->
      let n = imm lsr 16 in
      let m = imm lxor (n lsl 16) in

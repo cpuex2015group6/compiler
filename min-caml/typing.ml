@@ -164,6 +164,23 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 
 let f e =
   extenv := M.empty;
+  extenv := M.add "print_newline" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "print_int" (Type.Fun([Type.Int], Type.Unit)) !extenv;
+  extenv := M.add "print_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
+  extenv := M.add "read_byte" (Type.Fun([Type.Unit], Type.Int)) !extenv;
+  extenv := M.add "prerr_int" (Type.Fun([Type.Int], Type.Unit)) !extenv;
+  extenv := M.add "prerr_byte" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "read_int" (Type.Fun([Type.Unit], Type.Int)) !extenv;
+  extenv := M.add "read_float" (Type.Fun([Type.Unit], Type.Float)) !extenv;
+  extenv := M.add "create_array" (Type.Fun([Type.Int], (Type.Array(Type.Int)))) !extenv;
+  extenv := M.add "create_float_array" (Type.Fun([Type.Int], (Type.Array(Type.Float)))) !extenv;
+  extenv := M.add "abs_float" (Type.Fun([Type.Float], Type.Float)) !extenv;
+  extenv := M.add "floor" (Type.Fun([Type.Float], Type.Float)) !extenv;
+  extenv := M.add "truncate" (Type.Fun([Type.Int], Type.Float)) !extenv;
+  extenv := M.add "int_of_float" (Type.Fun([Type.Int], Type.Float)) !extenv;
+  extenv := M.add "float_of_int" (Type.Fun([Type.Float], Type.Int)) !extenv;
+  extenv := M.add "div" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
+  extenv := M.add "mul" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
 (*
   (match deref_typ (g M.empty e) with
   | Type.Unit -> ()
