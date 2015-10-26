@@ -24,6 +24,8 @@ and exp =
   | Cos of Id.t
   | Atan of Id.t
   | Sqrt of Id.t
+  | ToInt of Id.t
+  | ToFloat of Id.t
   | Comment of string
   (* virtual instructions *)
   | IfEq of Id.t * id_or_imm * t * t

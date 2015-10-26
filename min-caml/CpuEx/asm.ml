@@ -26,6 +26,8 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Cos of Id.t
   | Atan of Id.t
   | Sqrt of Id.t
+  | ToInt of Id.t
+  | ToFloat of Id.t
   | Comment of string
   (* virtual instructions *)
   | IfEq of Id.t * id_or_imm * t * t
@@ -68,7 +70,7 @@ let reg_tmp = "r05"
 let reg_imm = "r06"
 let reg_cond = "r07"
 let reg_lr = "r02"
-let reg_zero = "r1F"
+let reg_zero = "rFF"
 
 (* is_reg : Id.t -> bool *)
 let is_reg x = x.[0] = '%'
@@ -85,7 +87,7 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | Save (x, _) | Sin (x) | Cos (x) | Atan (x) | Sqrt (x) -> [x]
+  | Mr (x) | Save (x, _) | Sin (x) | Cos (x) | Atan (x) | Sqrt (x) | ToFloat(x) |ToInt(x) -> [x]
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
   | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->

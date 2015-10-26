@@ -27,6 +27,8 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Tuple of t list
   | LetTuple of (Id.t * Type.t) list * t * t
   | Array of t * t
+  | ToFloat of t
+  | ToInt of t
   | Sin of t
   | Cos of t
   | Atan of t

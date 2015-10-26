@@ -39,6 +39,8 @@ let addtyp x = (x, Type.gentyp ())
 %token REC
 %token COMMA
 %token ARRAY_CREATE
+%token TO_FLOAT
+%token TO_INT
 %token DOT
 %token LESS_MINUS
 %token SEMICOLON
@@ -153,6 +155,12 @@ exp: /* (* ∞Ï»Ã§Œº∞ (caml2html: parser_exp) *) */
 | ARRAY_CREATE simple_exp simple_exp
     %prec prec_app
     { Array($2, $3) }
+| TO_FLOAT simple_exp
+    %prec prec_app
+    { ToFloat($2) }
+| TO_INT simple_exp
+    %prec prec_app
+    { ToInt($2) }
 | SIN simple_exp
     %prec prec_app
     { Sin($2) }

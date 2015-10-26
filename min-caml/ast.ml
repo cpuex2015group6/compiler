@@ -187,6 +187,14 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "Array\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
+  | ToFloat(e1) ->
+     print_string indent;
+     print_string "ToFloat\n";
+     g (indent ^ "  ") e1;
+  | ToInt(e1) ->
+     print_string indent;
+     print_string "ToInt\n";
+     g (indent ^ "  ") e1;
   | Get(e1, e2) ->
      print_string indent;
      print_string "Get\n";

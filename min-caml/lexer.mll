@@ -90,6 +90,10 @@ rule token = parse
     { IDENT(Id.gentmp Type.Unit) }
 | "Array.create" (* [XX] ad hoc *)
     { ARRAY_CREATE }
+| "Float"
+    {TO_FLOAT}
+| "Int"
+    {TO_INT}
 | '.'
     { DOT }
 | "<-"

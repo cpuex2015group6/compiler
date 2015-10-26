@@ -138,6 +138,10 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "fatan" (reg x) (reg y) reg_zero
   | (NonTail(x), Sqrt(y)) -> 
      op3 oc "fsqrt" (reg x) (reg y) reg_zero
+  | (NonTail(x), ToFloat(y)) -> 
+     op3 oc "or" (reg x) (reg y) reg_zero
+  | (NonTail(x), ToInt(y)) -> 
+     op3 oc "or" (reg x) (reg y) reg_zero
   | (NonTail(_), Comment(s)) -> Printf.fprintf oc "#\t%s\n" s
   (* 退避の仮想命令の実装 *)
   | (NonTail(_), Save(x, y))
@@ -160,7 +164,7 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
             Ldw _ as exp)) -> 
      g' oc (NonTail(regs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ as exp)) ->
+  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ | ToFloat _ | ToInt _ as exp)) ->
      g' oc (NonTail(fregs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, (Restore(x) as exp)) ->

@@ -54,6 +54,8 @@ let rec deref_term = function
   | Tuple(es) -> Tuple(List.map deref_term es)
   | LetTuple(xts, e1, e2) -> LetTuple(List.map deref_id_typ xts, deref_term e1, deref_term e2)
   | Array(e1, e2) -> Array(deref_term e1, deref_term e2)
+  | ToFloat(e1) -> ToFloat(deref_term e1)
+  | ToInt(e1) -> ToInt(deref_term e1)
   | Get(e1, e2) -> Get(deref_term e1, deref_term e2)
   | Put(e1, e2, e3) -> Put(deref_term e1, deref_term e2, deref_term e3)
   | e -> e
@@ -150,6 +152,12 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | Array(e1, e2) -> (* must be a primitive for "polymorphic" typing *)
 	     unify (g env e1) Type.Int;
 	     Type.Array(g env e2)
+    | ToFloat(e1) ->
+	     unify Type.Int (g env e1);
+	     Type.Float
+    | ToInt(e1) ->
+	     unify Type.Float (g env e1);
+	     Type.Int
     | Get(e1, e2) ->
 	     let t = Type.gentyp () in
 	     unify (Type.Array(t)) (g env e1);
@@ -165,22 +173,11 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 let f e =
   extenv := M.empty;
   extenv := M.add "print_newline" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
-  extenv := M.add "print_int" (Type.Fun([Type.Int], Type.Unit)) !extenv;
   extenv := M.add "print_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
   extenv := M.add "read_byte" (Type.Fun([Type.Unit], Type.Int)) !extenv;
-  extenv := M.add "prerr_int" (Type.Fun([Type.Int], Type.Unit)) !extenv;
   extenv := M.add "prerr_byte" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
-  extenv := M.add "read_int" (Type.Fun([Type.Unit], Type.Int)) !extenv;
-  extenv := M.add "read_float" (Type.Fun([Type.Unit], Type.Float)) !extenv;
   extenv := M.add "create_array" (Type.Fun([Type.Int], (Type.Array(Type.Int)))) !extenv;
   extenv := M.add "create_float_array" (Type.Fun([Type.Int], (Type.Array(Type.Float)))) !extenv;
-  extenv := M.add "abs_float" (Type.Fun([Type.Float], Type.Float)) !extenv;
-  extenv := M.add "floor" (Type.Fun([Type.Float], Type.Float)) !extenv;
-  extenv := M.add "truncate" (Type.Fun([Type.Int], Type.Float)) !extenv;
-  extenv := M.add "int_of_float" (Type.Fun([Type.Int], Type.Float)) !extenv;
-  extenv := M.add "float_of_int" (Type.Fun([Type.Float], Type.Int)) !extenv;
-  extenv := M.add "div" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
-  extenv := M.add "mul" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
 (*
   (match deref_typ (g M.empty e) with
   | Type.Unit -> ()

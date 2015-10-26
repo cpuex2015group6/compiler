@@ -107,6 +107,10 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Put " ^ e1 ^ " " ^ e2 ^ e3 ^ "\n")
   | ExtArray(e1) ->
      print_string (indent ^ "ExtArray " ^ e1 ^ "\n")
+  | ToFloat(e1) ->
+     print_string (indent ^ "ToFloat " ^ e1 ^ "\n")
+  | ToInt(e1) ->
+     print_string (indent ^ "ToInt " ^ e1 ^ "\n")
   | ExtFunApp(e, es) ->
      print_string (indent ^ "ExtFunApp " ^ e ^ "\n");
      print_string (indent ^ "  ");
