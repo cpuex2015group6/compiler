@@ -7,6 +7,8 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Neg of t
   | Add of t * t
   | Sub of t * t
+  | Mul of t * t
+  | Div of t * t
   | Xor of t * t
   | Or of t * t
   | And of t * t
@@ -35,4 +37,5 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Sqrt of t
   | Get of t * t
   | Put of t * t * t
+  | LetDef of fundef
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }

@@ -11,6 +11,8 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
   | Neg(x) -> Neg(find x env)
   | Add(x, y) -> Add(find x env, find y env)
   | Sub(x, y) -> Sub(find x env, find y env)
+  | Mul(x, y) -> Mul(find x env, find y env)
+  | Div(x, y) -> Div(find x env, find y env)
   | Xor(x, y) -> Xor(find x env, find y env)
   | Or(x, y) -> Or(find x env, find y env)
   | And(x, y) -> And(find x env, find y env)
@@ -39,6 +41,13 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
 	       args = List.map (fun (y, t) -> (find y env', t)) yts;
 	       body = g env' e1 },
 	     g env e2)
+  | LetDef({ name = (x, t); args = yts; body = e1 }) -> (* let defのα変 *)
+      let env = M.add x (Id.genid x) env in
+      let ys = List.map fst yts in
+      let env' = M.add_list2 ys (List.map Id.genid ys) env in
+      LetDef({ name = (find x env, t);
+	       args = List.map (fun (y, t) -> (find y env', t)) yts;
+	       body = g env' e1 })
   | App(x, ys) -> App(find x env, List.map (fun y -> find y env) ys)
   | Tuple(xs) -> Tuple(List.map (fun x -> find x env) xs)
   | LetTuple(xts, y, e) -> (* LetTupleのα変換 (caml2html: alpha_lettuple) *)

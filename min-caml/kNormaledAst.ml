@@ -20,6 +20,10 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Add " ^ e1 ^ " " ^ e2 ^ "\n")
   | Sub(e1, e2) ->
      print_string (indent ^ "Sub " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Mul(e1, e2) ->
+     print_string (indent ^ "Mul " ^ e1 ^ " " ^ e2 ^ "\n")
+  | Div(e1, e2) ->
+     print_string (indent ^ "Div " ^ e1 ^ " " ^ e2 ^ "\n")
   | Xor(e1, e2) ->
      print_string (indent ^ "Xor " ^ e1 ^ " " ^ e2 ^ "\n")
   | Or(e1, e2) ->
@@ -74,6 +78,17 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
+  | LetDef({ name = (x, t); args = yts; body = e1 }) ->
+     print_string (indent ^ "LetDef\n");
+     print_string (indent ^ "  " ^ x ^ "\n");
+     print_string (indent ^ "  ");
+     let rec print_list = function 
+       | [] -> ()
+       | e::l -> print_string (e ^ " ") ; print_list l;
+     in
+     print_list (List.map (fun (x, t) -> x) yts);
+     print_string "\n";
+     g (indent ^ "  ") e1
   | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)
      print_string (indent ^ "App " ^ e ^ "\n");
      print_string (indent ^ "  ");

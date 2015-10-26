@@ -33,6 +33,9 @@ let rec g history e =
      let ne1 = g history e1 in
      let ne2 = g history e2 in
      LetRec({ name = (x, t); args = yts; body = ne1 }, ne2)
+  | LetDef({ name = (x, t); args = yts; body = e1 }) ->
+     let ne1 = g history e1 in
+     LetDef({ name = (x, t); args = yts; body = ne1 })
   | LetTuple(xts, e1, e2) ->
      (* 手抜き　本当はxtsもhistoryに追加すべき *)
      let ne2 = g history e2 in

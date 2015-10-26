@@ -34,6 +34,10 @@ rule token = parse
     { MINUS }
 | '+' (* +.より後回しにしなくても良い? 最長一致? *)
     { PLUS }
+| '*'
+    { AST }
+| '/'
+    { SLASH }
 | "lxor"
     { XOR }
 | "lor"
@@ -94,6 +98,10 @@ rule token = parse
     {TO_FLOAT}
 | "Int"
     {TO_INT}
+| "fequal"
+    {FEQUAL}
+| "fless"
+    {FLESS}
 | '.'
     { DOT }
 | "<-"

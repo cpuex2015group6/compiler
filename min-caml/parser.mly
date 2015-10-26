@@ -11,6 +11,8 @@ let addtyp x = (x, Type.gentyp ())
 %token NOT
 %token MINUS
 %token PLUS
+%token AST
+%token SLASH
 %token XOR
 %token OR
 %token AND
@@ -30,6 +32,8 @@ let addtyp x = (x, Type.gentyp ())
 %token GREATER_EQUAL
 %token LESS
 %token GREATER
+%token FEQUAL
+%token FLESS
 %token IF
 %token THEN
 %token ELSE
@@ -56,17 +60,30 @@ let addtyp x = (x, Type.gentyp ())
 %left COMMA
 %left EQUAL LESS_GREATER LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left PLUS MINUS PLUS_DOT MINUS_DOT
-%left AST_DOT SLASH_DOT XOR OR AND
+%left AST SLASH AST_DOT SLASH_DOT XOR OR AND
 %left SLL SRL
 %right prec_unary_minus
 %left prec_app
 %left DOT
 
 /* (* 開始記号の定義 *) */
-%type <Syntax.t> exp
-%start exp
+%type <Syntax.t> statement_list
+%start statement_list
 
 %%
+
+statement_list: /* 定義式と一般式のリスト */
+| statement
+    { $1 }
+| statement_list statement
+    { Let((Id.gentmp Type.Unit, Type.Unit), $1, $2) }
+
+statement: /* 定義式と一般式 */
+| exp
+    { $1 }
+| LET REC fundef
+    %prec prec_let
+    { LetDef($3) }
 
 simple_exp: /* (* 括弧をつけなくても関数の引数になれる式 (caml2html: parser_simple) *) */
 | LPAREN exp RPAREN
@@ -99,6 +116,10 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
     { Add($1, $3) }
 | exp MINUS exp
     { Sub($1, $3) }
+| exp AST exp
+    { Mul($1, $3) }
+| exp SLASH exp
+    { Div($1, $3) }
 | exp XOR exp
     { Xor($1, $3) }
 | exp OR exp
@@ -161,6 +182,12 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
 | TO_INT simple_exp
     %prec prec_app
     { ToInt($2) }
+| FEQUAL simple_exp simple_exp
+    %prec prec_app
+    { Eq($2, $3) }
+| FLESS simple_exp simple_exp
+    %prec prec_app
+    { LE($2, $3) }
 | SIN simple_exp
     %prec prec_app
     { Sin($2) }

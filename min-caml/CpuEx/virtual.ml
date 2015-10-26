@@ -44,6 +44,12 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
      Let((y, Type.Int), Li (0), Ans(Sub(y, V(x))))
   | Closure.Add (x, y) -> Ans (Add (x, V (y)))
   | Closure.Sub (x, y) -> Ans (Sub (x, V (y)))
+  | Closure.Mul (x, y) ->
+     (* libmincaml.S内の関数を呼び出す *)
+	   Ans (CallDir (Id.L("min_caml_mul"), [x; y], []))
+  | Closure.Div (x, y) ->
+     (* libmincaml.S内の関数を呼び出す *)
+	   Ans (CallDir (Id.L("min_caml_div"), [x; y], []))
   | Closure.Xor (x, y) -> Ans (Xor (x, V (y)))
   | Closure.Or (x, y) -> Ans (Or (x, V (y)))
   | Closure.And (x, y) -> Ans (And (x, V (y)))

@@ -6,6 +6,7 @@ exception Unify of Type.t * Type.t
 exception Error of t * Type.t * Type.t
 
 let extenv = ref M.empty
+let extenv_bkup = ref M.empty
 
 (* for pretty printing (and type normalization) *)
 let rec deref_typ = function (* 型変数を中身でおきかえる関数 (caml2html: typing_deref) *)
@@ -27,6 +28,8 @@ let rec deref_term = function
   | Neg(e) -> Neg(deref_term e)
   | Add(e1, e2) -> Add(deref_term e1, deref_term e2)
   | Sub(e1, e2) -> Sub(deref_term e1, deref_term e2)
+  | Mul(e1, e2) -> Mul(deref_term e1, deref_term e2)
+  | Div(e1, e2) -> Div(deref_term e1, deref_term e2)
   | Xor(e1, e2) -> Xor(deref_term e1, deref_term e2)
   | Or(e1, e2) -> Or(deref_term e1, deref_term e2)
   | And(e1, e2) -> And(deref_term e1, deref_term e2)
@@ -50,6 +53,10 @@ let rec deref_term = function
 	       args = List.map deref_id_typ yts;
 	       body = deref_term e1 },
 	     deref_term e2)
+  | LetDef({ name = xt; args = yts; body = e1 }) ->
+      LetDef({ name = deref_id_typ xt;
+	       args = List.map deref_id_typ yts;
+	       body = deref_term e1 })
   | App(e, es) -> App(deref_term e, List.map deref_term es)
   | Tuple(es) -> Tuple(List.map deref_term es)
   | LetTuple(xts, e1, e2) -> LetTuple(List.map deref_id_typ xts, deref_term e1, deref_term e2)
@@ -104,7 +111,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | Neg(e) ->
 	     unify Type.Int (g env e);
 	     Type.Int
-    | Add(e1, e2) | Sub(e1, e2) | Xor(e1, e2) | Or(e1, e2) | And(e1, e2) | Sll(e1, e2) | Srl(e1, e2)-> (* 各種整数演算の型推論 (caml2html: typing_add) *)
+    | Add(e1, e2) | Sub(e1, e2) | Mul(e1, e2) | Div(e1, e2) | Xor(e1, e2) | Or(e1, e2) | And(e1, e2) | Sll(e1, e2) | Srl(e1, e2)-> (* 各種整数演算の型推論 (caml2html: typing_add) *)
 	                   unify Type.Int (g env e1);
 	                   unify Type.Int (g env e2);
 	                   Type.Int
@@ -141,6 +148,11 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	     let env = M.add x t env in
 	     unify t (Type.Fun(List.map snd yts, g (M.add_list yts env) e1));
 	     g env e2
+    | LetDef({ name = (x, t); args = yts; body = e1 }) -> (* 宣言ver let recの型推論 *)
+       extenv := M.add x t !extenv;
+	     let env = M.add x t env in
+	     unify t (Type.Fun(List.map snd yts, g (M.add_list yts env) e1));
+       Type.Unit
     | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)
 	     let t = Type.gentyp () in
 	     unify (g env e) (Type.Fun(List.map (g env) es, t));
@@ -175,7 +187,9 @@ let f e =
   extenv := M.add "print_newline" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
   extenv := M.add "print_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
   extenv := M.add "read_byte" (Type.Fun([Type.Unit], Type.Int)) !extenv;
-  extenv := M.add "prerr_byte" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "prerr_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
+  extenv := M.add "mul" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
+  extenv := M.add "div" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
   extenv := M.add "create_array" (Type.Fun([Type.Int], (Type.Array(Type.Int)))) !extenv;
   extenv := M.add "create_float_array" (Type.Fun([Type.Int], (Type.Array(Type.Float)))) !extenv;
 (*

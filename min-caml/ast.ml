@@ -45,6 +45,16 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "Sub\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
+  | Mul(e1, e2) ->
+     print_string indent;
+     print_string "Mul\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
+  | Div(e1, e2) ->
+     print_string indent;
+     print_string "Div\n";
+     g (indent ^ "  ") e1;
+     g (indent ^ "  ") e2
   | Xor(e1, e2) ->
      print_string indent;
      print_string "Xor\n";
@@ -205,6 +215,20 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "Put\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
+  | LetDef({ name = (x, t); args = yts; body = e1 }) ->
+     print_string indent;
+     print_string "LetDef\n";
+     print_string (indent ^ "  ");
+     print_string x;
+     print_string "\n";
+     print_string (indent ^ "  ");
+     let rec print_list = function 
+       | [] -> ()
+       | e::l -> print_string e ; print_string " " ; print_list l;
+     in
+     print_list (List.map (fun (x, t) -> x) yts);
+     print_string "\n";
+     g (indent ^ "  ") e1
 
 let f e =
   g "" e;
