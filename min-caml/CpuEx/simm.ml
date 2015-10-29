@@ -42,5 +42,5 @@ let h { name = l; args = xs; fargs = ys; body = e; ret = t } =
   { name = l; args = xs; fargs = ys; body = g M.empty e; ret = t }
 
 (* プログラム全体の 16 bit 即値最適化 *)
-let f (Prog(data, fundefs, e)) = 
-  Prog(data, List.map h fundefs, g M.empty e)
+let f (Prog(data, vars, fundefs, e)) = 
+  Prog(data, vars, List.map h fundefs, g M.empty e)

@@ -23,8 +23,10 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | LE of t * t
   | If of t * t * t
   | Let of (Id.t * Type.t) * t * t
+  | LetDef of (Id.t * Type.t) * t
   | Var of Id.t
   | LetRec of fundef * t
+  | LetRecDef of fundef
   | App of t * t list
   | Tuple of t list
   | LetTuple of (Id.t * Type.t) list * t * t
@@ -37,5 +39,4 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Sqrt of t
   | Get of t * t
   | Put of t * t * t
-  | LetDef of fundef
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }

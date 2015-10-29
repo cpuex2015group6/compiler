@@ -21,8 +21,6 @@ let rec g env = function (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
   | Neg(x) when memi x env -> Int(-(findi x env))
   | Add(x, y) when memi x env && memi y env -> Int(findi x env + findi y env) (* 足し算のケース (caml2html: constfold_add) *)
   | Sub(x, y) when memi x env && memi y env -> Int(findi x env - findi y env)
-  | Mul(x, y) when memi x env && memi y env -> Int(findi x env * findi y env)
-  | Div(x, y) when memi x env && memi y env -> Int(findi x env / findi y env)
   | FNeg(x) when memf x env -> Float(-.(findf x env))
   | FAdd(x, y) when memf x env && memf y env -> Float(findf x env +. findf y env)
   | FSub(x, y) when memf x env && memf y env -> Float(findf x env -. findf y env)
@@ -40,8 +38,6 @@ let rec g env = function (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
       Let((x, t), e1', e2')
   | LetRec({ name = x; args = ys; body = e1 }, e2) ->
       LetRec({ name = x; args = ys; body = g env e1 }, g env e2)
-  | LetDef({ name = x; args = ys; body = e1 }) ->
-      LetDef({ name = x; args = ys; body = g env e1 })
   | LetTuple(xts, y, e) when memt y env ->
       List.fold_left2
 	(fun e' xt z -> Let(xt, Var(z), e'))

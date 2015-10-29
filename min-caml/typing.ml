@@ -6,7 +6,8 @@ exception Unify of Type.t * Type.t
 exception Error of t * Type.t * Type.t
 
 let extenv = ref M.empty
-let extenv_bkup = ref M.empty
+
+let genv = ref M.empty
 
 (* for pretty printing (and type normalization) *)
 let rec deref_typ = function (* 型変数を中身でおきかえる関数 (caml2html: typing_deref) *)
@@ -15,6 +16,7 @@ let rec deref_typ = function (* 型変数を中身でおきかえる関数 (caml2html: typing_
   | Type.Array(t) -> Type.Array(deref_typ t)
   | Type.Var({ contents = None } as r) ->
       Format.eprintf "uninstantiated type variable detected; assuming int@.";
+      Format.eprintf "%!";
       r := Some(Type.Int);
       Type.Int
   | Type.Var({ contents = Some(t) } as r) ->
@@ -48,13 +50,14 @@ let rec deref_term = function
   | Sqrt(e1) -> Sqrt(deref_term e1)
   | If(e1, e2, e3) -> If(deref_term e1, deref_term e2, deref_term e3)
   | Let(xt, e1, e2) -> Let(deref_id_typ xt, deref_term e1, deref_term e2)
+  | LetDef(xt, e1) -> LetDef(deref_id_typ xt, deref_term e1)
   | LetRec({ name = xt; args = yts; body = e1 }, e2) ->
       LetRec({ name = deref_id_typ xt;
 	       args = List.map deref_id_typ yts;
 	       body = deref_term e1 },
 	     deref_term e2)
-  | LetDef({ name = xt; args = yts; body = e1 }) ->
-      LetDef({ name = deref_id_typ xt;
+  | LetRecDef({ name = xt; args = yts; body = e1 }) ->
+      LetRecDef({ name = deref_id_typ xt;
 	       args = List.map deref_id_typ yts;
 	       body = deref_term e1 })
   | App(e, es) -> App(deref_term e, List.map deref_term es)
@@ -137,7 +140,12 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | Let((x, t), e1, e2) -> (* letの型推論 (caml2html: typing_let) *)
 	     unify t (g env e1);
 	     g (M.add x t env) e2
+    | LetDef((x, t), e1) -> (* letの型推論 (caml2html: typing_let) *)
+	     unify t (g env e1);
+       genv := M.add x t !genv;
+       Type.Unit
     | Var(x) when M.mem x env -> M.find x env (* 変数の型推論 (caml2html: typing_var) *)
+    | Var(x) when M.mem x !genv -> M.find x !genv
     | Var(x) when M.mem x !extenv -> M.find x !extenv
     | Var(x) -> (* 外部変数の型推論 (caml2html: typing_extvar) *)
 	     Format.eprintf "free variable %s assumed as external@." x;
@@ -148,9 +156,9 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	     let env = M.add x t env in
 	     unify t (Type.Fun(List.map snd yts, g (M.add_list yts env) e1));
 	     g env e2
-    | LetDef({ name = (x, t); args = yts; body = e1 }) -> (* 宣言ver let recの型推論 *)
-       extenv := M.add x t !extenv;
+    | LetRecDef({ name = (x, t); args = yts; body = e1 }) -> (* 宣言ver let recの型推論 *)
 	     let env = M.add x t env in
+       genv := M.add x t !genv;
 	     unify t (Type.Fun(List.map snd yts, g (M.add_list yts env) e1));
        Type.Unit
     | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)
@@ -180,7 +188,8 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	     unify (Type.Array(t)) (g env e1);
 	     unify Type.Int (g env e2);
 	     Type.Unit
-  with Unify(t1, t2) -> raise (Error(deref_term e, deref_typ t1, deref_typ t2))
+  with Unify(t1, t2) ->
+    raise (Error(deref_term e, deref_typ t1, deref_typ t2))
 
 let f e =
   extenv := M.empty;
@@ -190,14 +199,14 @@ let f e =
   extenv := M.add "prerr_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
   extenv := M.add "mul" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
   extenv := M.add "div" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
-  extenv := M.add "create_array" (Type.Fun([Type.Int], (Type.Array(Type.Int)))) !extenv;
-  extenv := M.add "create_float_array" (Type.Fun([Type.Int], (Type.Array(Type.Float)))) !extenv;
 (*
   (match deref_typ (g M.empty e) with
   | Type.Unit -> ()
   | _ -> Format.eprintf "warning: final result does not have type unit@.");
 *)
-  (try unify Type.Unit (g M.empty e)
-  with Unify _ -> failwith "top level does not have type unit");
+  (*(try unify Type.Unit (g M.empty e)
+  with Unify _ -> failwith "top level does not have type unit");*)
+  let _ = g M.empty e in
   extenv := M.map deref_typ !extenv;
+  genv := M.map deref_typ !genv;
   deref_term e

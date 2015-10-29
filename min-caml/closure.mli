@@ -6,8 +6,6 @@ type t =
   | Neg of Id.t
   | Add of Id.t * Id.t
   | Sub of Id.t * Id.t
-  | Mul of Id.t * Id.t
-  | Div of Id.t * Id.t
   | Xor of Id.t * Id.t
   | Or of Id.t * Id.t
   | And of Id.t * Id.t

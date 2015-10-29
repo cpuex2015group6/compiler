@@ -3,6 +3,7 @@
 open Asm
 
 let data = ref [] (* 浮動小数点数の定数テーブル *)
+let vars = ref [] (* グローバル変数を格納するテーブル *)
 
 let classify xts ini addf addi =
   List.fold_left
@@ -18,13 +19,12 @@ let separate xts =
     (fun (int, float) x -> (int, float @ [x]))
     (fun (int, float) x _ -> (int @ [x], float))
 
-let expand xts ini addf addi = 
+let expand xts ini add = 
   classify
     xts
     ini
-    (fun (offset, acc) x -> let offset = align offset in
-       (offset + 8, addf x offset acc))
-    (fun (offset, acc) x t -> (offset + 4, addi x t offset acc))
+    (fun (offset, acc) x -> (offset + 4, add x Type.Float offset acc))
+    (fun (offset, acc) x t -> (offset + 4, add x t offset acc))
 
 let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Unit -> Ans (Nop)
@@ -44,12 +44,6 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
      Let((y, Type.Int), Li (0), Ans(Sub(y, V(x))))
   | Closure.Add (x, y) -> Ans (Add (x, V (y)))
   | Closure.Sub (x, y) -> Ans (Sub (x, V (y)))
-  | Closure.Mul (x, y) ->
-     (* libmincaml.S内の関数を呼び出す *)
-	   Ans (CallDir (Id.L("min_caml_mul"), [x; y], []))
-  | Closure.Div (x, y) ->
-     (* libmincaml.S内の関数を呼び出す *)
-	   Ans (CallDir (Id.L("min_caml_div"), [x; y], []))
   | Closure.Xor (x, y) -> Ans (Xor (x, V (y)))
   | Closure.Or (x, y) -> Ans (Or (x, V (y)))
   | Closure.And (x, y) -> Ans (And (x, V (y)))
@@ -96,7 +90,6 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	     expand
 	       (List.map (fun y -> (y, M.find y env)) ys)
 	       (4, e2')
-	       (fun y offset store_fv -> seq (Stw (y, x, C (offset)), store_fv))
 	       (fun y _ offset store_fv -> seq (Stw (y, x, C (offset)), store_fv)) in
 	   Let ((x, t), Mr (reg_hp), 
 	        Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), 
@@ -115,7 +108,6 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	     expand
 	       (List.map (fun x -> (x, M.find x env)) xs)
 	       (0, Ans (Mr (y)))
-	       (fun x offset store -> seq (Stw (x, y, C (offset)), store))
 	       (fun x _ offset store -> seq (Stw (x, y, C (offset)), store))  in
 	   Let ((y, Type.Tuple (List.map (fun x -> M.find x env) xs)), Mr (reg_hp),
 	        Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), store))
@@ -125,15 +117,12 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	     expand
 	       xts
 	       (0, g (M.add_list xts env) e2)
-	       (fun x offset load ->
-	        if not (S.mem x s) then load 
-	        else fletd (x, Ldw (y, C (offset)), load))
 	       (fun x t offset load ->
 	        if not (S.mem x s) then load 
 	        else Let ((x, t), Ldw (y, C (offset)), load)) in
 	   load
   | Closure.Get (x, y) -> (* 配列の読み出し *)
-     let offset = Id.genid "o" in  
+     let offset = Id.genid "o" in
 	   (match M.find x env with
 	    | Type.Array (Type.Unit) -> Ans (Nop)
 	    | Type.Array (_) ->
@@ -158,7 +147,6 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts;
     expand
       zts
       (4, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) e)
-      (fun z offset load -> fletd (z, Ldw (reg_cl, C (offset)), load))
       (fun z t offset load -> Let ((z, t), Ldw (reg_cl, C (offset)), load)) in
     match t with
       | Type.Fun (_, t2) ->
@@ -170,4 +158,4 @@ let f (Closure.Prog (fundefs, e)) =
   data := [];
   let fundefs = List.map h fundefs in
   let e = g M.empty e in
-    Prog (!data, fundefs, e)
+    Prog (!data, !vars, fundefs, e)

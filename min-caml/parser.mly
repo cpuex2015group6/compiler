@@ -43,6 +43,7 @@ let addtyp x = (x, Type.gentyp ())
 %token REC
 %token COMMA
 %token ARRAY_CREATE
+%token ARRAY_CREATE_
 %token TO_FLOAT
 %token TO_INT
 %token DOT
@@ -54,7 +55,7 @@ let addtyp x = (x, Type.gentyp ())
 
 /* (* 優先順位とassociativityの定義（低い方から高い方へ） (caml2html: parser_prior) *) */
 %right prec_let
-%right SEMICOLON
+%right SEMICOLON 
 %right prec_if
 %right LESS_MINUS
 %left COMMA
@@ -67,23 +68,10 @@ let addtyp x = (x, Type.gentyp ())
 %left DOT
 
 /* (* 開始記号の定義 *) */
-%type <Syntax.t> statement_list
-%start statement_list
+%type <Syntax.t> exp
+%start exp
 
 %%
-
-statement_list: /* 定義式と一般式のリスト */
-| statement
-    { $1 }
-| statement_list statement
-    { Let((Id.gentmp Type.Unit, Type.Unit), $1, $2) }
-
-statement: /* 定義式と一般式 */
-| exp
-    { $1 }
-| LET REC fundef
-    %prec prec_let
-    { LetDef($3) }
 
 simple_exp: /* (* 括弧をつけなくても関数の引数になれる式 (caml2html: parser_simple) *) */
 | LPAREN exp RPAREN
@@ -159,9 +147,14 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
 | LET IDENT EQUAL exp IN exp
     %prec prec_let
     { Let(addtyp $2, $4, $6) }
+| LPAREN LET IDENT EQUAL exp RPAREN /* グローバル変数宣言用。Ocamlの文法とは異なるが、結合順序の崩壊を防ぐために、必ず丸括弧でくくる事！ */
+    %prec prec_let
+    { LetDef(addtyp $3, $5) }
 | LET REC fundef IN exp
     %prec prec_let
     { LetRec($3, $5) }
+| LPAREN LET REC fundef RPAREN /* グローバル関数宣言用。Ocamlの文法とは異なるが、結合順序の崩壊を防ぐために、必ず丸括弧でくくる事！ */
+    { LetRecDef($4) }
 | exp actual_args
     %prec prec_app
     { App($1, $2) }
@@ -173,7 +166,12 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
     { Put($1, $4, $7) }
 | exp SEMICOLON exp
     { Let((Id.gentmp Type.Unit, Type.Unit), $1, $3) }
+| exp SEMICOLON
+    { $1 }
 | ARRAY_CREATE simple_exp simple_exp
+    %prec prec_app
+    { Array($2, $3) }
+| ARRAY_CREATE_ simple_exp simple_exp
     %prec prec_app
     { Array($2, $3) }
 | TO_FLOAT simple_exp

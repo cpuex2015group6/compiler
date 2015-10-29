@@ -36,23 +36,41 @@ min_caml_prerr_byte:
 	.align	2
 	.globl	min_caml_create_array
 min_caml_create_array:
-  or	r09, r08, rFF
+  or	r0A, r08, rFF
 	or	r08, r04, rFF
-  limm  r06, 2
-  sll	r09, r09, r06
-  add	r04, r04, r09
+loop.min_caml_create_array:
+  cmp	r07, r0A, rFF
+  limm	r06, cont.min_caml_create_array
+  jrneq	r05, r07, r06
   jr	r05, r02, rFF
+cont.min_caml_create_array
+  stw	r04, r09
+  limm	r06, 1
+  sub	r0A, r0A, r06
+  limm r06, 4
+  add r04, r04, r06
+  limm	r06, loop.min_caml_create_array
+  jr r05, r06, rFF
 #	create_float_array
 	.text
 	.align	2
 	.globl	min_caml_create_float_array
 min_caml_create_float_array:
-  or	r09, r08, rFF
+  or	r0A, r08, rFF
 	or	r08, r04, rFF
-  limm  r06, 2
-  sll	r09, r09, r06
-  add	r04, r04, r09
+loop.min_caml_create_float_array:
+  cmp	r07, r0A, rFF
+  limm	r06, cont.min_caml_create_float_array
+  jrneq	r05, r07, r06
   jr	r05, r02, rFF
+cont.min_caml_create_float_array
+  stw	r04, r18
+  limm	r06, 1
+  sub	r0A, r0A, r06
+  limm r06, 4
+  add r04, r04, r06
+  limm	r06, loop.min_caml_create_float_array
+  jr r05, r06, rFF
 #	mul
 #let rec min_caml_mul a b =
 #   let rec mul_sub a b i =

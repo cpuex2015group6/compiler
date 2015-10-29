@@ -9,8 +9,6 @@ let rec g env = function (* β簡約ルーチン本体 (caml2html: beta_g) *)
   | Neg(x) -> Neg(find x env)
   | Add(x, y) -> Add(find x env, find y env)
   | Sub(x, y) -> Sub(find x env, find y env)
-  | Mul(x, y) -> Mul(find x env, find y env)
-  | Div(x, y) -> Div(find x env, find y env)
   | Xor(x, y) -> Xor(find x env, find y env)
   | Or(x, y) -> Or(find x env, find y env)
   | And(x, y) -> And(find x env, find y env)
@@ -30,15 +28,13 @@ let rec g env = function (* β簡約ルーチン本体 (caml2html: beta_g) *)
   | Let((x, t), e1, e2) -> (* letのβ簡約 (caml2html: beta_let) *)
       (match g env e1 with
       | Var(y) ->
-	  Format.eprintf "beta-reducing %s = %s@." x y;
-	  g (M.add x y env) e2
+	       Format.eprintf "beta-reducing %s = %s@." x y;
+	       g (M.add x y env) e2
       | e1' ->
-	  let e2' = g env e2 in
-	  Let((x, t), e1', e2'))
+	       let e2' = g env e2 in
+	       Let((x, t), e1', e2'))
   | LetRec({ name = xt; args = yts; body = e1 }, e2) ->
       LetRec({ name = xt; args = yts; body = g env e1 }, g env e2)
-  | LetDef({ name = xt; args = yts; body = e1 }) ->
-      LetDef({ name = xt; args = yts; body = g env e1 })
   | Var(x) -> Var(find x env) (* 変数を置換 (caml2html: beta_var) *)
   | Tuple(xs) -> Tuple(List.map (fun x -> find x env) xs)
   | LetTuple(xts, y, e) -> LetTuple(xts, find y env, g env e)

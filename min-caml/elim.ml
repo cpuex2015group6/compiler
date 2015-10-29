@@ -3,7 +3,7 @@ open KNormal
 let rec effect = function (* 副作用の有無 (caml2html: elim_effect) *)
   | Let(_, e1, e2) | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) -> effect e1 || effect e2
   | LetRec(_, e) | LetTuple(_, _, e) -> effect e
-  | App _ | Put _ | ExtFunApp _ | LetDef _ -> true
+  | App _ | Put _ | ExtFunApp _ -> true
   | _ -> false
 
 let rec f = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
@@ -22,8 +22,6 @@ let rec f = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
      else
 	     (Format.eprintf "eliminating function %s@." x;
 	      e2')
-  | LetDef({ name = (x, t); args = yts; body = e1 }) ->
-	   LetDef({ name = (x, t); args = yts; body = f e1 })
   | LetTuple(xts, y, e) ->
       let xs = List.map fst xts in
       let e' = f e in

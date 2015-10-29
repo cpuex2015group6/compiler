@@ -40,9 +40,8 @@ and exp =
   | Restore of Id.t (* スタック変数から値を復元 *)
 type fundef =
     { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret : Type.t }
-type prog = Prog of (Id.l * float) list * fundef list * t
+type prog = Prog of (Id.l * float) list * Id.l list * fundef list * t
 
-val fletd : Id.t * exp * t -> t (* shorthand of Let for float *)
 val seq : exp * t -> t (* shorthand of Let for unit *)
 
 val regs : Id.t array

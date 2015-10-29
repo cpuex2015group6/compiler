@@ -14,7 +14,5 @@ let rec f = function (* ネストしたletの簡約 (caml2html: assoc_f) *)
      insert (f e1)
   | LetRec({ name = xt; args = yts; body = e1 }, e2) ->
      LetRec({ name = xt; args = yts; body = f e1 }, f e2)
-  | LetDef({ name = xt; args = yts; body = e1 }) ->
-     LetDef({ name = xt; args = yts; body = f e1 })
   | LetTuple(xts, y, e) -> LetTuple(xts, y, f e)
   | e -> e
