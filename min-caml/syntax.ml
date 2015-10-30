@@ -37,6 +37,10 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Cos of t
   | Atan of t
   | Sqrt of t
+  | In of t
+  | Out of t
+  | SetHp of t
+  | GetHp of t
   | Get of t * t
   | Put of t * t * t
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }

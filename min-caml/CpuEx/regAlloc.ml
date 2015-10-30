@@ -133,6 +133,10 @@ and g' dest cont regenv = function (* 各命令のレジスタ割り当て (caml2html: regal
   | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)
   | ToFloat(x) -> (Ans(ToFloat(find x Type.Int regenv)), regenv)
   | ToInt(x) -> (Ans(ToInt(find x Type.Float regenv)), regenv)
+  | In -> (Ans(In), regenv)
+  | Out(x) -> (Ans(Out(find x Type.Int regenv)), regenv)
+  | GetHp -> (Ans(GetHp), regenv)
+  | SetHp(x) -> (Ans(SetHp(find x Type.Int regenv)), regenv)
   | IfEq(x, y', e1, e2) as exp -> g'_if dest cont regenv exp (fun e1' e2' -> IfEq(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
   | IfLE(x, y', e1, e2) as exp -> g'_if dest cont regenv exp (fun e1' e2' -> IfLE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
   | IfGE(x, y', e1, e2) as exp -> g'_if dest cont regenv exp (fun e1' e2' -> IfGE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2

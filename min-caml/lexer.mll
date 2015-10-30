@@ -2,6 +2,8 @@
 (* lexerが利用する変数、関数、型などの定義 *)
 open Parser
 open Type
+let line = ref 1
+let char = ref 0
 }
 
 (* 正規表現の略記 *)
@@ -12,7 +14,16 @@ let upper = ['A'-'Z']
 
 rule token = parse
 | space+
-    { token lexbuf }
+    { (let count = ref 0 in
+        String.iter (fun x ->
+                     (if x = '\n' then
+                       (line := !line + 1;
+                        char := !count + (Lexing.lexeme_start lexbuf))
+                      else
+                        ());
+                     count := !count + 1)
+                    (Lexing.lexeme lexbuf));
+        token lexbuf }
 | "(*"
     { comment lexbuf; (* ネストしたコメントのためのトリック *)
       token lexbuf }
@@ -97,13 +108,21 @@ rule token = parse
 | "create_array"
     { ARRAY_CREATE_ }
 | "Float"
-    {TO_FLOAT}
+    { TO_FLOAT }
 | "Int"
-    {TO_INT}
+    { TO_INT }
 | "fequal"
-    {FEQUAL}
+    { FEQUAL }
 | "fless"
-    {FLESS}
+    { FLESS }
+| "in"
+    { IN }
+| "out"
+    { OUT }
+| "set_hp"
+    { SET_HP }
+| "get_hp"
+    { GET_HP }
 | '.'
     { DOT }
 | "<-"

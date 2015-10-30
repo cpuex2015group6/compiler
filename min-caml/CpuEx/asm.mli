@@ -26,6 +26,10 @@ and exp =
   | Sqrt of Id.t
   | ToInt of Id.t
   | ToFloat of Id.t
+  | In
+  | Out of Id.t
+  | GetHp
+  | SetHp of Id.t
   | Comment of string
   (* virtual instructions *)
   | IfEq of Id.t * id_or_imm * t * t

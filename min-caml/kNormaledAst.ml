@@ -111,6 +111,14 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "ToFloat " ^ e1 ^ "\n")
   | ToInt(e1) ->
      print_string (indent ^ "ToInt " ^ e1 ^ "\n")
+  | In(e1) ->
+     print_string (indent ^ "In " ^ e1 ^ "\n")
+  | Out(e1) ->
+     print_string (indent ^ "Out " ^ e1 ^ "\n")
+  | GetHp(e1) ->
+     print_string (indent ^ "GetHp " ^ e1 ^ "\n")
+  | SetHp(e1) ->
+     print_string (indent ^ "SetHp " ^ e1 ^ "\n")
   | ExtFunApp(e, es) ->
      print_string (indent ^ "ExtFunApp " ^ e ^ "\n");
      print_string (indent ^ "  ");

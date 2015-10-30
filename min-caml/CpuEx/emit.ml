@@ -23,6 +23,9 @@ let reg r =
 let llabel oc r1 label =
   Printf.fprintf oc "\tlimm\t%s, %s\n" r1 label
 
+let op1 oc inst r1 imm =
+  Printf.fprintf oc "\t%s\t%s, %d\n" inst r1 imm
+
 let op3 oc inst r1 r2 r3 =
   Printf.fprintf oc "\t%s\t%s, %s, %s\n" inst r1 r2 r3
 
@@ -142,6 +145,14 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "or" (reg x) (reg y) reg_zero
   | (NonTail(x), ToInt(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
+  | (NonTail(x), In) -> 
+     op1 oc "in" (reg x) 0
+  | (NonTail(x), Out(y)) -> 
+     op1 oc "out" (reg y) 0
+  | (NonTail(x), GetHp) -> 
+     op3 oc "or" (reg x) (reg_hp) reg_zero
+  | (NonTail(x), SetHp(y)) -> 
+     op3 oc "or" (reg_hp) (reg y) reg_zero
   | (NonTail(_), Comment(s)) -> Printf.fprintf oc "#\t%s\n" s
   (* 退避の仮想命令の実装 *)
   | (NonTail(_), Save(x, y))
@@ -164,7 +175,7 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
             Ldw _ as exp)) -> 
      g' oc (NonTail(regs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ | ToFloat _ | ToInt _ as exp)) ->
+  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ | ToFloat _ | ToInt _ | In | Out _ | GetHp | SetHp _ as exp)) ->
      g' oc (NonTail(fregs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, (Restore(x) as exp)) ->

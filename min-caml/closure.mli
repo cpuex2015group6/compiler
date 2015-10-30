@@ -22,6 +22,10 @@ type t =
   | Sqrt of Id.t
   | ToFloat of Id.t
   | ToInt of Id.t
+  | In
+  | Out of Id.t
+  | GetHp
+  | SetHp of Id.t
   | IfEq of Id.t * Id.t * t * t
   | IfLE of Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t

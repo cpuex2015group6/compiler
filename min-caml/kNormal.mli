@@ -32,6 +32,10 @@ type t =
   | ExtArray of Id.t
   | ToFloat of Id.t
   | ToInt of Id.t
+  | In of Id.t
+  | Out of Id.t
+  | GetHp of Id.t
+  | SetHp of Id.t
   | ExtFunApp of Id.t * Id.t list
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 

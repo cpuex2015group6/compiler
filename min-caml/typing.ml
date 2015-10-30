@@ -66,6 +66,10 @@ let rec deref_term = function
   | Array(e1, e2) -> Array(deref_term e1, deref_term e2)
   | ToFloat(e1) -> ToFloat(deref_term e1)
   | ToInt(e1) -> ToInt(deref_term e1)
+  | In(e1) -> In(deref_term e1)
+  | Out(e1) -> Out(deref_term e1)
+  | SetHp(e1) -> SetHp(deref_term e1)
+  | GetHp(e1) -> GetHp(deref_term e1)
   | Get(e1, e2) -> Get(deref_term e1, deref_term e2)
   | Put(e1, e2, e3) -> Put(deref_term e1, deref_term e2, deref_term e3)
   | e -> e
@@ -178,6 +182,18 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | ToInt(e1) ->
 	     unify Type.Float (g env e1);
 	     Type.Int
+    | In(e1) ->
+	     unify Type.Unit (g env e1);
+	     Type.Int
+    | Out(e1) ->
+	     unify Type.Int (g env e1);
+	     Type.Unit
+    | GetHp(e1) ->
+	     unify Type.Unit (g env e1);
+	     Type.Int
+    | SetHp(e1) ->
+	     unify Type.Int (g env e1);
+	     Type.Unit
     | Get(e1, e2) ->
 	     let t = Type.gentyp () in
 	     unify (Type.Array(t)) (g env e1);

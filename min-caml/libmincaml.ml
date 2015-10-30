@@ -1,3 +1,11 @@
+(let rec print_newline a = out 0);
+
+(let rec print_byte a = out a);
+
+(let rec prerr_byte a = out a);
+
+(let rec read_byte u = in u);
+
 (let rec print_int a =
    let rec print_int_sub a =
      if a < 10 then

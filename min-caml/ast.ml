@@ -226,6 +226,22 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string indent;
      print_string "ToInt\n";
      g (indent ^ "  ") e1;
+  | In(e1) ->
+     print_string indent;
+     print_string "In\n";
+     g (indent ^ "  ") e1;
+  | Out(e1) ->
+     print_string indent;
+     print_string "Out\n";
+     g (indent ^ "  ") e1;
+  | SetHp(e1) ->
+     print_string indent;
+     print_string "SetHp\n";
+     g (indent ^ "  ") e1;
+  | GetHp(e1) ->
+     print_string indent;
+     print_string "GetHp\n";
+     g (indent ^ "  ") e1;
   | Get(e1, e2) ->
      print_string indent;
      print_string "Get\n";

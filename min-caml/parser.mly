@@ -34,6 +34,10 @@ let addtyp x = (x, Type.gentyp ())
 %token GREATER
 %token FEQUAL
 %token FLESS
+%token IN
+%token OUT
+%token SET_HP
+%token GET_HP
 %token IF
 %token THEN
 %token ELSE
@@ -198,11 +202,23 @@ exp: /* (* ∞Ï»Ã§Œº∞ (caml2html: parser_exp) *) */
 | SQRT simple_exp
     %prec prec_app
     { Sqrt($2) }
+| IN simple_exp
+    %prec prec_app
+    { In($2) }
+| OUT simple_exp
+    %prec prec_app
+    { Out($2) }
+| SET_HP simple_exp
+    %prec prec_app
+    { SetHp($2) }
+| GET_HP simple_exp
+    %prec prec_app
+    { GetHp($2) }
 | error
     { failwith
-	(Printf.sprintf "parse error near characters %d-%d"
-	   (Parsing.symbol_start ())
-	   (Parsing.symbol_end ())) }
+	(Printf.sprintf "parse error near line %d column %d"
+  !Lexer.line
+	   ((Parsing.symbol_start ()) - !Lexer.char)) }
 
 fundef:
 | IDENT formal_args EQUAL exp

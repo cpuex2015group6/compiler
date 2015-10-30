@@ -1,32 +1,3 @@
-# print_newline
-	.text
-	.align	2
-	.globl 	min_caml_print_newline
-min_caml_print_newline: 
-  limm r08, 10
-  out r08, 0
-  jr  r05, r02, rFF
-#	print_byte
-	.text
-	.align 	2
-  .globl	min_caml_print_byte
-min_caml_print_byte:  
-  out r08, 0
-  jr  r05, r02, rFF
-#	read_byte
-	.text
-	.align 	2
-  .globl	min_caml_read_byte
-min_caml_read_byte:  
-  in r08, 0
-  jr  r05, r02, rFF
-#	prerr_byte
-	.text
-	.align 	2
-	.globl	min_caml_prerr_byte
-min_caml_prerr_byte:  
-  out r08, 0
-  jr  r05, r02, rFF
 #	prerr_float
 	.text
 	.align 	2
@@ -43,8 +14,8 @@ loop.min_caml_create_array:
   limm	r06, cont.min_caml_create_array
   jrneq	r05, r07, r06
   jr	r05, r02, rFF
-cont.min_caml_create_array
-  stw	r04, r09
+cont.min_caml_create_array:
+  stw	r04, r09, rFF
   limm	r06, 1
   sub	r0A, r0A, r06
   limm r06, 4
@@ -63,8 +34,8 @@ loop.min_caml_create_float_array:
   limm	r06, cont.min_caml_create_float_array
   jrneq	r05, r07, r06
   jr	r05, r02, rFF
-cont.min_caml_create_float_array
-  stw	r04, r18
+cont.min_caml_create_float_array:
+  stw	r04, r18, rFF
   limm	r06, 1
   sub	r0A, r0A, r06
   limm r06, 4
