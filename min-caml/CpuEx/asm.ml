@@ -22,12 +22,10 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
-  | Sin of Id.t
-  | Cos of Id.t
-  | Atan of Id.t
   | Sqrt of Id.t
   | ToInt of Id.t
   | ToFloat of Id.t
+  | ToArray of Id.t
   | In
   | Out of Id.t
   | GetHp
@@ -88,7 +86,7 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | Save (x, _) | Sin (x) | Cos (x) | Atan (x) | Sqrt (x) | ToFloat(x) |ToInt(x) | Out (x) | SetHp (x) -> [x]
+  | Mr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
   | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->

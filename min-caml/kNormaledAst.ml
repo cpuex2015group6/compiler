@@ -85,12 +85,6 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FMul " ^ e1 ^ " " ^ e2 ^ "\n")
   | FDiv(e1, e2) ->
      print_string (indent ^ "FDiv " ^ e1 ^ " " ^ e2 ^ "\n")
-  | Sin(e1) ->
-     print_string (indent ^ "Sin " ^ e1 ^ "\n")
-  | Cos(e1) ->
-     print_string (indent ^ "Cos " ^ e1 ^ "\n")
-  | Atan(e1) ->
-     print_string (indent ^ "Atan " ^ e1 ^ "\n")
   | Sqrt(e1) ->
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
   | IfEq(e1, e2, t1, t2) ->
@@ -158,6 +152,8 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "ToFloat " ^ e1 ^ "\n")
   | ToInt(e1) ->
      print_string (indent ^ "ToInt " ^ e1 ^ "\n")
+  | ToArray(e1) ->
+     print_string (indent ^ "ToArray " ^ e1 ^ "\n")
   | In(e1) ->
      print_string (indent ^ "In " ^ e1 ^ "\n")
   | Out(e1) ->

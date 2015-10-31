@@ -17,9 +17,6 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
-  | Sin of Id.t
-  | Cos of Id.t
-  | Atan of Id.t
   | Sqrt of Id.t
   | IfEq of Id.t * Id.t * t * t (* 比較 + 分岐 (caml2html: knormal_branch) *)
   | IfLE of Id.t * Id.t * t * t (* 比較 + 分岐 *)
@@ -34,6 +31,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | ExtArray of Id.t
   | ToFloat of Id.t
   | ToInt of Id.t
+  | ToArray of Id.t
   | In of Id.t
   | Out of Id.t
   | GetHp of Id.t
@@ -43,7 +41,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
-  | Neg(x) | FNeg(x) | Sin(x) | Cos(x) | Atan(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) -> S.singleton x
+  | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2) | IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
@@ -85,11 +83,11 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
   | Syntax.Mul(e1, e2) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
-	                                   (fun y -> ExtFunApp("mul", [x; y]), Type.Int))
+	                                   (fun y -> App("mul", [x; y]), Type.Int))
   | Syntax.Div(e1, e2) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
-	                                   (fun y -> ExtFunApp("div", [x; y]), Type.Int))
+	                                   (fun y -> App("div", [x; y]), Type.Int))
   | Syntax.Xor(e1, e2) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
@@ -129,15 +127,6 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
 	                                   (fun y -> FDiv(x, y), Type.Float))
-  | Syntax.Sin(e1) ->
-     insert_let (g env e1)
-	              (fun x -> Sin(x), Type.Float)
-  | Syntax.Cos(e1) ->
-     insert_let (g env e1)
-	              (fun x -> Cos(x), Type.Float)
-  | Syntax.Atan(e1) ->
-     insert_let (g env e1)
-	              (fun x -> Atan(x), Type.Float)
   | Syntax.Sqrt(e1) ->
      insert_let (g env e1)
 	              (fun x -> Sqrt(x), Type.Float)
@@ -224,15 +213,18 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 	                          (fun y ->
 	                           let l =
 		                           match t2 with
-		                           | Type.Float -> "create_float_array"
-		                           | _ -> "create_array" in
-	                           ExtFunApp(l, [x; y]), Type.Array(t2)))
+		                           | Type.Float -> "create_float_array_base"
+		                           | _ -> "create_array_base" in
+	                           App(l, [x; y]), Type.Array(t2)))
   | Syntax.ToFloat(e1) ->
      insert_let (g env e1)
 	              (fun x -> ToFloat(x), Type.Float)
   | Syntax.ToInt(e1) ->
      insert_let (g env e1)
 	              (fun x -> ToInt(x), Type.Int)
+  | Syntax.ToArray(e1) ->
+     insert_let (g env e1)
+	              (fun x -> ToArray(x), Type.Array(Type.Int))
   | Syntax.In(e1) ->
      insert_let (g env e1)
 	              (fun x -> In(x), Type.Int)

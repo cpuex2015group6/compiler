@@ -44,9 +44,6 @@ let rec deref_term = function
   | FSub(e1, e2) -> FSub(deref_term e1, deref_term e2)
   | FMul(e1, e2) -> FMul(deref_term e1, deref_term e2)
   | FDiv(e1, e2) -> FDiv(deref_term e1, deref_term e2)
-  | Sin(e1) -> Sin(deref_term e1)
-  | Cos(e1) -> Cos(deref_term e1)
-  | Atan(e1) -> Atan(deref_term e1)
   | Sqrt(e1) -> Sqrt(deref_term e1)
   | If(e1, e2, e3) -> If(deref_term e1, deref_term e2, deref_term e3)
   | Let(xt, e1, e2) -> Let(deref_id_typ xt, deref_term e1, deref_term e2)
@@ -129,7 +126,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	                                                  unify Type.Float (g env e1);
 	                                                  unify Type.Float (g env e2);
 	                                                  Type.Float
-    | Sin(e1) | Cos(e1) | Atan(e1) | Sqrt(e1) ->
+    | Sqrt(e1) ->
 	                                    unify Type.Float (g env e1);
 	                                    Type.Float
     | Eq(e1, e2) | LE(e1, e2) ->
@@ -182,6 +179,9 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | ToInt(e1) ->
 	     unify Type.Float (g env e1);
 	     Type.Int
+    | ToArray(e1) ->
+	     unify Type.Int (g env e1);
+	     Type.Array(Type.Int)
     | In(e1) ->
 	     unify Type.Unit (g env e1);
 	     Type.Int
@@ -209,12 +209,6 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 
 let f e =
   extenv := M.empty;
-  extenv := M.add "print_newline" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
-  extenv := M.add "print_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
-  extenv := M.add "read_byte" (Type.Fun([Type.Unit], Type.Int)) !extenv;
-  extenv := M.add "prerr_byte" (Type.Fun([Type.Int], Type.Unit)) !extenv;
-  extenv := M.add "mul" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
-  extenv := M.add "div" (Type.Fun([Type.Int; Type.Int], Type.Int)) !extenv;
 (*
   (match deref_typ (g M.empty e) with
   | Type.Unit -> ()

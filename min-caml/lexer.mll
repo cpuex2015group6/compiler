@@ -67,12 +67,6 @@ rule token = parse
     { AST_DOT }
 | "/."
     { SLASH_DOT }
-| "sin"
-    { SIN }
-| "cos"
-    { COS }
-| "atan"
-    { ATAN }
 | "sqrt"
     { SQRT }
 | '='
@@ -111,6 +105,8 @@ rule token = parse
     { TO_FLOAT }
 | "Int"
     { TO_INT }
+| "Array"
+    { TO_ARRAY }
 | "fequal"
     { FEQUAL }
 | "fless"

@@ -104,18 +104,6 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "FDiv\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
-  | Sin(e1) ->
-     print_string indent;
-     print_string "Sin\n";
-     g (indent ^ "  ") e1
-  | Cos(e1) ->
-     print_string indent;
-     print_string "Cos\n";
-     g (indent ^ "  ") e1
-  | Atan(e1) ->
-     print_string indent;
-     print_string "Atan\n";
-     g (indent ^ "  ") e1
   | Sqrt(e1) ->
      print_string indent;
      print_string "Sqrt\n";
@@ -225,6 +213,10 @@ let rec g indent e = (* AST表示ルーチン *)
   | ToInt(e1) ->
      print_string indent;
      print_string "ToInt\n";
+     g (indent ^ "  ") e1;
+  | ToArray(e1) ->
+     print_string indent;
+     print_string "ToArray\n";
      g (indent ^ "  ") e1;
   | In(e1) ->
      print_string indent;

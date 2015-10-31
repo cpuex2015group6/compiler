@@ -20,12 +20,10 @@ and exp =
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
-  | Sin of Id.t
-  | Cos of Id.t
-  | Atan of Id.t
   | Sqrt of Id.t
   | ToInt of Id.t
   | ToFloat of Id.t
+  | ToArray of Id.t
   | In
   | Out of Id.t
   | GetHp

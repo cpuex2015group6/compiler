@@ -15,9 +15,6 @@ type t =
   | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
-  | Sin of Id.t
-  | Cos of Id.t
-  | Atan of Id.t
   | Sqrt of Id.t
   | IfEq of Id.t * Id.t * t * t
   | IfLE of Id.t * Id.t * t * t
@@ -32,6 +29,7 @@ type t =
   | ExtArray of Id.t
   | ToFloat of Id.t
   | ToInt of Id.t
+  | ToArray of Id.t
   | In of Id.t
   | Out of Id.t
   | GetHp of Id.t

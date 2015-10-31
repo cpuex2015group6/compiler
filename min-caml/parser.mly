@@ -22,9 +22,6 @@ let addtyp x = (x, Type.gentyp ())
 %token PLUS_DOT
 %token AST_DOT
 %token SLASH_DOT
-%token SIN
-%token COS
-%token ATAN
 %token SQRT
 %token EQUAL
 %token LESS_GREATER
@@ -50,6 +47,7 @@ let addtyp x = (x, Type.gentyp ())
 %token ARRAY_CREATE_
 %token TO_FLOAT
 %token TO_INT
+%token TO_ARRAY
 %token DOT
 %token LESS_MINUS
 %token SEMICOLON
@@ -184,21 +182,15 @@ exp: /* (* ∞Ï»Ã§Œº∞ (caml2html: parser_exp) *) */
 | TO_INT simple_exp
     %prec prec_app
     { ToInt($2) }
+| TO_ARRAY simple_exp
+    %prec prec_app
+    { ToArray($2) }
 | FEQUAL simple_exp simple_exp
     %prec prec_app
     { Eq($2, $3) }
 | FLESS simple_exp simple_exp
     %prec prec_app
     { LE($2, $3) }
-| SIN simple_exp
-    %prec prec_app
-    { Sin($2) }
-| COS simple_exp
-    %prec prec_app
-    { Cos($2) }
-| ATAN simple_exp
-    %prec prec_app
-    { Atan($2) }
 | SQRT simple_exp
     %prec prec_app
     { Sqrt($2) }

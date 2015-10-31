@@ -33,9 +33,7 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Array of t * t
   | ToFloat of t
   | ToInt of t
-  | Sin of t
-  | Cos of t
-  | Atan of t
+  | ToArray of t
   | Sqrt of t
   | In of t
   | Out of t
