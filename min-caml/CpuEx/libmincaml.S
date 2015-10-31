@@ -57,30 +57,30 @@ cont.min_caml_create_float_array:
 	.text
 	.align	2
 	.globl	min_caml_mul
-mul_sub.min_caml_mul32:
+mul_sub.min_caml_mul64:
   limm  r06, 65535
   limm  r06, 16
   sll r06, r06, r06
   limm  r06, 65535
   or  r06, r06, r06
   cmp r07, r0A, r06
-  limm  r06, jreq_else.min_caml_mul72
+  limm  r06, jreq_else.min_caml_mul84
   jrneq r05, r07, r06
   limm  r08, 0
   jr  r05, r02, rFF
-jreq_else.min_caml_mul72:
+  jreq_else.min_caml_mul84:
   limm  r0B, 1
   sll r0B, r0B, r0A
   and r0B, r09, r0B
   limm  r06, 0
   cmp r07, r0B, r06
-  limm  r06, jreq_else.min_caml_mul73
+  limm  r06, jreq_else.min_caml_mul85
   jrneq r05, r07, r06
   limm  r06, 1
   sub r0A, r0A, r06
-  limm  r06, mul_sub.min_caml_mul32
+  limm  r06, mul_sub.min_caml_mul64
   jr  r05, r06, rFF
-jreq_else.min_caml_mul73:
+jreq_else.min_caml_mul85:
   sll r0B, r08, r0A
   limm  r06, 1
   sub r0A, r0A, r06
@@ -93,7 +93,7 @@ jreq_else.min_caml_mul73:
   stw r06, r05, rFF
   limm  r06, 8
   add r03, r03, r06
-  limm  r06, mul_sub.min_caml_mul32
+  limm  r06, mul_sub.min_caml_mul64
   or  r05, r06, rFF
   jr  r02, r05, rFF
   limm  r06, 8
@@ -109,8 +109,9 @@ jreq_else.min_caml_mul73:
   jr  r05, r02, rFF
 min_caml_mul:
   limm  r0A, 31
-  limm  r06, mul_sub.min_caml_mul32
+  limm  r06, mul_sub.min_caml_mul64
   jr  r05, r06, rFF
+
 #	div
 #let rec min_caml_div a b =
 #   let rec div_sub a b i =
@@ -126,21 +127,21 @@ min_caml_mul:
 	.text
 	.align	2
 	.globl	min_caml_div
-div_sub.min_caml_div52:
+div_sub.min_caml_div47:
   limm  r06, 65535
   limm  r06, 16
   sll r06, r06, r06
   limm  r06, 65535
   or  r06, r06, r06
   cmp r07, r0A, r06
-  limm  r06, jreq_else.min_caml_div74
+  limm  r06, jreq_else.min_caml_div86
   jrneq r05, r07, r06
   limm  r08, 0
   jr  r05, r02, rFF
-jreq_else.min_caml_div74:
+jreq_else.min_caml_div86:
   srl r0B, r08, r0A
   cmp r07, r09, r0B
-  limm  r06, jrle_else.min_caml_div75
+  limm  r06, jrle_else.min_caml_div87
   jrgt  r05, r07, r06
   limm  r0B, 1
   sll r0B, r0B, r0A
@@ -157,7 +158,7 @@ jreq_else.min_caml_div74:
   stw r06, r05, rFF
   limm  r06, 8
   add r03, r03, r06
-  limm  r06, div_sub.min_caml_div52
+  limm  r06, div_sub.min_caml_div47
   or  r05, r06, rFF
   jr  r02, r05, rFF
   limm  r06, 8
@@ -171,13 +172,12 @@ jreq_else.min_caml_div74:
   ldw r09, r05, rFF
   add r08, r09, r08
   jr  r05, r02, rFF
-jrle_else.min_caml_div75:
+jrle_else.min_caml_div87:
   limm  r06, 1
   sub r0A, r0A, r06
-  limm  r06, div_sub.min_caml_div52
+  limm  r06, div_sub.min_caml_div47
   jr  r05, r06, rFF
 min_caml_div:
   limm  r0A, 31
-  limm  r06, div_sub.min_caml_div52
+  limm  r06, div_sub.min_caml_div47
   jr  r05, r06, rFF
-  

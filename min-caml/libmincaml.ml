@@ -1,4 +1,4 @@
-(let rec print_newline a = out 0);
+(let rec print_newline a = out 10);
 
 (let rec print_byte a = out a);
 
@@ -41,7 +41,7 @@
      let b = read_byte ()
      in
      if b = 0 then
-       0
+       x
      else
        read_int_sub ((mul x 10) + (b - 48))
    in
