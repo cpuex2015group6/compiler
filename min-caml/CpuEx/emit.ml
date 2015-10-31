@@ -29,6 +29,7 @@ let op1 oc inst r1 imm =
 let op3 oc inst r1 r2 r3 =
   Printf.fprintf oc "\t%s\t%s, %s, %s\n" inst r1 r2 r3
 
+(* limmは内部でreg_tmpを破壊するので、 limm reg_tmp, 0 などとしてはいけない *)
 let rec limm oc r1 imm =
   let limm_sub oc r1 imm =
       Printf.fprintf oc "\tlimm\t%s, %d\n" r1 imm in
@@ -42,10 +43,10 @@ let rec limm oc r1 imm =
      let m = imm lxor (n lsl 16) in
      let r = r1 in
      limm_sub oc r n;
-     limm_sub oc reg_imm 16;
-     op3 oc "sll" r r reg_imm;
-     limm_sub oc reg_imm m;
-     op3 oc "or" r r reg_imm
+     limm_sub oc reg_tmp 16;
+     op3 oc "sll" r r reg_tmp;
+     limm_sub oc reg_tmp m;
+     op3 oc "or" r r reg_tmp
 
 (* 関数呼び出しのために引数を並べ替える (register shuffling) *)
 let rec shuffle sw xys = 
