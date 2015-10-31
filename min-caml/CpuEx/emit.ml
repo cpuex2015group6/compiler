@@ -172,11 +172,10 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (Tail, (Nop | Stw _ | Comment _ | Save _ as exp)) ->
      g' oc (NonTail(Id.gentmp Type.Unit), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ |
-            Ldw _ as exp)) -> 
+  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Out _ | GetHp | SetHp _ as exp)) -> 
      g' oc (NonTail(regs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ | ToFloat _ | ToInt _ | In | Out _ | GetHp | SetHp _ as exp)) ->
+  | (Tail, (FLi _ | FAdd _ | FMul _ | FDiv _ | Sin _ | Cos _ | Atan _ | Sqrt _ | ToFloat _ | ToInt _ as exp)) ->
      g' oc (NonTail(fregs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, (Restore(x) as exp)) ->

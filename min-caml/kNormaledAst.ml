@@ -2,6 +2,51 @@
 
 open KNormal
 
+let rec print_type = function
+    | Type.Unit ->
+       print_string "Unit"
+    | Type.Bool ->
+       print_string "Bool"
+    | Type.Int ->
+       print_string "Int"
+    | Type.Float ->
+       print_string "Float"
+    | Type.Fun(ts, t) ->
+       let rec print_args = function
+         | [] -> ()
+         | t::ts -> print_type t;
+                    print_string "->";
+                    print_args ts
+       in
+       print_string "Fun(";
+       print_args ts;
+       print_type t;
+       print_string ")"
+    | Type.Tuple(ts) ->
+       let rec print_list = function
+              | t::[] -> print_type t
+              | t::ts -> print_type t;
+                         print_string " ";
+                         print_list ts
+              | [] -> ()
+       in
+       print_string "Tuple(";
+       print_list ts;
+       print_string ")"
+    | Type.Array(t) ->
+       print_string "Array(";
+       print_type t;
+       print_string ")"
+    | Type.Var(t) ->
+       print_string "Var(";
+       (match !t with
+        | None ->
+           print_string "None"
+        | Some(t) ->
+           print_type t);
+       print_string ")"
+
+
 let rec g indent e = (* AST表示ルーチン *)
   match e with
   | Unit ->
@@ -64,7 +109,9 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Var " ^ e ^ "\n")
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) ->
      print_string (indent ^ "LetRec\n");
-     print_string (indent ^ "  " ^ x ^ "\n");
+     print_string (indent ^ "  " ^ x ^ " ");
+     print_type t;
+     print_string "\n";
      print_string (indent ^ "  ");
      let rec print_list = function 
        | [] -> ()
