@@ -155,14 +155,12 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(_), Save(x, y))
        when not (S.mem y !stackset) ->
      save y;
-     prerr_string ("@>>>"^y);
      limm oc reg_imm (offset y);
      op3 oc "add" reg_tmp reg_sp reg_imm;
      op3 oc "stw" reg_tmp (reg x) reg_zero
   | (NonTail(_), Save(x, y)) -> assert (S.mem y !stackset); ()
   (* 復帰の仮想命令の実装 *)
   | (NonTail(x), Restore(y)) ->
-     prerr_string ("!>>>"^y);
      limm oc reg_imm (offset y);
      op3 oc "add" reg_tmp reg_sp reg_imm;
      op3 oc "ldw" (reg x) reg_tmp reg_zero
@@ -361,7 +359,7 @@ let f oc (Prog(data, vars, fundefs, e)) =
   Printf.fprintf oc "   # main program start\n";
   stackset := S.empty;
   stackmap := [];
-  g oc (NonTail("_R_00"), e);
+  g oc (NonTail("r08"), e);
   Printf.fprintf oc "   # main program end\n";
   llabel oc reg_imm "_min_caml_end";
 	Printf.fprintf oc "_min_caml_end: # infinite loop\n";
