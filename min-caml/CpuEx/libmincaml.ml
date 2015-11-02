@@ -113,9 +113,9 @@
      Float((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
 
 (let rec print_float f =
-   let rec print_float_sub f =
-       if f = 0.0 then
-         print_byte 48
+   let rec print_float_sub f j =
+       if j = 0 then
+         ()
        else
          (let f = f *. 10.0
           in
@@ -124,23 +124,27 @@
           print_byte (i + 48);
           let p = f -. (float_of_int i)
           in
-          print_float_sub p)
+          print_float_sub p (j - 1))
    in      
+   let f = if f > 0.0 then f else -.f
+   in
+   (if f > 0.0 then
+      print_byte 45;
+    else
+      ());
    let i = int_of_float f
    in
    print_int_without_null i;
    print_byte 46;
    let p = f -. (float_of_int i)
    in
-   let p = if p > 0.0 then p else -.p
-   in
-   print_float_sub p;
+   print_float_sub p 5;
    print_byte 0);
 
 (let rec prerr_float f =
-   let rec prerr_float_sub f =
-       if f = 0.0 then
-         prerr_byte 48
+   let rec prerr_float_sub f j =
+       if j = 0 then
+         ()
        else
          (let f = f *. 10.0
           in
@@ -149,15 +153,21 @@
           prerr_byte (i + 48);
           let p = f -. (float_of_int i)
           in
-          prerr_float_sub p)
+          prerr_float_sub p (j - 1))
    in      
+   let f = if f > 0.0 then f else -.f
+   in
+   (if f > 0.0 then
+      prerr_byte 45;
+    else
+      ());
    let i = int_of_float f
    in
    prerr_int_without_null i;
    prerr_byte 46;
    let p = f -. (float_of_int i)
    in
-   prerr_float_sub p;
+   prerr_float_sub p 5;
    prerr_byte 0);
 
 (let rec read_float u =
