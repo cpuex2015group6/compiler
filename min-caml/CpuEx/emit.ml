@@ -360,7 +360,5 @@ let f oc (Prog(data, vars, fundefs, e)) =
   stackset := S.empty;
   stackmap := [];
   g oc (NonTail("r08"), e);
+  op1 oc "hlt" reg_zero 0;
   Printf.fprintf oc "   # main program end\n";
-  llabel oc reg_imm "_min_caml_end";
-	Printf.fprintf oc "_min_caml_end: # infinite loop\n";
-  op3 oc "jr" reg_tmp reg_imm reg_zero
