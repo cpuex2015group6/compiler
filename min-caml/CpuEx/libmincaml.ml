@@ -86,10 +86,13 @@
    let exp = ((Int(i) lsr 23) land 255) - 127 in
    Float((Int(i) lsr (23 - exp)) lsl (23 - exp)));
 
-(let rec int_of_float i =
+(let rec int_of_float i= 
    let exp = ((Int(i) lsr 23) land 255) - 127 in
    let rval = (((Int(i) lor 8388608) land 16777215) lsr (23 - exp)) in
-   rval lor (Int(i) land 2147483648));
+   if(i>=0.0) then
+     rval
+   else
+     -rval);
 
 (let rec truncate i =
    int_of_float i);
@@ -105,6 +108,7 @@
      Float(0)
    else
      let sign = if i > 0 then 0 else 1 in
+     let i = if i > 0 then i else -i in
      let top = search_top i in
      Float((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
 
@@ -127,6 +131,8 @@
    print_int_without_null i;
    print_byte 46;
    let p = f -. (float_of_int i)
+   in
+   let p = if p > 0.0 then p else -.p
    in
    print_float_sub p;
    print_byte 0);
