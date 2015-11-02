@@ -8,7 +8,7 @@
        else
          (a lsl i) + (mul_sub a b (i - 1))
    in
-   mul_sub a b 31);
+   (((mul_sub a b 30) land 2147483647) lor ((a land 2147483648) lxor (b land 2147483648))));
 
 (let rec div a b =
    let rec div_sub a b i =
@@ -20,7 +20,7 @@
        else
          div_sub a b (i - 1)
    in
-   div_sub a b 31);
+   (((div_sub a b 30) land 2147483647) lor ((a land 2147483648) lxor (b land 2147483648))));
 
 (let rec print_newline a = output 10);
 
@@ -92,7 +92,12 @@
    if is_terminate b then
      read_int u
    else
-     read_int_sub b 0);
+     (let abs = read_int_sub (read_byte ()) 0
+      in
+      if b = 45 then
+        abs
+      else
+        -abs));
 
 (let rec abs_float i =
    Float(Int(i) land 2147483647));
@@ -206,7 +211,13 @@
    if is_terminate b then
      read_float u
    else
-     read_float_sub1 b 0.0);
+     (let abs = read_float_sub1 (read_byte ()) 0.0
+      in
+        if b = 45 then
+          abs
+        else
+          -.abs));
+
 
 (let rec fispos x =
   x > 0.0);
