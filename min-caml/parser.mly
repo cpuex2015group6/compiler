@@ -31,8 +31,8 @@ let addtyp x = (x, Type.gentyp ())
 %token GREATER
 %token FEQUAL
 %token FLESS
-%token IN
-%token OUT
+%token INPUT
+%token OUTPUT
 %token SET_HP
 %token GET_HP
 %token IF
@@ -194,10 +194,10 @@ exp: /* (* ∞Ï»Ã§Œº∞ (caml2html: parser_exp) *) */
 | SQRT simple_exp
     %prec prec_app
     { Sqrt($2) }
-| IN simple_exp
+| INPUT simple_exp
     %prec prec_app
     { In($2) }
-| OUT simple_exp
+| OUTPUT simple_exp
     %prec prec_app
     { Out($2) }
 | SET_HP simple_exp

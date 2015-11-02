@@ -111,10 +111,10 @@ rule token = parse
     { FEQUAL }
 | "fless"
     { FLESS }
-| "in"
-    { IN }
-| "out"
-    { OUT }
+| "input"
+    { INPUT }
+| "output"
+    { OUTPUT }
 | "set_hp"
     { SET_HP }
 | "get_hp"

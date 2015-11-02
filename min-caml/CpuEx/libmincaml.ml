@@ -22,13 +22,13 @@
    in
    div_sub a b 31);
 
-(let rec print_newline a = out 10);
+(let rec print_newline a = output 10);
 
-(let rec print_byte a = out a);
+(let rec print_byte a = output a);
 
-(let rec prerr_byte a = out a);
+(let rec prerr_byte a = output a);
 
-(let rec read_byte u = in u);
+(let rec read_byte u = input u);
 
 (let rec print_int_without_null a =
    let rec print_int_sub a =
@@ -68,16 +68,28 @@
    prerr_int_without_null a;
    prerr_byte 0);
 
-(let rec read_int u =
-   let rec read_int_sub x =
-     let b = read_byte ()
-     in
-     if b = 0 then
-       x
+(let rec is_terminate b =
+   if b = 32 then
+     true
+   else
+     if b = 10 then
+       true
      else
-       read_int_sub ((mul x 10) + (b - 48))
+       false);
+
+(let rec read_int u =
+   let rec read_int_sub b x =
+     if is_terminate b then
+       0
+     else
+       read_int_sub (read_byte ()) ((mul x 10) + (b - 48))
    in
-   read_int_sub 0);
+   let b = read_byte ()
+   in
+   if is_terminate b then
+     read_int u
+   else
+     read_int_sub b 0);
 
 (let rec abs_float i =
    Float(Int(i) land 2147483647));
@@ -171,26 +183,27 @@
    prerr_byte 0);
 
 (let rec read_float u =
-   let rec read_float_sub1 f = 
-     let b = read_byte ()
-     in
-     if b = 0 then
+   let rec read_float_sub1 b f = 
+     if is_terminate b then
        0.0
      else
        if b = 46 then
-         let rec read_float_sub2 f p =
-           let b = read_byte ()
-           in
-           if b = 0 then
+         let rec read_float_sub2 b f p =
+           if is_terminate b then
              0.0
            else
-             read_float_sub2 (f +. p *. (float_of_int (b - 48))) (p *. 0.1)
+             read_float_sub2 (read_byte ()) (f +. p *. (float_of_int (b - 48))) (p *. 0.1)
          in
-         read_float_sub2 f 0.1
+         read_float_sub2 (read_byte ()) f 0.1
        else
-         read_float_sub1 ((f *. 10.0) +. (float_of_int (b - 48)))
+         read_float_sub1 (read_byte ()) ((f *. 10.0) +. (float_of_int (b - 48)))
    in 
-   read_float_sub1 0.0);
+   let b = read_byte ()
+   in
+   if is_terminate b then
+     read_float u
+   else
+     read_float_sub1 b 0.0);
 
 (let rec fispos x =
   x > 0.0);
