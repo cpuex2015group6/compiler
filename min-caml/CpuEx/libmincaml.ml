@@ -75,7 +75,10 @@
      if b = 10 then
        true
      else
-       false);
+       if b = 13 then
+         true
+       else
+         false);
 
 (let rec read_int u =
    let rec read_int_sub b x =
