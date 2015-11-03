@@ -529,7 +529,7 @@ let rec read_light _ =
   light.(0) <- cl1 *. sl2;
   let cl2 = cos l2 in
   light.(2) <- cl1 *. cl2;
-  beam.(0) <- read_float ()
+  beam.(0) <- read_float ();
 
 in
 
@@ -2284,9 +2284,7 @@ in
 (* レイトレの各ステップを行う関数を順次呼び出す *)
 let rec rt size_x size_y =
 (
-  print_int size_x;
  image_size.(0) <- size_x;
-  print_int image_size.(0);
  image_size.(1) <- size_y;
  image_center.(0) <- size_x / 2;
  image_center.(1) <- size_y / 2;

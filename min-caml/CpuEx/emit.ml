@@ -253,7 +253,7 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      limm oc reg_imm ss;
      op3 oc "add" reg_sp reg_sp reg_imm;
      op3 oc "ldw"reg_tmp (reg reg_cl) reg_zero;
-     op3 oc "jr" reg_tmp reg_tmp reg_zero;
+     op3 oc "jr" reg_lr reg_tmp reg_zero;
      limm oc reg_imm ss;
      op3 oc "sub" reg_sp reg_sp reg_imm;
      limm oc reg_imm (ss - 4);
@@ -274,8 +274,7 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      limm oc reg_imm ss;
      op3 oc "add" reg_sp reg_sp reg_imm;
      llabel oc reg_imm x;
-     op3 oc "or" reg_tmp reg_imm reg_zero;
-     op3 oc "jr" reg_lr reg_tmp reg_zero;
+     op3 oc "jr" reg_lr reg_imm reg_zero;
      limm oc reg_imm ss;
      op3 oc "sub" reg_sp reg_sp reg_imm;
      limm oc reg_imm (ss - 4);

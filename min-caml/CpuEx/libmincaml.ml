@@ -68,36 +68,31 @@
    prerr_int_without_null a;
    prerr_byte 0);
 
-(let rec is_terminate b =
-   if b = 32 then
-     true
-   else
-     if b = 10 then
+(let rec is_number b =
+   if b >= 48 then
+     if b <= 57 then
        true
      else
-       if b = 13 then
-         true
-       else
-         false);
+       false
+   else
+     false);
 
 (let rec read_int u =
    let rec read_int_sub b x =
-     if is_terminate b then
-       0
-     else
+     if is_number b then
        read_int_sub (read_byte ()) ((mul x 10) + (b - 48))
+     else
+       x
    in
    let b = read_byte ()
    in
-   if is_terminate b then
-     read_int u
+   if is_number b then
+       read_int_sub b 0
    else
-     (let abs = read_int_sub (read_byte ()) 0
-      in
-      if b = 45 then
-        abs
-      else
-        -abs));
+     if b = 45 then
+       -(read_int_sub (read_byte ()) 0)
+     else
+       read_int u);
 
 (let rec abs_float i =
    Float(Int(i) land 2147483647));
@@ -146,12 +141,12 @@
           in
           print_float_sub p (j - 1))
    in      
+   (if f > 0.0 then
+      ()
+    else
+      print_byte 45);
    let f = if f > 0.0 then f else -.f
    in
-   (if f > 0.0 then
-      print_byte 45;
-    else
-      ());
    let i = int_of_float f
    in
    print_int_without_null i;
@@ -175,12 +170,12 @@
           in
           prerr_float_sub p (j - 1))
    in      
+   (if f > 0.0 then
+      ()
+    else
+      prerr_byte 45);
    let f = if f > 0.0 then f else -.f
    in
-   (if f > 0.0 then
-      prerr_byte 45;
-    else
-      ());
    let i = int_of_float f
    in
    prerr_int_without_null i;
@@ -192,32 +187,29 @@
 
 (let rec read_float u =
    let rec read_float_sub1 b f = 
-     if is_terminate b then
-       0.0
+     if is_number b then
+       read_float_sub1 (read_byte ()) ((f *. 10.0) +. (float_of_int (b - 48)))
      else
        if b = 46 then
          let rec read_float_sub2 b f p =
-           if is_terminate b then
-             0.0
-           else
+           if is_number b then
              read_float_sub2 (read_byte ()) (f +. p *. (float_of_int (b - 48))) (p *. 0.1)
+           else
+             f
          in
          read_float_sub2 (read_byte ()) f 0.1
        else
-         read_float_sub1 (read_byte ()) ((f *. 10.0) +. (float_of_int (b - 48)))
+         f
    in 
    let b = read_byte ()
    in
-   if is_terminate b then
-     read_float u
+   if is_number b then
+     read_float_sub1 b 0.0
    else
-     (let abs = read_float_sub1 (read_byte ()) 0.0
-      in
-        if b = 45 then
-          abs
-        else
-          -.abs));
-
+     if b = 45 then
+       0.0 -. (read_float_sub1 (read_byte ()) 0.0)
+     else
+       read_float u);
 
 (let rec fispos x =
   x > 0.0);
