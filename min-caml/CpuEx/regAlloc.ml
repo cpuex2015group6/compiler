@@ -7,6 +7,9 @@ let rec target' src (dest, t) = function
   | Mr(x) when x = src && is_reg dest ->
       assert (t <> Type.Unit);
       false, [dest]
+  | FMr(x) when x = src && is_reg dest ->
+      assert (t = Type.Float);
+      false, [dest]
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) | IfGE(_, _, e1, e2)
   | IfFEq(_, _, e1, e2) | IfFLE(_, _, e1, e2) ->
       let c1, rs1 = target src (dest, t) e1 in
@@ -64,12 +67,17 @@ let rec alloc dest cont regenv x t =
     Alloc(r)
   with Not_found ->
     Format.eprintf "register allocation failed for %s@." x;
+    let rec remove x = function
+      | [] -> []
+      | y::ys when x = y -> (remove x ys)
+      | y::ys -> y::(remove x ys)
+    in
     let y = (* 型の合うレジスタ変数を探す *)
       List.find
         (fun y ->
-	  not (is_reg y) &&
-          try List.mem (M.find y regenv) all
-          with Not_found -> false)
+	       not (is_reg y) &&
+           try List.mem (M.find y regenv) (remove reg_cl (remove reg_sw (remove reg_fsw all)))
+           with Not_found -> false)
         (List.rev free) in
     Format.eprintf "spilling %s from %s@." y (M.find y regenv);
     Spill(y)
@@ -93,20 +101,20 @@ let find' x' regenv =
 let rec g dest cont regenv = function (* 命令列のレジスタ割り当て (caml2html: regalloc_g) *)
   | Ans(exp) -> g'_and_restore dest cont regenv exp
   | Let((x, t) as xt, exp, e) ->
-      assert (not (M.mem x regenv));
-      let cont' = concat e dest cont in
-      let (e1', regenv1) = g'_and_restore xt cont' regenv exp in
-      (match alloc dest cont' regenv1 x t with
+     assert (not (M.mem x regenv));
+     let cont' = concat e dest cont in
+     let (e1', regenv1) = g'_and_restore xt cont' regenv exp in
+     (match alloc dest cont' regenv1 x t with
       | Spill(y) ->
-	  let r = M.find y regenv1 in
-	  let (e2', regenv2) = g dest cont (add x r (M.remove y regenv1)) e in
-	  let save =
-	    try Save(M.find y regenv, y)
-	    with Not_found -> Nop in	    
-	  (seq(save, concat e1' (r, t) e2'), regenv2)
+	       let r = M.find y regenv1 in
+	       let (e2', regenv2) = g dest cont (add x r (M.remove y regenv1)) e in
+	       let save =
+	         try Save(M.find y regenv, y)
+	         with Not_found -> Nop in	    
+	       (seq(save, concat e1' (r, t) e2'), regenv2)
       | Alloc(r) ->
-	  let (e2', regenv2) = g dest cont (add x r regenv1) e in
-	  (concat e1' (r, t) e2', regenv2))
+	       let (e2', regenv2) = g dest cont (add x r regenv1) e in
+	       (concat e1' (r, t) e2', regenv2))
 and g'_and_restore dest cont regenv exp = (* 使用される変数をスタックからレジスタへRestore (caml2html: regalloc_unspill) *)
   try g' dest cont regenv exp
   with NoReg(x, t) ->
@@ -124,10 +132,13 @@ and g' dest cont regenv = function (* 各命令のレジスタ割り当て (caml2html: regal
   | Srl(x, y') -> (Ans(Srl(find x Type.Int regenv, find' y' regenv)), regenv)
   | Ldw(x, y') -> (Ans(Ldw(find x Type.Int regenv, find' y' regenv)), regenv)
   | Stw(x, y, z') -> (Ans(Stw(find x Type.Int regenv, find y Type.Int regenv, find' z' regenv)), regenv)
+  | FMr(x) -> (Ans(FMr(find x Type.Float regenv)), regenv)
   | FAdd(x, y) -> (Ans(FAdd(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FMul(x, y) -> (Ans(FMul(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FDiv(x, y) -> (Ans(FDiv(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)
+  | Lfd(x, y') -> (Ans(Lfd(find x Type.Int regenv, find' y' regenv)), regenv)
+  | Stfd(x, y, z') -> (Ans(Stfd(find x Type.Float regenv, find y Type.Int regenv, find' z' regenv)), regenv)
   | ToFloat(x) -> (Ans(ToFloat(find x Type.Int regenv)), regenv)
   | ToInt(x) -> (Ans(ToInt(find x Type.Float regenv)), regenv)
   | ToArray(x) -> (Ans(ToArray(find x (Type.Array(Type.Int)) regenv)), regenv)
@@ -181,21 +192,21 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレ
   let (i, arg_regs, regenv) =
     List.fold_left
       (fun (i, arg_regs, regenv) y ->
-        let r = regs.(i) in
-        (i + 1,
-	 arg_regs @ [r],
-	 (assert (not (is_reg y));
-	  M.add y r regenv)))
+       let r = regs.(i) in
+       (i + 1,
+	      arg_regs @ [r],
+	      (assert (not (is_reg y));
+	       M.add y r regenv)))
       (0, [], regenv)
       ys in
   let (d, farg_regs, regenv) =
     List.fold_left
       (fun (d, farg_regs, regenv) z ->
-        let fr = fregs.(d) in
-        (d + 1,
-	 farg_regs @ [fr],
-	 (assert (not (is_reg z));
-	  M.add z fr regenv)))
+       let fr = fregs.(d) in
+       (d + 1,
+	      farg_regs @ [fr],
+	      (assert (not (is_reg z));
+	       M.add z fr regenv)))
       (0, [], regenv)
       zs in
   let a =

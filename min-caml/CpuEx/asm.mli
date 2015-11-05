@@ -17,10 +17,13 @@ and exp =
   | Srl of Id.t * id_or_imm
   | Ldw of Id.t * id_or_imm
   | Stw of Id.t * Id.t * id_or_imm
+  | FMr of Id.t
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
   | Sqrt of Id.t
+  | Lfd of Id.t * id_or_imm
+  | Stfd of Id.t * Id.t * id_or_imm
   | ToInt of Id.t
   | ToFloat of Id.t
   | ToArray of Id.t
@@ -44,6 +47,7 @@ type fundef =
     { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret : Type.t }
 type prog = Prog of (Id.l * float) list * Id.l list * fundef list * t
 
+val fletd : Id.t * exp * t -> t (* shorthand of Let for float *)
 val seq : exp * t -> t (* shorthand of Let for unit *)
 
 val regs : Id.t array

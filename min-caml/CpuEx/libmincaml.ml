@@ -8,7 +8,12 @@
        else
          (a lsl i) + (mul_sub a b (i - 1))
    in
-   (((mul_sub a b 30) land 2147483647) lor ((a land 2147483648) lxor (b land 2147483648))));
+   let abs = (mul_sub a b 30) land 2147483647
+   in
+   if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
+     abs
+   else
+     -abs);
 
 (let rec div a b =
    let rec div_sub a b i =
@@ -20,7 +25,12 @@
        else
          div_sub a b (i - 1)
    in
-   (((div_sub a b 30) land 2147483647) lor ((a land 2147483648) lxor (b land 2147483648))));
+   let abs = (div_sub a b 30) land 2147483647
+   in
+   if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
+     abs
+   else
+     -abs);
 
 (let rec print_newline a = output 10);
 
@@ -47,7 +57,7 @@
 
 (let rec print_int a =
    print_int_without_null a;
-   print_byte 0);
+   (*print_byte 0*));
 
 (let rec prerr_int_without_null a =
    let rec prerr_int_sub a =
@@ -99,12 +109,24 @@
 
 (let rec floor i =
    let exp = ((Int(i) lsr 23) land 255) - 127 in
-   Float((Int(i) lsr (23 - exp)) lsl (23 - exp)));
+   if (23 - exp) > 0 then
+     Float((Int(i) lsr (23 - exp)) lsl (23 - exp))
+   else
+     Float((Int(i) lsl (exp - 23)) lsr (exp - 23)));
 
-(let rec int_of_float i= 
-   let exp = ((Int(i) lsr 23) land 255) - 127 in
-   let rval = (((Int(i) lor 8388608) land 16777215) lsr (23 - exp)) in
-   if(i>=0.0) then
+(let rec int_of_float f = 
+   let exp = ((Int(f) lsr 23) land 255) - 127 in
+   let fraction = ((Int(f) lor 8388608) land 16777215)
+   in
+   let rval = 
+     if (23 - exp) > 0 then
+       (fraction lsr (23 - exp))
+     else
+       (fraction lsl (exp - 23))
+   in
+   let rval = rval land 2147483647
+   in
+   if f >= 0.0 then
      rval
    else
      -rval);
@@ -141,11 +163,7 @@
           in
           print_float_sub p (j - 1))
    in      
-   (if f > 0.0 then
-      ()
-    else
-      print_byte 45);
-   let f = if f > 0.0 then f else -.f
+   let f = if f >= 0.0 then f else (print_byte 45; -.f)
    in
    let i = int_of_float f
    in
@@ -154,7 +172,7 @@
    let p = f -. (float_of_int i)
    in
    print_float_sub p 5;
-   print_byte 0);
+   (*print_byte 0*));
 
 (let rec prerr_float f =
    let rec prerr_float_sub f j =
@@ -347,7 +365,7 @@
        ()
      else
        ((Array (get_hp ())).(0) <- i; 
-        (set_hp ((get_hp ()) + 4);
+        (set_hp ((get_hp ()) + 1);
          create_array_sub (n - 1) i))
    in
    create_array_sub n i;
@@ -361,7 +379,7 @@
        ()
      else
        ((Array (get_hp ())).(0) <- Int(i);
-        set_hp ((get_hp ()) + 4);
+        set_hp ((get_hp ()) + 1);
         create_array_sub (n - 1) i)
    in
    create_array_sub n i;
