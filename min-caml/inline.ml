@@ -49,7 +49,7 @@ let rec g env cenv = function (* インライン展開ルーチン本体 (caml2html: inline_g
        | [] -> false
        | y::ls -> (S.mem y cenv) || (hasconst ls)
      in
-     if (size > !threshold) || (is_rec x e = false) then
+     if (size < !threshold) || (is_rec x e = false) then
        (Format.eprintf "inlining %s@." x;
 	let env' =
 	  List.fold_left2
