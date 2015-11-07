@@ -1618,11 +1618,12 @@ let rec trace_reflections index diffuse hilight_scale dirvec =
 	(* 鏡面との衝突点が光源の影になっていなければ反射光は届く *)
         if not (shadow_check_one_or_matrix 0 or_net.(0)) then
 	  (* 届いた反射光による RGB成分への寄与を加算 *)
+(print_int 111;
           let p = veciprod nvector (d_vec dvec) in
           let scale = r_bright rinfo in
           let bright = scale *. diffuse *. p in
           let hilight = scale *. veciprod dirvec (d_vec dvec) in
-          add_light bright hilight hilight_scale
+          add_light bright hilight hilight_scale)
         else ()
       else ()
     else ();
