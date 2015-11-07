@@ -529,7 +529,7 @@ let rec read_light _ =
   light.(0) <- cl1 *. sl2;
   let cl2 = cos l2 in
   light.(2) <- cl1 *. cl2;
-  beam.(0) <- read_float ();
+  beam.(0) <- read_float ()
 
 in
 

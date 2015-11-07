@@ -19,10 +19,13 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Srl of Id.t * id_or_imm
   | Ldw of Id.t * id_or_imm
   | Stw of Id.t * Id.t * id_or_imm
+  | FMr of Id.t
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
   | Sqrt of Id.t
+  | Lfd of Id.t * id_or_imm
+  | Stfd of Id.t * Id.t * id_or_imm
   | ToInt of Id.t
   | ToFloat of Id.t
   | ToArray of Id.t
@@ -47,16 +50,18 @@ type fundef =
 (* プログラム全体 = 浮動小数点数テーブル + グローバル変数テーブル + トップレベル関数 + メインの式 *)
 type prog = Prog of (Id.l * float) list * Id.l list * fundef list * t
 
+(* shorthand of Let for float *)
+(* fletd : Id.t * exp * t -> t *)
+let fletd (x, e1, e2) = Let ((x, Type.Float), e1, e2)
 (* shorthand of Let for unit *)
 (* seq : exp * t -> t *)
 let seq (e1, e2) = Let ((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
 let regs = [| "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
-              "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17"; 
-              
+              "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17";
              |]
 (* let regs = Array.init 27 (fun i -> Printf.sprintf "_R_%d" i) *)
-let fregs = [| "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"
+let fregs = [| "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E";
               |]
 let allregs = Array.to_list regs
 let allfregs = Array.to_list fregs
@@ -86,12 +91,12 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
-  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') -> 
+  | Mr (x) | FMr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
   | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->
       [x; y]
-  | Stw (x, y, z') -> x :: y :: fv_id_or_imm z'
+  | Stw (x, y, z') | Stfd (x, y, z') -> x :: y :: fv_id_or_imm z'
   | IfEq (x, y', e1, e2) | IfLE (x, y', e1, e2) | IfGE (x, y', e1, e2) -> 
       x :: fv_id_or_imm y' @ remove_and_uniq S.empty (fv e1 @ fv e2)
   | IfFEq (x, y, e1, e2) | IfFLE (x, y, e1, e2) ->
@@ -112,4 +117,4 @@ let rec concat e1 xt e2 = match e1 with
   | Let (yt, exp, e1') -> Let (yt, exp, concat e1' xt e2)
 
 (* align : int -> int *)
-let align i = if i mod 8 = 0 then i else i + 4
+let align i = i

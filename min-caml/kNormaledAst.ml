@@ -96,9 +96,11 @@ let rec g indent e = (* AST表示ルーチン *)
      g (indent ^ "  ") t1;
      g (indent ^ "  ") t2
   | Let((e, t), t1, t2) ->
-     print_string (indent ^ "Let " ^ e ^ "\n");
+     print_string (indent ^ "Let " ^ e ^ " ");
+     print_type t;
+     print_string "\n";
      g (indent ^ "  ") t1;
-     g (indent ^ "  ") t2
+     g indent t2
   | Var(e) ->
      print_string (indent ^ "Var " ^ e ^ "\n")
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) ->
@@ -114,7 +116,7 @@ let rec g indent e = (* AST表示ルーチン *)
      print_list (List.map (fun (x, t) -> x) yts);
      print_string "\n";
      g (indent ^ "  ") e1;
-     g (indent ^ "  ") e2
+     g indent e2
   | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)
      print_string (indent ^ "App " ^ e ^ "\n");
      print_string (indent ^ "  ");
@@ -141,7 +143,7 @@ let rec g indent e = (* AST表示ルーチン *)
      in
      print_list (List.map (fun (x, t) -> x) xts);
      print_string (indent ^ "  " ^ e1 ^ "\n");
-     g (indent ^ "  ") e2
+     g indent e2
   | Get(e1, e2) ->
      print_string (indent ^ "Get " ^ e1 ^ " " ^ e2 ^ "\n")
   | Put(e1, e2, e3) ->
