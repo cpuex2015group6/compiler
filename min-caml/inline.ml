@@ -1,7 +1,7 @@
 open KNormal
 
 (* インライン展開する関数の最大サイズ (caml2html: inline_threshold) *)
-let threshold = ref 30 (* Mainで-inlineオプションによりセットされる *)
+let threshold = ref 0 (* Mainで-inlineオプションによりセットされる *)
 
 let rec size = function
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2)
@@ -26,7 +26,7 @@ let rec is_rec x = function
   | App(x', _) -> if x' = x then true else false
   | LetTuple(_, _, e) -> is_rec x e
   | e -> false
-    
+
 let rec g env cenv = function (* インライン展開ルーチン本体 (caml2html: inline_g) *)
   | IfEq(x, y, e1, e2) -> IfEq(x, y, g env cenv e1, g env cenv e2)
   | IfLE(x, y, e1, e2) ->
@@ -49,7 +49,7 @@ let rec g env cenv = function (* インライン展開ルーチン本体 (caml2html: inline_g
        | [] -> false
        | y::ls -> (S.mem y cenv) || (hasconst ls)
      in
-     if (size < !threshold) || (is_rec x e = false) then
+     if (size < !threshold) then
        (Format.eprintf "inlining %s@." x;
 	let env' =
 	  List.fold_left2

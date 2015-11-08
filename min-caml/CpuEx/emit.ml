@@ -351,6 +351,7 @@ let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
   stackmap := [];
   g oc (Tail, e)
 
+(* デバッグ用 *)
 let rec i indent = function
   | (dest, Ans (exp)) -> i' indent (dest, exp)
   | (dest, Let((x, t), exp, e)) -> i' indent (NonTail (x), exp); i indent (dest, e)
