@@ -1,7 +1,7 @@
 open KNormal
 
 (* インライン展開する関数の最大サイズ (caml2html: inline_threshold) *)
-let threshold = ref 0 (* Mainで-inlineオプションによりセットされる *)
+let threshold = ref 30 (* Mainで-inlineオプションによりセットされる *)
 
 let rec size = function
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2)
