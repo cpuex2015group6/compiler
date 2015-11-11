@@ -39,21 +39,34 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | ExtFunApp of Id.t * Id.t list
  and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
+let rec fv_let x e1 e2 =
+  S.union e1 (S.remove x e2)
+
+let rec fv_if x y e1 e2 =
+  S.add x (S.add y (S.union e1 e2))
+
+let rec fv_letrec x yts e1 e2 =
+  let zs = S.diff e1 (S.of_list (List.map fst yts)) in
+  S.diff (S.union zs e2) (S.singleton x)
+
+let rec fv_lettuple xs y e =
+  S.add y (S.diff e (S.of_list (List.map fst xs)))
+
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
   | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
-  | IfEq(x, y, e1, e2) | IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
-  | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
+  | IfEq(x, y, e1, e2) | IfLE(x, y, e1, e2) ->
+     fv_if x y (fv e1) (fv e2)
+  | Let((x, _), e1, e2) -> fv_let x (fv e1) (fv e2)
   | Var(x) -> S.singleton x
-  | LetRec({ name = (x, t); args = yts; body = e1 }, e2) ->
-     let zs = S.diff (fv e1) (S.of_list (List.map fst yts)) in
-     S.diff (S.union zs (fv e2)) (S.singleton x)
+  | LetRec({ name = (x, _); args = yts; body = e1 }, e2) ->
+     fv_letrec x yts (fv e1) (fv e2)
   | App(x, ys) -> S.of_list (x :: ys)
   | Tuple(xs) | ExtFunApp(_, xs) -> S.of_list xs
   | Put(x, y, z) -> S.of_list [x; y; z]
-  | LetTuple(xs, y, e) -> S.add y (S.diff (fv e) (S.of_list (List.map fst xs)))
-
+  | LetTuple(xs, y, e) -> fv_lettuple xs y (fv e)
+     
 let insert_let (e, t) k = (* letを挿入する補助関数 (caml2html: knormal_insert) *)
   match e with
   | Var(x) -> k x

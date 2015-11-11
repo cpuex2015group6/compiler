@@ -53,4 +53,4 @@ let rec g env = function (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
   | LetTuple(xts, y, e) -> LetTuple(xts, y, g env e)
   | e -> e
 
-let f = g M.empty
+let f e = g M.empty e

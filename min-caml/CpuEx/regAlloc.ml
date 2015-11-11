@@ -52,13 +52,13 @@ let rec alloc dest cont regenv x t =
   try
     let (c, prefer) = target x dest cont in
     let live = (* 生きているレジスタ *)
-      S.add reg_cl (List.fold_left
+      List.fold_left
         (fun live y ->
 	  if is_reg y then S.add y live else
           try S.add (M.find y regenv) live
           with Not_found -> live)
-        S.empty
-        free) in
+        (S.singleton reg_cl)
+        free in
     let r = (* そうでないレジスタを探す *)
       List.find
         (fun r -> not (S.mem r live))

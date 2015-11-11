@@ -107,19 +107,6 @@
 (let rec abs_float i =
    Float(Int(i) land 2147483647));
 
-(let rec floor i =
-   let rec floor_sub i =
-     let exp = ((Int(i) lsr 23) land 255) - 127 in
-     if (23 - exp) > 0 then
-       Float((Int(i) lsr (23 - exp)) lsl (23 - exp))
-     else
-       Float((Int(i) lsl (exp - 23)) lsr (exp - 23))
-   in
-   if i >= 0.0 then
-     floor_sub i;
-   else
-     floor_sub (i -. 1.0));
-
 (let rec int_of_float f = 
    let exp = ((Int(f) lsr 23) land 255) - 127 in
    let fraction = ((Int(f) lor 8388608) land 16777215)
@@ -154,6 +141,15 @@
      let i = if i > 0 then i else -i in
      let top = search_top i in
      Float((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
+
+(let rec floor i =
+   let rec floor_sub i =
+     float_of_int(int_of_float i)
+   in
+   if i >= 0.0 then
+     floor_sub i;
+   else
+     floor_sub (i -. 1.0));
 
 (let rec print_float f =
    let rec print_float_sub f j =

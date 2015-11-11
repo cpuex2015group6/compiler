@@ -174,4 +174,4 @@ let f (Closure.Prog (fundefs, e)) =
   data := [];
   let fundefs = List.map h fundefs in
   let e = g M.empty e in
-    Prog (!data, !vars, fundefs, e)
+  Prog (!data, !vars, fundefs, e)

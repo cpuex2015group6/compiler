@@ -42,6 +42,8 @@ type fundef = { name : Id.l * Type.t;
 		            body : t }
 type prog = Prog of fundef list * t
 
+let log = ref ""
+    
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp -> S.empty
   | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out(x) | SetHp(x) -> S.singleton x
@@ -103,8 +105,8 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      let known', e1' =
 	     if S.is_empty zs then known', e1' else
 	       (* 駄目だったら状態(toplevelの値)を戻して、クロージャ変換をやり直す *)
-	       (Format.eprintf "free variable(s) %s found in function %s@." (Id.pp_list (S.elements zs)) x;
-	        Format.eprintf "function %s cannot be directly applied in fact@." x;
+	       (log := !log ^ Format.sprintf "free variable(s) %s found in function %s@." (Id.pp_list (S.elements zs)) x;
+	        log := !log ^ Format.sprintf "function %s cannot be directly applied in fact@." x;
 	        toplevel := toplevel_backup;
 	        let e1' = g (M.add_list yts env') known e1 in
 	        known, e1') in
@@ -119,10 +121,10 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      if S.mem x (fv e2') then (* xが変数としてe2'に出現するか *)
 	     MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2') (* 出現していたら削除しない *)
      else
-	     (Format.eprintf "eliminating closure(s) %s@." x;
-	      e2') (* 出現しなければMakeClsを削除 *)
+       (log := !log ^ Format.sprintf "eliminating closure(s) %s@." x;
+	e2') (* 出現しなければMakeClsを削除 *)
   | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
-      Format.eprintf "directly applying %s@." x;
+      log := !log ^ Format.sprintf "directly applying %s@." x;
       AppDir(Id.L(x), ys)
   | KNormal.App(f, xs) -> AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)
@@ -133,6 +135,11 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.ExtFunApp(x, ys) -> AppDir(Id.L("min_caml_" ^ x), ys)
 
 let f e =
+  log := "";
+  prerr_endline "converting closure...";
   toplevel := [];
   let e' = g M.empty S.empty e in
-  Prog(List.rev !toplevel, e')
+  let e = Prog(List.rev !toplevel, e')
+  in
+  prerr_string !log;
+  e

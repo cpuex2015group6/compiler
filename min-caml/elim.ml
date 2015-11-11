@@ -6,27 +6,49 @@ let rec effect = function (* 副作用の有無 (caml2html: elim_effect) *)
   | App _ | Put _ | ExtFunApp _ | In _ | Out _ | GetHp _ | SetHp _-> true
   | _ -> false
 
-let rec f = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
-  | IfEq(x, y, e1, e2) -> IfEq(x, y, f e1, f e2)
-  | IfLE(x, y, e1, e2) -> IfLE(x, y, f e1, f e2)
+let log = ref ""
+  
+let rec g = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
+  | IfEq(x, y, e1, e2) ->
+     let e1, fve1 = g e1
+     in
+     let e2, fve2 = g e2
+     in
+     (IfEq(x, y, e1, e2), (fv_if x y fve1 fve2))
+  | IfLE(x, y, e1, e2) ->
+     let e1, fve1 = g e1
+     in
+     let e2, fve2 = g e2
+     in
+     (IfLE(x, y, e1, e2), (fv_if x y fve1 fve2))
   | Let((x, t), e1, e2) -> (* letの場合 (caml2html: elim_let) *)
-      let e1' = f e1 in
-      let e2' = f e2 in
-      if effect e1' || S.mem x (fv e2') then Let((x, t), e1', e2') else
-      (Format.eprintf "eliminating variable %s@." x;
-       e2')
+      let e1', fve1 = g e1 in
+      let e2', fve2 = g e2 in
+      if effect e1' || S.mem x fve2 then (Let((x, t), e1', e2'), (fv_let x fve1 fve2)) else
+	((*log := !log ^ Format.sprintf "eliminating variable %s@." x;*)
+	  Format.eprintf "eliminating variable %s@.";
+       (e2', fve2))
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) -> (* let recの場合 (caml2html: elim_letrec) *)
-     let e2' = f e2 in
-     if S.mem x (fv e2') then
-	     LetRec({ name = (x, t); args = yts; body = f e1 }, e2')
+     let e1', fve1 = g e1 in
+     let e2', fve2 = g e2 in
+     if S.mem x fve2 then
+       (LetRec({ name = (x, t); args = yts; body = e1' }, e2'), (fv_letrec x yts fve1 fve2))
      else
-	     (Format.eprintf "eliminating function %s@." x;
-	      e2')
+       ((*log := !log ^ Format.sprintf "eliminating function %s@." x;*)
+	 Format.eprintf "eliminating function %s@." x;
+	(e2', fve2))
   | LetTuple(xts, y, e) ->
       let xs = List.map fst xts in
-      let e' = f e in
-      let live = fv e' in
-      if List.exists (fun x -> S.mem x live) xs then LetTuple(xts, y, e') else
-      (Format.eprintf "eliminating variables %s@." (Id.pp_list xs);
-       e')
-  | e -> e
+      let e', fve = g e in
+      if List.exists (fun x -> S.mem x fve) xs then (LetTuple(xts, y, e'), (fv_lettuple xts y fve)) else
+      (log := !log ^ Format.sprintf "eliminating variables %s@." (Id.pp_list xs);
+       (e', fve))
+  | e -> (e, fv e)
+
+let rec f e =
+  log := "";
+  prerr_endline "start eliminating...";
+  let e, _ = g e
+  in
+  prerr_string !log;
+  e
