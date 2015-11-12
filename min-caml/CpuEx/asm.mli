@@ -66,6 +66,7 @@ val reg_cond : Id.t
 val reg_lr : Id.t
 val is_reg : Id.t -> bool
 
+val fv_o : t -> Id.t list
 val fv : t -> Id.t list
 val concat : t -> Id.t * Type.t -> t -> t
 

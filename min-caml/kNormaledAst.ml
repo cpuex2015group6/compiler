@@ -89,12 +89,14 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
   | IfEq(e1, e2, t1, t2) ->
      print_string (indent ^ "IfEq " ^ e1 ^ " " ^ e2 ^ "\n");
-     g (indent ^ "  ") t1;
-     g (indent ^ "  ") t2
+    g (indent ^ "  ") t1;
+    print_string (indent ^ "Else " ^ "\n");
+    g (indent ^ "  ") t2
   | IfLE(e1, e2, t1, t2) ->
      print_string (indent ^ "IfLE " ^ e1 ^ " " ^ e2 ^ "\n");
-     g (indent ^ "  ") t1;
-     g (indent ^ "  ") t2
+    g (indent ^ "  ") t1;
+    print_string (indent ^ "Else " ^ "\n");
+    g (indent ^ "  ") t2
   | Let((e, t), t1, t2) ->
      print_string (indent ^ "Let " ^ e ^ " ");
      print_type t;

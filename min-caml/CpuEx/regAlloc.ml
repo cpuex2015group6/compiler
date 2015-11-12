@@ -74,11 +74,11 @@ let rec alloc dest cont regenv x t =
     in
     let y = (* 型の合うレジスタ変数を探す *)
       List.find
-        (fun y ->
-	       not (is_reg y) &&
-           try List.mem (M.find y regenv) (remove reg_cl all)
-           with Not_found -> false)
-        (List.rev free) in
+	(fun y ->
+	  not (is_reg y) &&
+	    try List.mem (M.find y regenv) (remove reg_cl all)
+	    with Not_found -> false)
+	        (List.rev free) in
     Format.eprintf "spilling %s from %s@." y (M.find y regenv);
     Spill(y)
 

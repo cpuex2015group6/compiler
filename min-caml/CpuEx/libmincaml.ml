@@ -1,14 +1,14 @@
 (let rec mul a b =
-   let rec mul_sub a b i =
+   let rec mul_sub x a b i =
      if i = -1 then 
-       0
+       x
      else
        if (b land (1 lsl i)) = 0 then
-         mul_sub a b (i - 1)
+         mul_sub x a b (i - 1)
        else
-         (a lsl i) + (mul_sub a b (i - 1))
+          mul_sub (x + (a lsl i)) a b (i - 1)
    in
-   let abs = (mul_sub a b 30) land 2147483647
+   let abs = (mul_sub 0 a b 30) land 2147483647
    in
    if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
      abs

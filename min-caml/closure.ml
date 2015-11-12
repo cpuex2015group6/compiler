@@ -114,7 +114,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      let zts = List.map (function
                           | z when M.mem z env'  ->
                              (z, M.find z env')
-                          | z->prerr_string z;assert false) zs
+                          | z->prerr_string (x^" "^z);assert false) zs
      in (* ここで自由変数zの型を引くために引数envが必要 *)
      toplevel := { name = (Id.L(x), t); args = yts; formal_fv = zts; body = e1' } :: !toplevel; (* トップレベル関数を追加 *)
      let e2' = g env' known' e2 in

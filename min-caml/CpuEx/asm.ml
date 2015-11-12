@@ -98,18 +98,18 @@ let rec fv_exp = function
       [x; y]
   | Stw (x, y, z') | Stfd (x, y, z') -> x :: y :: fv_id_or_imm z'
   | IfEq (x, y', e1, e2) | IfLE (x, y', e1, e2) | IfGE (x, y', e1, e2) -> 
-      x :: fv_id_or_imm y' @ remove_and_uniq S.empty (fv e1 @ fv e2)
+      x :: fv_id_or_imm y' @ remove_and_uniq S.empty (fv_o e1 @ fv_o e2)
   | IfFEq (x, y, e1, e2) | IfFLE (x, y, e1, e2) ->
-      x :: y :: remove_and_uniq S.empty (fv e1 @ fv e2)
+      x :: y :: remove_and_uniq S.empty (fv_o e1 @ fv_o e2)
   | CallCls (x, ys, zs) -> x :: ys @ zs
   | CallDir (_, ys, zs) -> ys @ zs
-and fv = function 
+and fv_o = function 
   | Ans (exp) -> fv_exp exp
   | Let ((x, t), exp, e) ->
-      fv_exp exp @ remove_and_uniq (S.singleton x) (fv e)
+      fv_exp exp @ remove_and_uniq (S.singleton x) (fv_o e)
 
 (* fv : t -> Id.t list *)
-let fv e = remove_and_uniq S.empty (fv e)
+let fv e = remove_and_uniq S.empty (fv_o e)
 
 (* concat : t -> Id.t * Type.t -> t -> t *)
 let rec concat e1 xt e2 = match e1 with
