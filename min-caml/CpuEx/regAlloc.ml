@@ -50,7 +50,7 @@ let rec alloc dest cont regenv x t =
   if is_reg x then Alloc(x) else
   let free = fv cont in
   try
-    let (c, prefer) = target x dest cont in
+    let (_, prefer) = target x dest cont in
     let live = (* 生きているレジスタ *)
       List.fold_left
         (fun live y ->
@@ -118,7 +118,7 @@ let rec g dest cont regenv = function (* 命令列のレジスタ割り当て (caml2html: re
 and g'_and_restore dest cont regenv exp = (* 使用される変数をスタックからレジスタへRestore (caml2html: regalloc_unspill) *)
   try g' dest cont regenv exp
   with NoReg(x, t) ->
-    ( Format.eprintf "restoring %s@." x; 
+    ( Format.eprintf "restoring %s@." x;
      g dest cont regenv (Let((x, t), Restore(x), Ans(exp))))
 and g' dest cont regenv = function (* 各命令のレジスタ割り当て (caml2html: regalloc_gprime) *)
   | Nop | Li _ | SetL _ | Comment _ | Restore _ | FLi _ as exp -> (Ans(exp), regenv)
