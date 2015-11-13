@@ -88,6 +88,11 @@ let rec remove_and_uniq xs = function
 (* free variables in the order of use (for spilling) *)
 (* fv_id_or_imm : id_or_imm -> Id.t list *)
 let fv_id_or_imm = function V (x) -> [x] | _ -> []
+
+type r_or_nothing =
+  | Nothing
+  | Reg of Id.t
+
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
@@ -111,6 +116,102 @@ and fv_o = function
 (* fv : t -> Id.t list *)
 let fv e = remove_and_uniq S.empty (fv_o e)
 
+let rec fv_exp2 = function
+  | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> false, []
+  | Mr (x) | FMr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> false, [x]
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> 
+      false, x :: fv_id_or_imm y'
+  | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->
+      false, [x; y]
+  | Stw (x, y, z') | Stfd (x, y, z') -> false, x :: y :: fv_id_or_imm z'
+  | IfEq (x, y', e1, e2) | IfLE (x, y', e1, e2) | IfGE (x, y', e1, e2) ->
+     let c1, rs1 = fv_o2 e1 in
+     let c2, rs2 = fv_o2 e2 in
+     c1 && c2, x :: fv_id_or_imm y' @ remove_and_uniq S.empty (rs1 @ rs2)
+  | IfFEq (x, y, e1, e2) | IfFLE (x, y, e1, e2) ->
+     let c1, rs1 = fv_o2 e1 in
+     let c2, rs2 = fv_o2 e2 in
+     c1 && c2, x :: y :: remove_and_uniq S.empty (rs1 @ rs2)
+  | CallCls (x, ys, zs) -> true, x :: ys @ zs
+  | CallDir (_, ys, zs) -> true, ys @ zs
+and fv_o2 = function 
+  | Ans (exp) -> fv_exp2 exp
+  | Let ((x, t), exp, e) ->
+     let c1, rs1 = fv_exp2 exp in
+     if c1 then true, rs1 else
+       let c2, rs2 = fv_o2 e in
+       c2, rs1 @ remove_and_uniq (S.singleton x) rs2
+
+(* fv2 : t -> Id.t list *)
+let fv2 e = let c, rs = fv_o2 e in remove_and_uniq S.empty rs
+
+
+let fv_id_or_imm3 func crs = function V(x) -> func x crs | _ -> crs
+
+let rec fv_exp3 func all crs = function
+  | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> crs
+  | Mr (x) | FMr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> func x crs
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> func x (fv_id_or_imm3 func crs y')
+  | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->
+     func x (func y crs)
+  | Stw (x, y, z') | Stfd (x, y, z') -> func x (func y (fv_id_or_imm3 func crs z'))
+  | IfEq (x, y', e1, e2) | IfLE (x, y', e1, e2) | IfGE (x, y', e1, e2) ->
+     let crs = fv_o3 func all crs e1 in
+     let crs =
+       if S.cardinal all = List.length crs then
+	 crs
+       else
+	 fv_o3 func all crs e2
+     in
+     let crs = remove_and_uniq S.empty crs in
+     func x (fv_id_or_imm3 func crs y')
+  | IfFEq (x, y, e1, e2) | IfFLE (x, y, e1, e2) ->
+     let crs = fv_o3 func all crs e1 in
+     let crs =
+       if S.cardinal all = List.length crs then
+	 crs
+       else
+	 fv_o3 func all crs e2
+     in
+     let crs = remove_and_uniq S.empty crs in
+     func x (func y crs)
+  | CallCls (x, ys, zs) ->
+     List.fold_left
+       (fun crs y -> func y crs)
+       crs
+       (x :: ys @ zs)
+  | CallDir (_, ys, zs) ->
+     List.fold_left
+       (fun crs y -> func y crs)
+       crs
+       (ys @ zs)
+and fv_o3 func all crs = function 
+  | Ans (exp) -> fv_exp3 func all crs exp
+  | Let ((x, t), exp, e) ->
+     let crs = remove_and_uniq S.empty (fv_exp3 func all crs exp) in
+     if S.cardinal all = List.length crs then
+       crs
+     else
+       fv_o3 func all crs e
+				
+(* fv3 : t -> (fun Id.t -> r_or_nothing) -> Id.t list -> Id.t list *)
+let fv3 e func all =
+  let rec conv_all = function
+    | [] -> S.empty
+    | r::rs -> S.add r (conv_all rs)
+  in
+  let all = conv_all all in
+  let func y crs = match func(y) with
+    | Nothing -> crs
+    | Reg(r) ->
+       if S.mem r all && not (List.mem r crs) then
+	 r::crs
+       else
+	 crs
+  in
+  remove_and_uniq S.empty (fv_o3 func all [] e)
+				
+				
 (* concat : t -> Id.t * Type.t -> t -> t *)
 let rec concat e1 xt e2 = match e1 with
   | Ans (exp) -> Let (xt, exp, e2)

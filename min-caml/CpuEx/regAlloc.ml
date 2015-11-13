@@ -47,40 +47,47 @@ let rec alloc dest cont regenv x t =
     | Type.Float -> allfregs
     | _ -> allregs in
   if all = ["%r0"] then Alloc("%r0") else (* [XX] ad hoc optimization *)
-  if is_reg x then Alloc(x) else
-  let free = fv cont in
-  try
-    let (_, prefer) = target x dest cont in
-    let live = (* 生きているレジスタ *)
-      List.fold_left
-        (fun live y ->
-	  if is_reg y then S.add y live else
-          try S.add (M.find y regenv) live
-          with Not_found -> live)
-        (S.singleton reg_cl)
-        free in
-    let r = (* そうでないレジスタを探す *)
-      List.find
-        (fun r -> not (S.mem r live))
-        (prefer @ all) in
+    if is_reg x then Alloc(x) else
+      let free = fv3 cont (fun y -> if is_reg y then Reg(y) else try Reg(M.find y regenv) with Not_found -> Nothing) all in
+      try
+	let (_, prefer) = target x dest cont in
+	let live = (* 生きているレジスタ *)
+	  List.fold_left
+            (fun live y ->
+	      if is_reg y then S.add y live else
+		try S.add (M.find y regenv) live
+		with Not_found -> live)
+            (S.singleton reg_cl)
+            free in
+	let r = (* そうでないレジスタを探す *)
+	  List.find
+            (fun r -> not (S.mem r live))
+            (prefer @ all) in
     (* Format.eprintf "allocated %s to %s@." x r; *)
-    Alloc(r)
-  with Not_found ->
-    Format.eprintf "register allocation failed for %s@." x;
-    let rec remove x = function
-      | [] -> []
-      | y::ys when x = y -> remove x ys
-      | y::ys -> y::(remove x ys)
-    in
-    let y = (* 型の合うレジスタ変数を探す *)
-      List.find
-	(fun y ->
+	Alloc(r)
+      with Not_found ->
+	Format.eprintf "register allocation failed for %s@." x;
+	let rec remove x = function
+	  | [] -> []
+	  | y::ys when x = y -> remove x ys
+	  | y::ys -> y::(remove x ys)
+	in
+	let free = fv cont in
+	let free2 = fv2 cont in
+	let checkif_spillable y =
 	  not (is_reg y) &&
 	    try List.mem (M.find y regenv) (remove reg_cl all)
-	    with Not_found -> false)
-	        (List.rev free) in
-    Format.eprintf "spilling %s from %s@." y (M.find y regenv);
-    Spill(y)
+	    with Not_found -> false
+	in
+	let y = try
+		  (List.find
+		     (fun r -> not (List.mem r free2) && checkif_spillable r)
+		     free)
+	  with Not_found ->
+	    List.find checkif_spillable (List.rev free2)
+	in
+	Format.eprintf "spilling %s from %s@." y (M.find y regenv);
+	Spill(y)
 
 (* auxiliary function for g and g'_and_restore *)
 let add x r regenv =

@@ -66,8 +66,13 @@ val reg_cond : Id.t
 val reg_lr : Id.t
 val is_reg : Id.t -> bool
 
-val fv_o : t -> Id.t list
+type r_or_nothing =
+  | Nothing
+  | Reg of Id.t
+  
 val fv : t -> Id.t list
+val fv2 : t -> Id.t list
+val fv3 : t -> (Id.t -> r_or_nothing) -> Id.t list -> Id.t list
 val concat : t -> Id.t * Type.t -> t -> t
 
 val align : int -> int

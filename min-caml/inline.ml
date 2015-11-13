@@ -44,7 +44,6 @@ let rec g env cenv = function (* インライン展開ルーチン本体 (caml2html: inline_g
      let (size, zs, e) = M.find x env in
      if is_rec x e = false then
        (log := !log ^ (Format.sprintf "inlining %s@." x);
-	Format.eprintf "inlining %s@." x;
 	let env' =
 	  List.fold_left2
   	    (fun env' (z, t) y -> M.add z y env')
