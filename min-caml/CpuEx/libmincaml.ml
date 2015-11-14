@@ -16,16 +16,16 @@
      -abs);
 
 (let rec div a b =
-   let rec div_sub a b i =
+   let rec div_sub x a b i =
      if i = -1 then
-       0
+       x
      else
        if (a lsr i) >= b then
-         (1 lsl i) + div_sub (a - (b lsl i)) b (i - 1)
+         div_sub (x + (1 lsl i)) (a - (b lsl i)) b (i - 1)
        else
-         div_sub a b (i - 1)
+         div_sub x a b (i - 1)
    in
-   let abs = (div_sub a b 30) land 2147483647
+   let abs = (div_sub 0 a b 30) land 2147483647
    in
    if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
      abs
