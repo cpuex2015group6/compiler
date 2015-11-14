@@ -89,10 +89,6 @@ let rec remove_and_uniq xs = function
 (* fv_id_or_imm : id_or_imm -> Id.t list *)
 let fv_id_or_imm = function V (x) -> [x] | _ -> []
 
-type r_or_nothing =
-  | Nothing
-  | Reg of Id.t
-
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
   | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
@@ -194,7 +190,7 @@ and fv_o3 func all crs = function
      else
        fv_o3 func all crs e
 				
-(* fv3 : t -> (fun Id.t -> r_or_nothing) -> Id.t list -> Id.t list *)
+(* fv3 : t -> (fun Id.t -> Id.t') -> Id.t list -> Id.t list *)
 let fv3 e func all =
   let rec conv_all = function
     | [] -> S.empty
@@ -202,8 +198,8 @@ let fv3 e func all =
   in
   let all = conv_all all in
   let func y crs = match func(y) with
-    | Nothing -> crs
-    | Reg(r) ->
+    | None -> crs
+    | Some(r) ->
        if S.mem r all && not (List.mem r crs) then
 	 r::crs
        else
@@ -216,6 +212,29 @@ let fv3 e func all =
 let rec concat e1 xt e2 = match e1 with
   | Ans (exp) -> Let (xt, exp, e2)
   | Let (yt, exp, e1') -> Let (yt, exp, concat e1' xt e2)
+
+
+type vars =
+  | Pair of Id.t list * Id.t * vars
+  | List of Id.t list
+let rec concatfv_sub e1 (x, t) e2 = match e1 with
+  | Let ((y, t'), exp, e1') -> Pair((fv_exp exp), y, (concatfv_sub e1' (x, t) e2))
+  | Ans (exp) -> Pair ((fv_exp exp), x, (List e2))
+
+let rec remove_and_uniq_fv xs ys =
+  match ys with
+  | List(xss) ->
+     remove_and_uniq xs xss
+  | Pair([], r, ys') ->
+     remove_and_uniq_fv (S.add r xs) ys'
+  | Pair(x :: xss, r, ys) when S.mem x xs ->
+     remove_and_uniq_fv xs (Pair(xss, r, ys))
+  | Pair(x :: xss, r, ys) ->
+     x :: remove_and_uniq_fv (S.add x xs) (Pair(xss, r, ys))
+     
+(* concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list *)
+let rec concatfv e1 xt e2 =
+  remove_and_uniq_fv S.empty (concatfv_sub e1 xt e2) 
 
 (* align : int -> int *)
 let align i = i

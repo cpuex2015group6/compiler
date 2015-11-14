@@ -15,7 +15,7 @@ let rec is_rec x = function
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | Let(_, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | LetRec({ name = _; args = _; body = e1 }, e2) -> (is_rec x e1) || (is_rec x e2)
-  | App(x', _) -> if x' = x then true else false
+  | App(x', _, _) -> if x' = x then true else false
   | LetTuple(_, _, e) -> is_rec x e
   | e -> false
 
@@ -40,7 +40,7 @@ let rec g env cenv = function (* インライン展開ルーチン本体 (caml2html: inline_g
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) -> (* 関数定義の場合 (caml2html: inline_letrec) *)
      let env = M.add x (size e1, yts, e1) env in
      LetRec({ name = (x, t); args = yts; body = g env cenv e1}, g env cenv e2)
-  | App(x, ys) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
+  | App(x, ys, _) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
      let (size, zs, e) = M.find x env in
      if is_rec x e = false then
        (log := !log ^ (Format.sprintf "inlining %s@." x);

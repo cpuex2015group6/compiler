@@ -119,7 +119,7 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "\n";
      g (indent ^ "  ") e1;
      g indent e2
-  | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)
+  | App(e, es, _) -> (* 関数適用の型推論 (caml2html: typing_app) *)
      print_string (indent ^ "App " ^ e ^ "\n");
      print_string (indent ^ "  ");
      let rec print_list = function

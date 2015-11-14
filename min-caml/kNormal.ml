@@ -23,7 +23,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t
-  | App of Id.t * Id.t list
+  | App of Id.t * Id.t list * bool
   | Tuple of Id.t list
   | LetTuple of (Id.t * Type.t) list * Id.t * t
   | Get of Id.t * Id.t
@@ -62,7 +62,7 @@ let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Var(x) -> S.singleton x
   | LetRec({ name = (x, _); args = yts; body = e1 }, e2) ->
      fv_letrec x yts (fv e1) (fv e2)
-  | App(x, ys) -> S.of_list (x :: ys)
+  | App(x, ys, _) -> S.of_list (x :: ys)
   | Tuple(xs) | ExtFunApp(_, xs) -> S.of_list xs
   | Put(x, y, z) -> S.of_list [x; y; z]
   | LetTuple(xs, y, e) -> fv_lettuple xs y (fv e)
@@ -96,11 +96,11 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
   | Syntax.Mul(e1, e2) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
-	                                   (fun y -> App("mul", [x; y]), Type.Int))
+	                                   (fun y -> App("mul", [x; y], true), Type.Int))
   | Syntax.Div(e1, e2) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
-	                                   (fun y -> App("div", [x; y]), Type.Int))
+	                                   (fun y -> App("div", [x; y], true), Type.Int))
   | Syntax.Xor(e1, e2) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
@@ -199,7 +199,7 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 	       insert_let g_e1
 	                  (fun f ->
 	                   let rec bind xs = function (* "xs" are identifiers for the arguments *)
-		                   | [] -> App(f, xs), t
+		                   | [] -> App(f, xs, true), t
 		                   | e2 :: e2s ->
 		                      insert_let (g env e2)
 		                                 (fun x -> bind (xs @ [x]) e2s) in
@@ -228,7 +228,7 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 		                           match t2 with
 		                           | Type.Float -> "create_float_array_base"
 		                           | _ -> "create_array_base" in
-	                           App(l, [x; y]), Type.Array(t2)))
+	                           App(l, [x; y], true), Type.Array(t2)))
   | Syntax.ToFloat(e1) ->
      insert_let (g env e1)
 	              (fun x -> ToFloat(x), Type.Float)

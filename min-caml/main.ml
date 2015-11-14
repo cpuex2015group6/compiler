@@ -28,7 +28,7 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルへ出力する (caml2htm
 	  (Virtual.f
 	     (Closure.f
 		   (*		   		(KNormaledAst.f   *)
-		   (iter 3
+		   (iter 0
 		      (Celm.f
  		         (Alpha.f
 		            (KNormal.f

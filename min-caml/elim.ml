@@ -48,5 +48,5 @@ let rec f e =
   prerr_endline "start eliminating...";
   let e, _ = g e
   in
-  prerr_string !log;
+  prerr_endline !log;
   e

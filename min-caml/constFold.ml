@@ -101,7 +101,7 @@ let rec h env fn fargs = function
   | LetTuple(xts, y, e) ->
      let e', f = h env fn fargs e in
      (LetTuple(xts, y, e'), f)
-  | App(x, yts) as e when x = fn ->
+  | App(x, yts, _) as e when x = fn ->
      (e, List.fold_left2
        (fun f y y' ->
 	 if isconst y then
@@ -157,7 +157,7 @@ let rec g env fenv = function (* 定数畳み込みルーチン本体 (caml2html: constfold_
 		   xts
 		   (findt y env))
   | LetTuple(xts, y, e) -> LetTuple(xts, y, g env fenv e)
-  | App(x, ys) as exp when M.mem x fenv ->
+  | App(x, ys, f) as exp when f && M.mem x fenv ->
      let (zs, e, t) = M.find x fenv in
      let cys = List.fold_left (fun a y -> a@[expandconst y env]) [] ys in
      let listconst _ =
@@ -209,7 +209,7 @@ let rec g env fenv = function (* 定数畳み込みルーチン本体 (caml2html: constfold_
 			  match y with
 			  | Var(y) -> a@[y]
 			  | _ -> assert false
-		      ) [] cys))))
+		      ) [] cys), true)))
      else
        exp
   | e -> e

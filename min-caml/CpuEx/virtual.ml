@@ -171,6 +171,7 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts;
 
 (* プログラム全体の仮想マシンコード生成 *)
 let f (Closure.Prog (fundefs, e)) =
+  prerr_endline "generating virtual assembly...";
   data := [];
   let fundefs = List.map h fundefs in
   let e = g M.empty e in

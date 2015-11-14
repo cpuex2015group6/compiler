@@ -100,8 +100,9 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      let e1' = g (M.add_list yts env') known' e1 in
      (* 本当に自由変数がなかったか、変換結果e1'を確認する *)
      (* 注意: e1'にx自身が変数として出現する場合はclosureが必要!
-         (thanks to nuevo-namasute and azounoman; test/cls-bug2.ml参照) *)
-     let zs = S.diff (fv e1') (S.of_list (List.map fst yts)) in
+        (thanks to nuevo-namasute and azounoman; test/cls-bug2.ml参照) *)
+     let fve1' = fv e1' in
+     let zs = S.diff fve1' (S.of_list (List.map fst yts)) in
      let known', e1' =
 	     if S.is_empty zs then known', e1' else
 	       (* 駄目だったら状態(toplevelの値)を戻して、クロージャ変換をやり直す *)
@@ -110,7 +111,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
 	        toplevel := toplevel_backup;
 	        let e1' = g (M.add_list yts env') known e1 in
 	        known, e1') in
-     let zs = S.elements (S.diff (fv e1') (S.add x (S.of_list (List.map fst yts)))) in (* 自由変数のリスト *)
+     let zs = S.elements (S.diff (if S.is_empty zs then fve1' else fv e1') (S.add x (S.of_list (List.map fst yts)))) in (* 自由変数のリスト *)
      let zts = List.map (function
                           | z when M.mem z env'  ->
                              (z, M.find z env')
@@ -123,10 +124,10 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      else
        (log := !log ^ Format.sprintf "eliminating closure(s) %s@." x;
 	e2') (* 出現しなければMakeClsを削除 *)
-  | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
+  | KNormal.App(x, ys, _) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
       log := !log ^ Format.sprintf "directly applying %s@." x;
       AppDir(Id.L(x), ys)
-  | KNormal.App(f, xs) -> AppCls(f, xs)
+  | KNormal.App(f, xs, _) -> AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)
   | KNormal.LetTuple(xts, y, e) -> LetTuple(xts, y, g (M.add_list xts env) known e)
   | KNormal.Get(x, y) -> Get(x, y)
@@ -141,5 +142,5 @@ let f e =
   let e' = g M.empty S.empty e in
   let e = Prog(List.rev !toplevel, e')
   in
-  prerr_string !log;
+  prerr_endline !log;
   e
