@@ -142,9 +142,9 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	     unify t (g env e1);
 	     g (M.add x t env) e2
     | LetDef((x, t), e1) -> (* letの型推論 (caml2html: typing_let) *)
-	     unify t (g env e1);
-       genv := M.add x t !genv;
-       Type.Unit
+       unify t (g env e1);
+      genv := M.add x t !genv;
+      Type.Unit
     | Var(x) when M.mem x env -> M.find x env (* 変数の型推論 (caml2html: typing_var) *)
     | Var(x) when M.mem x !genv -> M.find x !genv
     | Var(x) when M.mem x !extenv -> M.find x !extenv
@@ -159,7 +159,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 	     g env e2
     | LetRecDef({ name = (x, t); args = yts; body = e1 }) -> (* 宣言ver let recの型推論 *)
 	     let env = M.add x t env in
-       genv := M.add x t !genv;
+	     genv := M.add x t !genv;
 	     unify t (Type.Fun(List.map snd yts, g (M.add_list yts env) e1));
        Type.Unit
     | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)

@@ -21,7 +21,7 @@
        x
      else
        if (a lsr i) >= b then
-         div_sub (x + (1 lsl i)) (a - (b lsl i)) b (i - 1)
+         div_sub ((1 lsl i) + x) (a - (b lsl i)) b (i - 1)
        else
          div_sub x a b (i - 1)
    in
