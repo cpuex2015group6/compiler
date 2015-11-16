@@ -39,6 +39,12 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | ExtFunApp of Id.t * Id.t list
  and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
+let rec size = function
+  | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2)
+  | Let(_, e1, e2) | LetRec({ body = e1 }, e2) -> 1 + size e1 + size e2
+  | LetTuple(_, _, e) -> 1 + size e
+  | _ -> 1
+
 let rec fv_let x e1 e2 =
   S.union e1 (S.remove x e2)
 

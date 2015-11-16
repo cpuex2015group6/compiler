@@ -37,6 +37,7 @@ type t =
   | ExtFunApp of Id.t * Id.t list
 and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
+val size : t -> int
 val fv : t -> S.t
 val fv_let : Id.t -> S.t -> S.t -> S.t
 val fv_if : Id.t -> Id.t -> S.t -> S.t -> S.t

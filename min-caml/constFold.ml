@@ -229,7 +229,7 @@ let rec g env fenv gflag = function (* 定数畳み込みルーチン本体 (caml2html: cons
 	    exfunc := exfunc2;
 	    flag
 	in
-	if not flag || is_explosive () || (Inline.size e > 200 && (Inline.size body) - (M.cardinal lc) >= (Inline.size e) - 10) then
+	if not flag || is_explosive () || (KNormal.size e > 10) || (KNormal.size body) - (M.cardinal lc) >= (KNormal.size e) - 3 then
 	  exp
 	else
 	  (let fn = String.map (fun c -> if c = '-' then 'M' else c) (M.fold (fun k (d,t) a -> a ^ "_" ^ k ^ "_" ^ (
@@ -239,6 +239,13 @@ let rec g env fenv gflag = function (* 定数畳み込みルーチン本体 (caml2html: cons
 	    | _ -> assert false
 	   )) lc x)
 	   in
+	   prerr_string (fn^"===");
+	   prerr_int (KNormal.size e);
+	   prerr_string "###";
+	   prerr_int (KNormal.size body);
+	   prerr_string "&";
+	   prerr_int (M.cardinal lc);
+	   prerr_endline "";
 	   (if M.mem fn fenv || M.mem fn !exenv then
 	    ()
 	    else

@@ -358,31 +358,18 @@
        else
          0.0 -. (1.57079637 -. kernel_atan (1.0 /. b)));
 
-(* 型推論の関係で、create_arrayとして直接呼ぶ事はできない *)
 (let rec create_array_base n i =
-   let hp = get_hp ()
-   in
-   let rec create_array_sub n i =
-     if n = 0 then
+   let hp = get_hp () in
+   let hp_a = Array(hp) in
+   set_hp (hp + n);
+   let rec create_array_sub array n i c =
+     if n = c then
        ()
      else
-       ((Array (get_hp ())).(0) <- i; 
-        (set_hp ((get_hp ()) + 1);
-         create_array_sub (n - 1) i))
+       (array.(c) <- i;
+	create_array_sub array n i (c + 1))
    in
-   create_array_sub n i;
-   Array(hp));
+   create_array_sub hp_a n i 0;
+   hp_a);
 
-(let rec create_float_array_base n i =
-   let hp = get_hp ()
-   in
-   let rec create_array_sub n i =
-     if n = 0 then
-       ()
-     else
-       ((Array (get_hp ())).(0) <- Int(i);
-        set_hp ((get_hp ()) + 1);
-        create_array_sub (n - 1) i)
-   in
-   create_array_sub n i;
-   Array(hp));
+(let rec create_float_array_base n i = create_array_base n (Int(i)));

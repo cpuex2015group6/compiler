@@ -93,8 +93,10 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.LetRec({ KNormal.name = (x, t); KNormal.args = yts; KNormal.body = e1 }, e2) -> (* 関数定義の場合 (caml2html: closure_letrec) *)
      (* 関数定義let rec x y1 ... yn = e1 in e2の場合は、
 	 xに自由変数がない(closureを介さずdirectに呼び出せる)
-	 と仮定し、knownに追加してe1をクロージャ変換してみる *)
-     let toplevel_backup = !toplevel in
+	と仮定し、knownに追加してe1をクロージャ変換してみる *)
+     Format.eprintf "function size of %s is %d@." x (KNormal.size e1);
+    Format.eprintf "%!";
+    let toplevel_backup = !toplevel in
      let env' = M.add x t env in
      let known' = S.add x known in
      let e1' = g (M.add_list yts env') known' e1 in
