@@ -21,7 +21,7 @@ let reg r =
   else r 
 
 let llabel oc r1 label =
-  Printf.fprintf oc "\tlimml\t%s, %s\n" r1 label
+  Printf.fprintf oc "\tlimm\t%s, %s\n" r1 label
 
 let op1 oc inst r1 imm =
   Printf.fprintf oc "\t%s\t%s, %d\n" inst r1 imm
@@ -31,20 +31,22 @@ let op3 oc inst r1 r2 r3 =
 
 (* limmは内部でreg_tmpを破壊するので、 limm reg_tmp, 0 などとしてはいけない *)
 let rec limm oc r1 imm =
-  let limml_sub oc r1 imm =
-      Printf.fprintf oc "\tlimml\t%s, %d\n" r1 imm in
-  let limmh_sub oc r1 imm =
-      Printf.fprintf oc "\tlimmh\t%s, %d\n" r1 imm in
+  let limm_sub oc r1 imm =
+    Printf.fprintf oc "\tlimm\t%s, %d\n" r1 imm in
   match imm with
-  | _ when imm >= 0 && imm < 32768 -> 
-     limml_sub oc r1 imm
-  | _ when imm < 0 -> 
+  | _ when imm >= 0 && imm < 32768 ->
+     limm_sub oc r1 imm
+  | _ when imm < 0 ->
      limm oc r1 (0x100000000 + imm)
   | _ ->
      let n = imm lsr 16 in
      let m = imm lxor (n lsl 16) in
-     limml_sub oc r1 m;
-     limmh_sub oc r1 n
+     let r = r1 in
+     limm_sub oc r n;
+     limm_sub oc reg_tmp 16;
+     op3 oc "sll" r r reg_tmp;
+     limm_sub oc reg_tmp m;
+     op3 oc "or" r r reg_tmp
 
 (* 関数呼び出しのために引数を並べ替える (register shuffling) *)
 let rec shuffle sw xys = 
@@ -562,10 +564,10 @@ let f oc (Prog(data, vars, fundefs, e)) =
   Printf.fprintf oc "\t.align 2\n";
   List.iter (fun fundef -> h oc fundef) fundefs;
   Printf.fprintf oc "_min_caml_init: # main entry point\n";
-  Printf.fprintf oc "   # stack start from 16MB - 5MB (11534336)\n";
-  limm oc reg_sp ((16-5)*1024*1024);
-  Printf.fprintf oc "   # heap start from 16MB - 4MB (12582912)\n";
-  limm oc (reg reg_hp) ((16-4)*1024*1024);
+  Printf.fprintf oc "   # stack start from 3MB\n";
+  limm oc reg_sp ((3*1024*1024)/4);
+  Printf.fprintf oc "   # heap start from 0\n";
+  limm oc (reg reg_hp) 0;
   Printf.fprintf oc "   # main program start\n";
   Printf.fprintf oc "_min_caml_start: # main entry point\n";
   stackset := S.empty;

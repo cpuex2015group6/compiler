@@ -54,18 +54,11 @@ let rec g env cenv fmap = function (* インライン展開ルーチン本体 (caml2html: inl
      if not (M.mem x fmap) then
        g env cenv fmap e2
      else
-       (
-	prerr_string (x^"@@@");
-	 prerr_int (M.find x fmap);
-	 prerr_string "+++";
-	 prerr_int (size e1);
-	prerr_endline "";
        let env = M.add x (yts, e1) env in
        LetRec({ name = (x, t); args = yts; body = g env cenv fmap e1}, g env cenv fmap e2)
-       )
   | App(x, ys) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
      let (zs, e) = M.find x env in
-     if is_rec x e = false && ((size e) < 200 || (M.find x fmap) < 3) then
+     if is_rec x e = false && ((size e) < 80 || (M.find x fmap) < 3) then
        (log := !log ^ (Format.sprintf "inlining %s@." x);
 	let env' =
 	  List.fold_left2
