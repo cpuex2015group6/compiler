@@ -136,7 +136,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), FMul(y, z)) -> 
      op3 oc "fmul" (reg x) (reg y) (reg z)
   | (NonTail(x), FDiv(y, z)) -> 
-     op3 oc "fdiv" (reg x) (reg y) (reg z)
+     op3 oc "finv" reg_imm (reg z) reg_zero;
+     op3 oc "fmul" (reg x) (reg y) reg_imm
   | (NonTail(x), Sqrt(y)) -> 
      op3 oc "fsqrt" (reg x) (reg y) reg_zero
   | (NonTail(x), Lfd(y, V(z))) ->
