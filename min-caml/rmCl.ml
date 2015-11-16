@@ -12,7 +12,7 @@ let rec g env fenv  = function
      else
        let x = (x^"_nc") in
        let yts = yts in
-       (*       let env = M.add x  env in*)
+       let env = M.add x [] env in
        LetRec({ name = (x, t); args = yts; body = g env fenv e1 }, g env fenv e2)
   | LetTuple(xts, y , e) -> LetTuple(xts, y, (g env fenv e))
   | App(x, ys) when M.mem x env ->
