@@ -564,8 +564,8 @@ let f oc (Prog(data, vars, fundefs, e)) =
   Printf.fprintf oc "\t.align 2\n";
   List.iter (fun fundef -> h oc fundef) fundefs;
   Printf.fprintf oc "_min_caml_init: # main entry point\n";
-  Printf.fprintf oc "   # stack start from 3MB\n";
-  limm oc reg_sp ((3*1024*1024)/4);
+  Printf.fprintf oc "   # stack start from 2MB\n";
+  limm oc reg_sp ((2*1024*1024)/4);
   Printf.fprintf oc "   # heap start from 0\n";
   limm oc (reg reg_hp) 0;
   Printf.fprintf oc "   # main program start\n";
