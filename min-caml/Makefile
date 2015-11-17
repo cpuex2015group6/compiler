@@ -19,8 +19,8 @@ clean:: nobackup
 
 # ↓もし実装を改造したら、それに合わせて変える
 SOURCES = float.c type.ml id.ml m.ml s.ml \
-syntax.ml ast.mli ast.ml kNormaledAst.mli kNormaledAst.ml celm.mli celm.ml lexer.mll parser.mly typing.mli typing.ml kNormal.mli kNormal.ml \
-rmCl.mli rmCl.ml lnFn.mli lnFn.ml alpha.mli alpha.ml beta.mli beta.ml assoc.mli assoc.ml \
+syntax.ml ast.mli ast.ml kNormaledAst.mli kNormaledAst.ml celm.mli celm.ml lexer.mll parser.mly typing.mli typing.ml kNormal.mli kNormal.ml alpha.mli alpha.ml rmCl.mli rmCl.ml lnFn.mli lnFn.ml \
+beta.mli beta.ml assoc.mli assoc.ml \
 inline.mli inline.ml elim.mli elim.ml constFold.mli constFold.ml \
 opt.mli opt.ml closure.mli closure.ml asm.mli asm.ml virtual.mli virtual.ml \
 simm.mli simm.ml regAlloc.mli regAlloc.ml emit.mli emit.ml \

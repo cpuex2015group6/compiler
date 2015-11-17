@@ -9,16 +9,16 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルへ出力する (caml2htm
        (Simm.f
 	  (Virtual.f
 	     (Closure.f
-		(*	(KNormaledAst.f   *)
+		(KNormaledAst.f   
 		(Opt.f 100
 		   (LnFn.f
-			 (*		      (RmCl.f*)
+		      (RmCl.f
 			 (Celm.f
  		            (Alpha.f
 		               (KNormal.f
 				  (Typing.f
 				  (*                      (Ast.f *)
-			             (Parser.exp Lexer.token l)))))))))))
+			             (Parser.exp Lexer.token l)))))))))))))
 (* ))) *)
 
 let string s = lexbuf stdout (Lexing.from_string s) (* 文字列をコンパイルして標準出力に表示する (caml2html: main_string) *)

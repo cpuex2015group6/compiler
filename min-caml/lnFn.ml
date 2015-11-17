@@ -17,7 +17,8 @@ let rec g env = function
 	  toplevel := Some ({ name = (x, t); args = yts; body = e1 } :: l);
 	 (g env e2)
      else
-       LetRec({ name = (x, t); args = yts; body = e1 }, g env e2)
+       (assert false;
+       LetRec({ name = (x, t); args = yts; body = e1 }, g env e2))
   | LetRec({ name = (x, t); args = yts; body = e1}, e2) as exp ->
      let env = S.add x env in 
      toplevel := Some [];

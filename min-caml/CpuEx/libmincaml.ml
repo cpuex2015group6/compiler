@@ -1,14 +1,14 @@
 (let rec mul a b =
-   let rec mul_sub x a b i =
+   let rec mul_sub x i =
      if i = -1 then 
        x
      else
        if (b land (1 lsl i)) = 0 then
-         mul_sub x a b (i - 1)
+         mul_sub x (i - 1)
        else
-          mul_sub (x + (a lsl i)) a b (i - 1)
+          mul_sub (x + (a lsl i)) (i - 1)
    in
-   let abs = (mul_sub 0 a b 30) land 2147483647
+   let abs = (mul_sub 0 30) land 2147483647
    in
    if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
      abs
@@ -256,9 +256,10 @@
    print_byte i);
 
 (let rec kernel_sin a =
-   let a3 = a *. a *. a in
-   let a5 = a3 *. a *. a in
-   let a7 = a5 *. a *. a in
+   let a2 = a *. a in
+   let a3 = a *. a2 in
+   let a5 = a3 *. a2 in
+   let a7 = a5 *. a2 in
    a -. 0.16666668 *. a3 +. 0.008332824 *. a5 -. 0.00019587841 *. a7);
 
 (let rec kernel_cos a = 
@@ -362,14 +363,14 @@
    let hp = get_hp () in
    let hp_a = Array(hp) in
    set_hp (hp + n);
-   let rec create_array_sub array n i c =
+   let rec create_array_sub c =
      if n = c then
        ()
      else
-       (array.(c) <- i;
-	create_array_sub array n i (c + 1))
+       (hp_a.(c) <- i;
+	create_array_sub (c + 1))
    in
-   create_array_sub hp_a n i 0;
+   create_array_sub 0;
    hp_a);
 
 (let rec create_float_array_base n i = create_array_base n (Int(i)));

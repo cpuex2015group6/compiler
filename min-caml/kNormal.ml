@@ -51,9 +51,13 @@ let rec fv_let x e1 e2 =
 let rec fv_if x y e1 e2 =
   S.add x (S.add y (S.union e1 e2))
 
-let rec fv_letrec x yts e1 e2 =
+let rec fv_func x yts e1 =
   let zs = S.diff e1 (S.of_list (List.map fst yts)) in
-  S.diff (S.union zs e2) (S.singleton x)
+  S.diff zs (S.singleton x)
+    
+let rec fv_letrec x yts e1 e2 =
+  let zs = fv_func x yts e1 in
+  (S.union zs (S.diff e2 (S.singleton x)))
 
 let rec fv_lettuple xs y e =
   S.add y (S.diff e (S.of_list (List.map fst xs)))

@@ -543,10 +543,14 @@ and j indent = function
      List.iter (fun y -> Printf.fprintf stdout "%s, " y) zs;
      Printf.fprintf stdout "\n"
 
+let show fundefs e =
+  print_endline ">>>>>>>>>>>>>>>>emit.ml>>>>>>>>>>>>>>>>>";
+  List.iter (fun {name= Id.L(name); args=_; fargs=_; body= e; ret=r} -> print_string (name^":\n"); i "" (Tail, e)) fundefs;
+  print_endline "min_caml_start:";
+  i "" (NonTail("r08"), e)
+       
 let f oc (Prog(data, vars, fundefs, e)) =
-  (*List.iter (fun {name= Id.L(name); args=_; fargs=_; body= e; ret=r} -> print_string (name^":\n"); i "" (Tail, e)) fundefs;
-  print_string "min_caml_start:\n";
-  i "" (NonTail("r08"), e);*)
+  show fundefs e;
   Format.eprintf "generating assembly...@.";
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_init\n";
@@ -567,8 +571,8 @@ let f oc (Prog(data, vars, fundefs, e)) =
   Printf.fprintf oc "_min_caml_init: # main entry point\n";
   Printf.fprintf oc "   # stack start from 2MB\n";
   limm oc reg_sp ((2*1024*1024)/4);
-  Printf.fprintf oc "   # heap start from 0\n";
-  limm oc (reg reg_hp) 0;
+  Printf.fprintf oc "   # heap start from 1024B\n";
+  limm oc (reg reg_hp) 256;
   Printf.fprintf oc "   # main program start\n";
   Printf.fprintf oc "_min_caml_start: # main entry point\n";
   stackset := S.empty;

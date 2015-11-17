@@ -124,14 +124,15 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      toplevel := { name = (Id.L(x), t); args = yts; formal_fv = zts; body = e1' } :: !toplevel; (* トップレベル関数を追加 *)
      let e2' = g env' known' e2 in
      if S.mem x (fv e2') then (* xが変数としてe2'に出現するか *)
-	     MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2') (* 出現していたら削除しない *)
+	MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2') (* 出現していたら削除しない *)
      else
        (log := !log ^ Format.sprintf "eliminating closure(s) %s@." x;
 	e2') (* 出現しなければMakeClsを削除 *)
   | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
       log := !log ^ Format.sprintf "directly applying %s@." x;
+      if List.length ys > 79 then (prerr_int (List.length ys);assert false) else ();
       AppDir(Id.L(x), ys)
-  | KNormal.App(f, xs) -> AppCls(f, xs)
+  | KNormal.App(f, xs) -> assert false;AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)
   | KNormal.LetTuple(xts, y, e) -> LetTuple(xts, y, g (M.add_list xts env) known e)
   | KNormal.Get(x, y) -> Get(x, y)
