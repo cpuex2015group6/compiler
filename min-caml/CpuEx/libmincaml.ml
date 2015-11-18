@@ -1,14 +1,14 @@
 (let rec mul a b =
-   let rec mul_sub x i =
+   let rec mul_sub a b x i =
      if i = -1 then 
        x
      else
        if (b land (1 lsl i)) = 0 then
-         mul_sub x (i - 1)
+         mul_sub a b x (i - 1)
        else
-          mul_sub (x + (a lsl i)) (i - 1)
+          mul_sub a b (x + (a lsl i)) (i - 1)
    in
-   let abs = (mul_sub 0 30) land 2147483647
+   let abs = (mul_sub a b 0 30) land 2147483647
    in
    if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
      abs
@@ -363,14 +363,14 @@
    let hp = get_hp () in
    let hp_a = Array(hp) in
    set_hp (hp + n);
-   let rec create_array_sub c =
+   let rec create_array_sub hp_a n i c =
      if n = c then
        ()
      else
        (hp_a.(c) <- i;
-	create_array_sub (c + 1))
+	create_array_sub hp_a n i (c + 1))
    in
-   create_array_sub 0;
+   create_array_sub hp_a n i 0;
    hp_a);
 
 (let rec create_float_array_base n i = create_array_base n (Int(i)));
