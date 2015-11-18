@@ -132,7 +132,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
       log := !log ^ Format.sprintf "directly applying %s@." x;
       if List.length ys > 79 then (prerr_int (List.length ys);assert false) else ();
       AppDir(Id.L(x), ys)
-  | KNormal.App(f, xs) -> assert false;AppCls(f, xs)
+  | KNormal.App(f, xs) -> (*assert false;*)AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)
   | KNormal.LetTuple(xts, y, e) -> LetTuple(xts, y, g (M.add_list xts env) known e)
   | KNormal.Get(x, y) -> Get(x, y)

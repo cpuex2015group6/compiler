@@ -550,21 +550,31 @@ let show fundefs e =
   i "" (NonTail("r08"), e)
        
 let f oc (Prog(data, vars, fundefs, e)) =
-  show fundefs e;
+  (*show fundefs e;*)
   Format.eprintf "generating assembly...@.";
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_init\n";
   Printf.fprintf oc "\t.align 2\n";
   llabel oc reg_imm "_min_caml_init";
   op3 oc "jr" reg_tmp reg_imm reg_zero;
+  let conv_float f =
+    let s = if f >= 0.0 then 0 else 1 in
+    let f = abs_float(f) in
+    let e, m = if f = 0.0 then 0, 0 else
+	let m', e = frexp f in
+	let get_man f = int_of_float (ldexp (f -. 0.5) 24) in
+	e + 126, get_man m'
+    in
+    (s lsl 31) + (e lsl 23) + m
+  in
   (if data <> [] then
-    (Printf.fprintf oc "\t.data\n\t.literal8\n";
-     List.iter
-       (fun (Id.L(x), d) ->
-	      Printf.fprintf oc "\t.align 3\n";
-	      Printf.fprintf oc "%s:\t # %f\n" x d;
-	      Printf.fprintf oc "\t.long\t%fd\n" d)
-       data));
+      (Printf.fprintf oc "\t.data\n\t.literal8\n";
+       List.iter
+	 (fun (Id.L(x), d) ->
+	   Printf.fprintf oc "\t.align 3\n";
+	   Printf.fprintf oc "%s:\t # %f\n" x d;
+	   Printf.fprintf oc "\t.long\t%d\n" (conv_float d))
+	 data));
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.align 2\n";
   List.iter (fun fundef -> h oc fundef) fundefs;

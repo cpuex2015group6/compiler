@@ -1,3 +1,5 @@
+(* アルティメットまどか *)
+
 open KNormal
 
 let rec g env fenv venv = function
@@ -23,7 +25,7 @@ let rec g env fenv venv = function
 	   (x, Id.genid x, M.find x venv)::l
 	 else
 	   l) bfv [] in
-       let fn = List.fold_left (fun fn (x, _, _) -> fn ^ "_cl_" ^ x) x list in
+       let fn = List.fold_left (fun fn (x, _, _) -> fn ^ "_fv_" ^ x) x list in
        let fenv = S.add x (S.add fn fenv) in
        let yts = List.fold_left (fun yts (_, x, t) -> (x,t)::yts) yts list in
        let env = M.add x (fn, list) env in
@@ -43,7 +45,7 @@ let rec g env fenv venv = function
   | e -> e
   
 let rec f e =
-  prerr_endline "removing closure...";
+  prerr_endline "removing free variables...";
   let rec iter e =
     let e' = g M.empty S.empty M.empty e in
     if e = e' then
@@ -52,6 +54,6 @@ let rec f e =
       iter e'
   in
   let e = iter e in
-  prerr_endline "removing closure end";
+  prerr_endline "removing free variables end";
   e
     
