@@ -2283,7 +2283,7 @@ in
 
 (* レイトレの各ステップを行う関数を順次呼び出す *)
 let rec rt size_x size_y =
-  (
+(
  image_size.(0) <- size_x;
  image_size.(1) <- size_y;
  image_center.(0) <- size_x / 2;
