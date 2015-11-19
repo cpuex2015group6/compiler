@@ -2,6 +2,8 @@
 
 open KNormal
 
+let flag = true
+
 let rec g env fenv venv = function
   | IfEq(x, y, e1, e2) ->
      let e1 = g env fenv venv e1 in
@@ -45,15 +47,20 @@ let rec g env fenv venv = function
   | e -> e
   
 let rec f e =
-  prerr_endline "removing free variables...";
-  let rec iter e =
-    let e' = g M.empty S.empty M.empty e in
-    if e = e' then
-      e'
-    else
-      iter e'
-  in
-  let e = iter e in
-  prerr_endline "removing free variables end";
-  e
+  if flag then
+    (
+      prerr_endline "removing free variables...";
+      let rec iter e =
+	let e' = g M.empty S.empty M.empty e in
+	if e = e' then
+	  e'
+	else
+	  iter e'
+      in
+      let e = iter e in
+      prerr_endline "removing free variables end";
+      e
+    )
+  else
+    e
     

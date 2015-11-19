@@ -175,4 +175,5 @@ let f (Closure.Prog (fundefs, e)) =
   data := [];
   let fundefs = List.map h fundefs in
   let e = g M.empty e in
+  prerr_endline "virtual assembly generation end";
   Prog (!data, !vars, fundefs, e)

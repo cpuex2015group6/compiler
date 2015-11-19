@@ -45,4 +45,7 @@ let h { name = l; args = xs; fargs = ys; body = e; ret = t } =
 
 (* プログラム全体の 16 bit 即値最適化 *)
 let f (Prog(data, vars, fundefs, e)) =
-  Prog(data, vars, List.map h fundefs, g M.empty e)
+  prerr_endline "folding imm...";
+  let e = Prog(data, vars, List.map h fundefs, g M.empty e) in
+  prerr_endline "folding imm end";
+  e

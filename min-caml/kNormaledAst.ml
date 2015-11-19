@@ -89,14 +89,18 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
   | IfEq(e1, e2, t1, t2) ->
      print_string (indent ^ "IfEq " ^ e1 ^ " " ^ e2 ^ "\n");
+    print_string (indent ^ "{\n");
     g (indent ^ "  ") t1;
-    print_string (indent ^ "Else " ^ "\n");
-    g (indent ^ "  ") t2
+    print_string (indent ^ "} Else {" ^ "\n");
+    g (indent ^ "  ") t2;
+    print_string (indent ^ "}\n")
   | IfLE(e1, e2, t1, t2) ->
      print_string (indent ^ "IfLE " ^ e1 ^ " " ^ e2 ^ "\n");
+    print_string (indent ^ "{\n");
     g (indent ^ "  ") t1;
-    print_string (indent ^ "Else " ^ "\n");
-    g (indent ^ "  ") t2
+    print_string (indent ^ "} Else {" ^ "\n");
+    g (indent ^ "  ") t2;
+    print_string (indent ^ "}\n")
   | Let((e, t), t1, t2) ->
      print_string (indent ^ "Let " ^ e ^ " ");
      print_type t;
@@ -117,7 +121,9 @@ let rec g indent e = (* AST表示ルーチン *)
      in
      print_list (List.map (fun (x, t) -> x) yts);
      print_string "\n";
+     print_string (indent ^ "{\n");
      g (indent ^ "  ") e1;
+     print_string (indent ^ "}\n");
      g indent e2
   | App(e, es) -> (* 関数適用の型推論 (caml2html: typing_app) *)
      print_string (indent ^ "App " ^ e ^ "\n");

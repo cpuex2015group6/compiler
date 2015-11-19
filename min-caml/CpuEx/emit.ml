@@ -154,10 +154,13 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      limm oc reg_imm z;
      op3 oc "add" reg_imm (reg y) reg_imm;
      op3 oc "stw" reg_imm (reg x) reg_zero
+  | (NonTail(x), ToFloat(y)) when x = y -> ()
   | (NonTail(x), ToFloat(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
+  | (NonTail(x), ToInt(y)) when x = y -> ()
   | (NonTail(x), ToInt(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
+  | (NonTail(x), ToArray(y)) when x = y -> ()
   | (NonTail(x), ToArray(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
   | (NonTail(x), In) -> 
@@ -550,7 +553,7 @@ let show fundefs e =
   i "" (NonTail("r08"), e)
        
 let f oc (Prog(data, vars, fundefs, e)) =
-  (*show fundefs e;*)
+  show fundefs e;
   Format.eprintf "generating assembly...@.";
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_init\n";
@@ -580,9 +583,9 @@ let f oc (Prog(data, vars, fundefs, e)) =
   List.iter (fun fundef -> h oc fundef) fundefs;
   Printf.fprintf oc "_min_caml_init: # main entry point\n";
   Printf.fprintf oc "   # stack start from 2MB\n";
-  limm oc reg_sp ((2*1024*1024)/4);
+  limm oc reg_sp stack_start;
   Printf.fprintf oc "   # heap start from 1024B\n";
-  limm oc (reg reg_hp) 256;
+  limm oc (reg reg_hp) heap_start;
   Printf.fprintf oc "   # main program start\n";
   Printf.fprintf oc "_min_caml_start: # main entry point\n";
   stackset := S.empty;

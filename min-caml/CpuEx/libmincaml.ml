@@ -1,14 +1,14 @@
 (let rec mul a b =
-   let rec mul_sub a b x i =
+   let rec mul_sub x i =
      if i = -1 then 
        x
      else
        if (b land (1 lsl i)) = 0 then
-         mul_sub a b x (i - 1)
+         mul_sub x (i - 1)
        else
-          mul_sub a b (x + (a lsl i)) (i - 1)
+          mul_sub (x + (a lsl i)) (i - 1)
    in
-   let abs = (mul_sub a b 0 30) land 2147483647
+   let abs = (mul_sub 0 30) land 2147483647
    in
    if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
      abs
@@ -40,7 +40,7 @@
 
 (let rec read_byte u = input u);
 
-(let rec print_int_without_null a =
+(let rec print_int a =
    let rec print_int_sub a =
      if a < 10 then
        print_byte (a + 48)
@@ -53,11 +53,6 @@
        print_int_sub (-a))
     else
       print_int_sub a));
-
-
-(let rec print_int a =
-   print_int_without_null a;
-   (*print_byte 0*));
 
 (let rec prerr_int_without_null a =
    let rec prerr_int_sub a =
@@ -79,6 +74,7 @@
    prerr_byte 0);
 
 (let rec is_number b =
+   (* ２つのifを潰したい *)
    if b >= 48 then
      if b <= 57 then
        true
@@ -169,7 +165,7 @@
    in
    let i = int_of_float f
    in
-   print_int_without_null i;
+   print_int i;
    print_byte 46;
    let p = f -. (float_of_int i)
    in
@@ -268,6 +264,7 @@
    let a6 = a2 *. a4 in
    1.0 -. 0.5 *. a2 +. 0.04166368 *. a4 -. 0.0013695068 *. a6);
 
+(* 最適化 *)
 (let rec sin a =
    if a >= 0.0 then
      if a > 6.28318548202514 then
@@ -363,14 +360,14 @@
    let hp = get_hp () in
    let hp_a = Array(hp) in
    set_hp (hp + n);
-   let rec create_array_sub hp_a n i c =
-     if n = c then
+   let rec create_array_sub c =
+     if c = 0 then
        ()
      else
        (hp_a.(c) <- i;
-	create_array_sub hp_a n i (c + 1))
+	create_array_sub (c - 1))
    in
-   create_array_sub hp_a n i 0;
+   create_array_sub n;
    hp_a);
 
 (let rec create_float_array_base n i = create_array_base n (Int(i)));
