@@ -70,21 +70,7 @@ let rec g env fenv fn = function
 		| Array(x), Array(y) when x = y ->
 		   M.add k (d, t) nm
 		| _ ->
-		   if List.fold_left2
-		     (fun a (z, t) y ->
-		       if z = k then
-			 match M.find y env with
-			 | Var(v) when v = k -> a
-			 | Var(v) -> prerr_string v; prerr_string "@@@"; prerr_endline k;false
-			 | _ -> false
-		       else a
-		     )
-		     true
-		     zs
-		     ys then
-		     M.add k (d, t) nm
-		   else
-		     nm)
+		   nm)
 	   with Not_found -> nm)
 	 pargs
 	 M.empty

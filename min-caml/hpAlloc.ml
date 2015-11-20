@@ -57,5 +57,5 @@ let rec g env fenv = function
   | e -> e
 
 let rec f e =
-  hp := Some 0;
+  hp := Some Asm.heap_start;
   g M.empty M.empty e
