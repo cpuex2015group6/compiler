@@ -59,6 +59,10 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Float ");
      print_float v;
      print_string "\n"
+  | Array(v) ->
+     print_string (indent ^ "Array ");
+     print_int v;
+     print_string "\n"
   | Neg(e) ->
      print_string (indent ^ "Neg " ^ e ^ "\n")
   | Add(e1, e2) ->

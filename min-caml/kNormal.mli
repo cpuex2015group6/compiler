@@ -2,6 +2,7 @@ type t =
   | Unit
   | Int of int
   | Float of float
+  | Array of int
   | Neg of Id.t
   | Add of Id.t * Id.t
   | Sub of Id.t * Id.t

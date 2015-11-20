@@ -1,5 +1,3 @@
-(* アルティメットまどか *)
-
 open KNormal
 
 let flag = true

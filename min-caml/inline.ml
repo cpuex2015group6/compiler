@@ -33,30 +33,25 @@ let rec h e =
   | _ -> M.empty
        
      
-let rec g env cenv fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g) *)
+let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g) *)
   | IfEq(x, y, e1, e2) ->
-     let e1' = g env cenv fmap e1 in
-     let e2' = g env cenv fmap e2 in
+     let e1' = g env fmap e1 in
+     let e2' = g env fmap e2 in
      IfEq(x, y, e1', e2')
   | IfLE(x, y, e1, e2) ->
-     let e1' = g env cenv fmap e1 in
-     let e2' = g env cenv fmap e2 in
+     let e1' = g env fmap e1 in
+     let e2' = g env fmap e2 in
      IfLE(x, y, e1', e2')
   | Let((x, t), e1, e2) ->
-     let e1' = g env cenv fmap e1 in
-     let cenv =
-       match e1' with
-       | Int(_) | Float(_) -> M.add x e1' cenv
-       | _ -> cenv
-     in
-     let e2' = g env cenv fmap e2 in
+     let e1' = g env fmap e1 in
+     let e2' = g env fmap e2 in
      Let((x, t), e1', e2')
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) -> (* 関数定義の場合 (caml2html: inline_letrec) *)
      if not (M.mem x fmap) then
-       g env cenv fmap e2
+       g env fmap e2
      else
        let env = M.add x (yts, e1) env in
-       LetRec({ name = (x, t); args = yts; body = g env cenv fmap e1}, g env cenv fmap e2)
+       LetRec({ name = (x, t); args = yts; body = g env fmap e1}, g env fmap e2)
   | App(x, ys) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
      let (zs, e) = M.find x env in
      if is_rec x e = false && ((size e) < 30 || (M.find x fmap) = 1) then
@@ -70,11 +65,11 @@ let rec g env cenv fmap = function (* インライン展開ルーチン本体 (caml2html: inl
 	Alpha.g env' e)
        else
        exp
-  | LetTuple(xts, y, e) -> LetTuple(xts, y, g env cenv fmap e)
+  | LetTuple(xts, y, e) -> LetTuple(xts, y, g env fmap e)
   | e -> e
 
 let f e =
   log := "";
-  let e = g M.empty M.empty (h e) e in
+  let e = g M.empty (h e) e in
   prerr_string !log;
   e

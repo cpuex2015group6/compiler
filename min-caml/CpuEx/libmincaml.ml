@@ -362,7 +362,7 @@
    set_hp (hp + n);
    let rec create_array_sub c =
      if c = 0 then
-       ()
+       hp_a.(c) <- i;
      else
        (hp_a.(c) <- i;
 	create_array_sub (c - 1))
