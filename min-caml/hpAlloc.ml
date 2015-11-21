@@ -15,6 +15,7 @@ let rec h fenv = function
 let rec g env fenv = function
   | IfEq(x, y, e1, e2) -> IfEq(x, y, g env fenv e1, g env fenv e2)
   | IfLE(x, y, e1, e2) -> IfLE(x, y, g env fenv e1, g env fenv e2)
+  | Add(x, y) when M.mem x env && M.mem y env -> Int(M.find x env + M.find y env)
   | Let((x, t), e1, e2) as exp ->
      if !hp = None then
        exp
@@ -40,6 +41,7 @@ let rec g env fenv = function
   | Tuple(xs) as exp->
      (match !hp with
      | Some x ->
+	Format.eprintf "heap pre-allocated at %d for tuple@." x;
 	hp := Some (x + List.length xs)
      | None -> ());
      exp

@@ -131,7 +131,6 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
 	e2') (* 出現しなければMakeClsを削除 *)
   | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
       (*log := !log ^ Format.sprintf "directly applying %s@." x;*)
-      if List.length ys > 95 then (prerr_int (List.length ys);assert false) else ();
       AppDir(Id.L(x), ys)
   | KNormal.App(f, xs) -> assert (not RmCl.flag);AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)

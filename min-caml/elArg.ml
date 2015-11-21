@@ -38,13 +38,23 @@ let rec g env fenv fn = function
 	 let cargs = M.find x !argenv in
 	 if M.cardinal cargs <> 0 then
 	   (
-	     let body = M.fold (fun k (y, t) a -> Let((k, t), y, a)) cargs e1 in
+	     let e1 = M.fold (fun k (y, t) a -> Let((k, t), y, a)) cargs e1 in
 	     let fn = Id.genid (M.fold (fun k (y, t) x -> x ^ "_cv_" ^ k) cargs x) in
 	     let e1 = h x fn cargs ys e1 in
 	     let e2 = h x fn cargs ys e2 in
-	     let ys = List.fold_left(fun nys (y, t) -> if M.mem y cargs then nys else nys@[(y, t)]) [] ys in
-	     prerr_endline ("remove const argument from " ^ x ^ " and generate " ^ fn);
-	     LetRec({ name = (fn, t); args = ys; body = body }, e2)
+	     let ys' = List.fold_left(fun nys (y, t) -> if M.mem y cargs then nys else nys@[(y, t)]) [] ys in
+	     Format.eprintf "remove const argument(s) %s from %s and generate %s@."
+	       (Id.pp_list (M.fold (fun k _ l -> k::l) cargs [])) x fn;
+	     match t with
+	     | Type.Fun(ats, rt) ->
+		prerr_endline ("1"^x);
+	       prerr_endline fn;
+	       prerr_int (List.length ats);
+	       prerr_int (List.length ys);
+		let ats = List.fold_left2 (fun nats at (y, t) -> if M.mem y cargs then nats else nats@[at]) [] ats ys in
+		prerr_endline "2";
+		LetRec({ name = (fn, Type.Fun(ats, rt)); args = ys'; body = e1 }, e2)
+	     | _ -> assert false
 	   )
 	 else
 	   LetRec({ name = (x, t); args = ys; body = e1 }, e2)
@@ -61,7 +71,7 @@ let rec g env fenv fn = function
        let pargs = M.find x !argenv in
        let narg = M.fold
 	 (fun k (d, t) nm ->
-	   try (let e, t = M.find k lc in
+	   try (let e, _ = M.find k lc in
 		match e, d with
 		| Int(x), Int(y) when x = y ->
 		   M.add k (d, t) nm
@@ -71,7 +81,13 @@ let rec g env fenv fn = function
 		   M.add k (d, t) nm
 		| _ ->
 		   nm)
-	   with Not_found -> nm)
+	   with Not_found ->
+	     if List.fold_left2
+	       (fun f y (z, _) -> if k = z then k = y else f)
+	       true ys zs then
+	       M.add k (d, t) nm
+	     else
+	       nm)
 	 pargs
 	 M.empty
        in
@@ -114,4 +130,6 @@ let rec g env fenv fn = function
 let rec f e =
   prerr_endline "eliminating args...";
   argenv := M.empty;
-  g M.empty M.empty "" e
+  let e = g M.empty M.empty "" e in
+  prerr_endline "eliminating args end";
+  e

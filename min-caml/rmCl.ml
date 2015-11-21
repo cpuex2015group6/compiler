@@ -12,12 +12,12 @@ let rec g env fenv venv = function
   | Let((x, t), e1, e2) ->
      let e1 = g env fenv venv e1 in
      Let((x, t), e1, (g env fenv (M.add x t venv) e2))
-  | LetRec({ name = (x, t); args = yts; body = e1}, e2) as exp ->
-     let bfv = S.diff (S.union fenv (fv_func x yts (fv e1))) fenv in
+  | LetRec({ name = (x, t); args = yts; body = e1}, e2) ->
+     let fenv = S.add x fenv in
      let venv = List.fold_left (fun venv (x, t) -> M.add x t venv) venv yts  in
+     let e1 = g env fenv venv e1 in
+     let bfv = S.diff (S.union fenv (fv_func x yts (fv e1))) fenv in
      if S.is_empty bfv then
-       let fenv = S.add x fenv in
-       let e1 = g env fenv venv e1 in
        LetRec({ name = (x, t); args = yts; body = e1 }, g env fenv venv e2)
      else
        let list = S.fold (fun x l ->
@@ -33,7 +33,7 @@ let rec g env fenv venv = function
        Format.eprintf "delete free variable(s) %s from %s and generate %s@." (Id.pp_list (List.rev_map (fun (x, _, _) -> x) list)) x fn;
        let body = Alpha.g env' (g env fenv venv e1) in
        (match t with
-       | Type.Fun(ats,rt) ->
+       | Type.Fun(ats, rt) ->
 	  let ats = List.fold_left (fun ats (_, _, t) -> t::ats) ats list in
 	  LetRec({ name = (fn, Type.Fun(ats, rt)); args = yts; body = body }, g env fenv venv e2)
        | _ -> assert false)
@@ -46,19 +46,7 @@ let rec g env fenv venv = function
   
 let rec f e =
   if flag then
-    (
-      prerr_endline "removing free variables...";
-      let rec iter e =
-	let e' = g M.empty S.empty M.empty e in
-	if e = e' then
-	  e'
-	else
-	  iter e'
-      in
-      let e = iter e in
-      prerr_endline "removing free variables end";
-      e
-    )
+    g M.empty S.empty M.empty e
   else
     e
     
