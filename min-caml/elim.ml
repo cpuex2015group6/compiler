@@ -25,7 +25,7 @@ let rec g = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
       let e1', fve1 = g e1 in
       let e2', fve2 = g e2 in
       if effect e1' || S.mem x fve2 then (Let((x, t), e1', e2'), (fv_let x fve1 fve2)) else
-	((*log := !log ^ Format.sprintf "eliminating variable %s@." x;*)
+	(log := !log ^ Format.sprintf "eliminating variable %s@." x;
 	 (e2', fve2))
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) -> (* let recの場合 (caml2html: elim_letrec) *)
      let e1', fve1 = g e1 in
@@ -39,8 +39,8 @@ let rec g = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
       let xs = List.map fst xts in
       let e', fve = g e in
       if List.exists (fun x -> S.mem x fve) xs then (LetTuple(xts, y, e'), (fv_lettuple xts y fve)) else
-	((*log := !log ^ Format.sprintf "eliminating variables %s@." (Id.pp_list xs);*)
-       (e', fve))
+	(log := !log ^ Format.sprintf "eliminating variables %s@." (Id.pp_list xs);
+	 (e', fve))
   | e -> (e, fv e)
 
 let rec f e =
