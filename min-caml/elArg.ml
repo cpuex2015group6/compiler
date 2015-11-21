@@ -112,8 +112,6 @@ let rec g env fenv fn = function
 
 
 let rec f e =
-  print_endline "here";
-  KNormaledAst.f e;
   prerr_endline "eliminating args...";
   argenv := M.empty;
   g M.empty M.empty "" e
