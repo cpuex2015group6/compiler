@@ -8,7 +8,6 @@ let rec h fenv = function
   | LetRec(_, e) -> assert false; h fenv e
   | LetTuple(_, _, e) -> h fenv e
   | SetHp(_) -> false
-  | GetHp(_) -> true
   | App(x, _) -> (try M.find x fenv with Not_found ->false)
   | ExtFunApp(_) -> false
   | e -> true
@@ -38,13 +37,19 @@ let rec g env fenv = function
        exp
      else
        LetTuple(xts, y, g env fenv e)
+  | Tuple(xs) as exp->
+     (match !hp with
+     | Some x ->
+	hp := Some (x + List.length xs)
+     | None -> ());
+     exp
   | SetHp(x) as exp when M.mem x env ->
      hp := Some (M.find x env);
     exp
   | GetHp(_) as exp->
      (match !hp with
      | Some x ->
-       Format.eprintf "heap pre-allocated at %d@." x;
+	Format.eprintf "heap pre-allocated at %d@." x;
        Int(x)
      | None -> exp)
   | App(x, _) as exp->

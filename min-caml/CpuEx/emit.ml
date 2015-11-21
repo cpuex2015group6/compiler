@@ -166,8 +166,9 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op1 oc "out" (reg y) 0
   | (NonTail(x), GetHp) -> 
      op3 oc "or" (reg x) (reg reg_hp) reg_zero
-  | (NonTail(x), SetHp(y)) -> 
-     op3 oc "or" (reg reg_hp) (reg y) reg_zero
+  | (NonTail(x), SetHp(y)) ->
+     op3 oc "or" (reg reg_hp) (reg y) reg_zero;
+    Printf.fprintf oc "show r04, 0\n"
   | (NonTail(_), Comment(s)) -> Printf.fprintf oc "#\t%s\n" s
   (* 退避の仮想命令の実装 *)
   | (NonTail(_), Save(x, y))

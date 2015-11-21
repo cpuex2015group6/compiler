@@ -24,8 +24,8 @@ let expand xts ini addf addi =
     xts
     ini
     (fun (offset, acc) x -> let offset = align offset in
-       (offset + 8, addf x offset acc))
-    (fun (offset, acc) x t -> (offset + 4, addi x t offset acc))
+       (offset + 1, addf x offset acc))
+    (fun (offset, acc) x t -> (offset + 1, addi x t offset acc))
 
 let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Unit -> Ans (Nop)
@@ -115,8 +115,8 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	       (0, Ans (Mr (y)))
 	       (fun x offset store -> seq (Stfd (x, y, C (offset)), store))
 	       (fun x _ offset store -> seq (Stw (x, y, C (offset)), store))  in
-	   Let ((y, Type.Tuple (List.map (fun x -> M.find x env) xs)), Mr (reg_hp),
-	        Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), store))
+     Let ((y, Type.Tuple (List.map (fun x -> M.find x env) xs)), Mr (reg_hp),
+	  Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), store))
   | Closure.LetTuple (xts, y, e2) ->
      let s = Closure.fv e2 in
      let (offset, load) = 
