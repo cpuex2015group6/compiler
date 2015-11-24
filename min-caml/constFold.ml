@@ -109,6 +109,8 @@ let rec h env fn = function
      (LetTuple(xts, y, e'), f, r)
   | App(x, yts) as e when x = fn ->
      (e, false, 1)
+  | ToInt(x) when memf x env -> (Int(Type.conv_float(findf x env)), true, 0)
+  | ToFloat(x) when memi x env -> (Float(Type.conv_int(findi x env)), true, 0)
   | e -> (e, true, 0)
 
 let gencys ys env = List.fold_left (fun a y -> a@[expandconst y env]) [] ys
@@ -279,6 +281,8 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
        Alpha.g env' e
      else
        exp
+  | ToInt(x) when memf x env -> Int(Type.conv_float(findf x env))
+  | ToFloat(x) when memi x env -> Float(Type.conv_int(findi x env))
   | e -> e
 
 (* 関数生成 *)

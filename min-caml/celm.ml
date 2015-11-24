@@ -22,7 +22,7 @@ let rec i venv env = function
 	 (
 	   let v = M.find av env in
 	   let e2, env = i venv env e2 in
-	   Let((x, t), Var(v), e2), env
+	   Let((x, t), Var(v), e2), env 
 	 ) with Not_found ->
 	   let e2, env = i venv (M.add av x env) e2 in
 	   Let((x, t), (Get(a, ix)), e2), env

@@ -167,10 +167,13 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      limm oc reg_imm z;
      op3 oc "add" reg_imm (reg y) reg_imm;
      op3 oc "stw" reg_imm (reg x) reg_zero
+  | (NonTail(x), ToFloat(y)) when x = y-> ()
   | (NonTail(x), ToFloat(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
+  | (NonTail(x), ToInt(y)) when x = y -> ()
   | (NonTail(x), ToInt(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
+  | (NonTail(x), ToArray(y)) when x = y -> ()
   | (NonTail(x), ToArray(y)) -> 
      op3 oc "or" (reg x) (reg y) reg_zero
   | (NonTail(x), In) -> 

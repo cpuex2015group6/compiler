@@ -38,17 +38,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	   l in
        Ans (Li (L(l)))
   | Closure.Float (d) -> 
-     let conv_float f =
-       let s = if f >= 0.0 then 0 else 1 in
-       let f = abs_float(f) in
-       let e, m = if f = 0.0 then 0, 0 else
-	   let m', e = frexp f in
-	   let get_man f = int_of_float (ldexp (f -. 0.5) 24) in
-	   e + 126, get_man m'
-       in
-       (s lsl 31) + (e lsl 23) + m
-     in
-     let d = conv_float d in
+     let d = Type.conv_float d in
      if d >= 0 && d < 32768 then
        Ans (FLi (C(d)))
      else
