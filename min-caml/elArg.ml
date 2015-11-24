@@ -47,12 +47,7 @@ let rec g env fenv fn = function
 	       (Id.pp_list (M.fold (fun k _ l -> k::l) cargs [])) x fn;
 	     match t with
 	     | Type.Fun(ats, rt) ->
-		prerr_endline ("1"^x);
-	       prerr_endline fn;
-	       prerr_int (List.length ats);
-	       prerr_int (List.length ys);
 		let ats = List.fold_left2 (fun nats at (y, t) -> if M.mem y cargs then nats else nats@[at]) [] ats ys in
-		prerr_endline "2";
 		LetRec({ name = (fn, Type.Fun(ats, rt)); args = ys'; body = e1 }, e2)
 	     | _ -> assert false
 	   )

@@ -37,6 +37,10 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Sqrt of t
   | In of t
   | Out of t
+  | Count
+  | ShowExec
+  | SetCurExec
+  | GetExecDiff
   | SetHp of t
   | GetHp of t
   | Get of t * t

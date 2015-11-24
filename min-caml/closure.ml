@@ -22,6 +22,10 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | ToArray of Id.t
   | In
   | Out of Id.t
+  | Count
+  | ShowExec
+  | SetCurExec
+  | GetExecDiff
   | GetHp
   | SetHp of Id.t
   | IfEq of Id.t * Id.t * t * t
@@ -45,7 +49,7 @@ type prog = Prog of fundef list * t
 let log = ref ""
     
 let rec fv = function
-  | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp -> S.empty
+  | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp | Count | ShowExec | SetCurExec | GetExecDiff -> S.empty
   | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out(x) | SetHp(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2)| IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
@@ -83,6 +87,10 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.ToArray(x) -> ToArray(x)
   | KNormal.In(x) -> In
   | KNormal.Out(x) -> Out(x)
+  | KNormal.Count -> Count
+  | KNormal.ShowExec -> ShowExec
+  | KNormal.SetCurExec -> SetCurExec
+  | KNormal.GetExecDiff -> GetExecDiff
   | KNormal.GetHp(x) -> GetHp
   | KNormal.SetHp(x) -> SetHp(x)
   | KNormal.IfEq(x, y, e1, e2) -> IfEq(x, y, g env known e1, g env known e2)

@@ -1,13 +1,14 @@
-(* PowerPC assembly with a few virtual instructions *)
+(* cpuex assembly with a few virtual instructions *)
 
 type id_or_imm = V of Id.t | C of int
+type l_or_imm = L of Id.l | C of int
 type t = (* 命令の列 *)
   | Ans of exp
   | Let of (Id.t * Type.t) * exp * t
 and exp = (* 一つ一つの命令に対応する式 *)
   | Nop
-  | Li of int
-  | FLi of Id.l
+  | Li of l_or_imm
+  | FLi of l_or_imm
   | SetL of Id.l
   | Mr of Id.t
   | Add of Id.t * id_or_imm
@@ -31,6 +32,10 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | ToArray of Id.t
   | In
   | Out of Id.t
+  | Count
+  | ShowExec
+  | SetCurExec
+  | GetExecDiff
   | GetHp
   | SetHp of Id.t
   | Comment of string
@@ -41,14 +46,14 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | IfFEq of Id.t * Id.t * t * t
   | IfFLE of Id.t * Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
-  | CallCls of Id.t * Id.t list * Id.t list
-  | CallDir of Id.l * Id.t list * Id.t list
+  | CallCls of Id.t * Id.t list
+  | CallDir of Id.l * Id.t list
   | Save of Id.t * Id.t (* レジスタ変数の値をスタック変数へ保存 *)
   | Restore of Id.t (* スタック変数から値を復元 *)
 type fundef =
-    { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret : Type.t }
+    { name : Id.l; args : Id.t list; body : t; ret : Type.t }
 (* プログラム全体 = 浮動小数点数テーブル + グローバル変数テーブル + トップレベル関数 + メインの式 *)
-type prog = Prog of (Id.l * float) list * Id.l list * fundef list * t
+type prog = Prog of (Id.l * int) list * Id.l list * fundef list * t
 
 (* shorthand of Let for float *)
 (* fletd : Id.t * exp * t -> t *)
@@ -59,15 +64,10 @@ let seq (e1, e2) = Let ((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
 let regs = [| "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
               "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17";
-             |]
-(* let regs = Array.init 27 (fun i -> Printf.sprintf "_R_%d" i) *)
-let fregs = [| "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E";
-              |]
+	      "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; |]
 let allregs = Array.to_list regs
-let allfregs = Array.to_list fregs
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
 let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
-let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
 let reg_hp = "%r04"
 let reg_sp = "r03"
 let reg_tmp = "r05"
@@ -93,7 +93,7 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 
 (* fv_exp : Id.t list -> t -> S.t list *)
 let rec fv_exp = function
-  | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
+  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
   | Mr (x) | FMr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
@@ -104,8 +104,8 @@ let rec fv_exp = function
       x :: fv_id_or_imm y' @ remove_and_uniq S.empty (fv_o e1 @ fv_o e2)
   | IfFEq (x, y, e1, e2) | IfFLE (x, y, e1, e2) ->
       x :: y :: remove_and_uniq S.empty (fv_o e1 @ fv_o e2)
-  | CallCls (x, ys, zs) -> x :: ys @ zs
-  | CallDir (_, ys, zs) -> ys @ zs
+  | CallCls (x, ys) -> x :: ys
+  | CallDir (_, ys) -> ys
 and fv_o = function 
   | Ans (exp) -> fv_exp exp
   | Let ((x, t), exp, e) ->
@@ -115,7 +115,7 @@ and fv_o = function
 let fv e = remove_and_uniq S.empty (fv_o e)
 
 let rec fv_exp2 = function
-  | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> false, []
+  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> false, []
   | Mr (x) | FMr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> false, [x]
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> 
       false, x :: fv_id_or_imm y'
@@ -130,8 +130,8 @@ let rec fv_exp2 = function
      let c1, rs1 = fv_o2 e1 in
      let c2, rs2 = fv_o2 e2 in
      c1 && c2, x :: y :: remove_and_uniq S.empty (rs1 @ rs2)
-  | CallCls (x, ys, zs) -> true, x :: ys @ zs
-  | CallDir (_, ys, zs) -> true, ys @ zs
+  | CallCls (x, ys) -> true, x :: ys
+  | CallDir (_, ys) -> true, ys
 and fv_o2 = function 
   | Ans (exp) -> fv_exp2 exp
   | Let ((x, t), exp, e) ->
@@ -147,7 +147,7 @@ let fv2 e = let c, rs = fv_o2 e in remove_and_uniq S.empty rs
 let fv_id_or_imm3 func crs = function V(x) -> func x crs | _ -> crs
 
 let rec fv_exp3 func all crs = function
-  | Nop | In | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> crs
+  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> crs
   | Mr (x) | FMr (x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> func x crs
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> func x (fv_id_or_imm3 func crs y')
   | FAdd (x, y) | FMul (x, y) | FDiv (x, y) ->
@@ -173,16 +173,16 @@ let rec fv_exp3 func all crs = function
      in
      let crs = remove_and_uniq S.empty crs in
      func x (func y crs)
-  | CallCls (x, ys, zs) ->
+  | CallCls (x, ys) ->
      List.fold_left
        (fun crs y -> func y crs)
        crs
-       (x :: ys @ zs)
-  | CallDir (_, ys, zs) ->
+       (x :: ys)
+  | CallDir (_, ys) ->
      List.fold_left
        (fun crs y -> func y crs)
        crs
-       (ys @ zs)
+       (ys)
 and fv_o3 func all crs = function 
   | Ans (exp) -> fv_exp3 func all crs exp
   | Let ((x, t), exp, e) ->

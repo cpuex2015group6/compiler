@@ -15,13 +15,11 @@ let rec target' src (dest, t) = function
       let c1, rs1 = target src (dest, t) e1 in
       let c2, rs2 = target src (dest, t) e2 in
       c1 && c2, rs1 @ rs2
-  | CallCls(x, ys, zs) ->
+  | CallCls(x, ys) ->
       true, (target_args src regs 0 ys @
-	     target_args src fregs 0 zs @
              if x = src then [reg_cl] else [])
-  | CallDir(_, ys, zs) ->
-      true, (target_args src regs 0 ys @
-	     target_args src fregs 0 zs)
+  | CallDir(_, ys) ->
+      true, (target_args src regs 0 ys)
   | _ -> false, []
 and target src dest = function (* register targeting (caml2html: regalloc_target) *)
   | Ans(exp) -> target' src dest exp
@@ -44,7 +42,6 @@ let rec alloc dest cont contfv regenv x t =
   let all =
     match t with
     | Type.Unit -> ["%r0"] (* dummy *)
-    | Type.Float -> allfregs
     | _ -> allregs in
   if all = ["%r0"] then Alloc("%r0") else (* [XX] ad hoc optimization *)
     if is_reg x then Alloc(x) else
@@ -145,6 +142,10 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | ToArray(x) -> (Ans(ToArray(find x (Type.Array(Type.Int)) regenv)), regenv)
   | In -> (Ans(In), regenv)
   | Out(x) -> (Ans(Out(find x Type.Int regenv)), regenv)
+  | Count -> (Ans(Count), regenv)
+  | ShowExec -> (Ans(ShowExec), regenv)
+  | SetCurExec -> (Ans(SetCurExec), regenv)
+  | GetExecDiff -> (Ans(GetExecDiff), regenv)
   | GetHp -> (Ans(GetHp), regenv)
   | SetHp(x) -> (Ans(SetHp(find x Type.Int regenv)), regenv)
   | IfEq(x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfEq(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
@@ -152,8 +153,8 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | IfGE(x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfGE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
   | IfFEq(x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfFEq(find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
   | IfFLE(x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfFLE(find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
-  | CallCls(x, ys, zs) as exp -> g'_call dest cont contfv regenv exp (fun ys zs -> CallCls(find x Type.Int regenv, ys, zs)) ys zs
-  | CallDir(l, ys, zs) as exp -> g'_call dest cont contfv regenv exp (fun ys zs -> CallDir(l, ys, zs)) ys zs
+  | CallCls(x, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallCls(find x Type.Int regenv, ys)) ys
+  | CallDir(l, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallDir(l, ys)) ys
   | Save(x, y) -> assert false
 and g'_if dest cont contfv regenv exp constr e1 e2 = (* ifのレジスタ割り当て (caml2html: regalloc_if) *)
   let (e1', regenv1) = g dest cont contfv regenv e1 in
@@ -177,18 +178,17 @@ and g'_if dest cont contfv regenv exp constr e1 e2 = (* ifのレジスタ割り当て (ca
      (Ans(constr e1' e2'))
      contfv,
    regenv')
-and g'_call dest cont contfv regenv exp constr ys zs = (* 関数呼び出しのレジスタ割り当て (caml2html: regalloc_call) *)
+and g'_call dest cont contfv regenv exp constr ys = (* 関数呼び出しのレジスタ割り当て (caml2html: regalloc_call) *)
   (List.fold_left
      (fun e x ->
        if x = fst dest || not (M.mem x regenv) then e else
        seq(Save(M.find x regenv, x), e))
      (Ans(constr
-	    (List.map (fun y -> find y Type.Int regenv) ys)
-	    (List.map (fun z -> find z Type.Float regenv) zs)))
+	    (List.map (fun y -> find y Type.Int regenv) ys)))
      contfv,
    M.empty)
 
-let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
+let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
   let regenv = M.add x reg_cl M.empty in
   let (i, arg_regs, regenv) =
     List.fold_left
@@ -200,23 +200,12 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレ
 	       M.add y r regenv)))
       (0, [], regenv)
       ys in
-  let (d, farg_regs, regenv) =
-    List.fold_left
-      (fun (d, farg_regs, regenv) z ->
-       let fr = fregs.(d) in
-       (d + 1,
-	      farg_regs @ [fr],
-	      (assert (not (is_reg z));
-	       M.add z fr regenv)))
-      (0, [], regenv)
-      zs in
   let a =
     match t with
     | Type.Unit -> Id.gentmp Type.Unit
-    | Type.Float -> fregs.(0)
     | _ -> regs.(0) in
   let (e', regenv') = g (a, t) (Ans(Mr(a))) (fv (Ans(Mr(a)))) regenv e in
-  { name = Id.L(x); args = arg_regs; fargs = farg_regs; body = e'; ret = t }
+  { name = Id.L(x); args = arg_regs; body = e'; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";

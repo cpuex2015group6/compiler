@@ -35,6 +35,10 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | ToArray of Id.t
   | In of Id.t
   | Out of Id.t
+  | Count
+  | ShowExec
+  | SetCurExec
+  | GetExecDiff
   | GetHp of Id.t
   | SetHp of Id.t
   | ExtFunApp of Id.t * Id.t list
@@ -64,7 +68,7 @@ let rec fv_lettuple xs y e =
   S.add y (S.diff e (S.of_list (List.map fst xs)))
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
-  | Unit | Int(_) | Float(_) | Array(_) | ExtArray(_) -> S.empty
+  | Unit | Count | ShowExec | SetCurExec | GetExecDiff | Int(_) | Float(_) | Array(_) | ExtArray(_) -> S.empty
   | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2) | IfLE(x, y, e1, e2) ->
@@ -255,6 +259,14 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
   | Syntax.Out(e1) ->
      insert_let (g env e1)
 	              (fun x -> Out(x), Type.Unit)
+  | Syntax.Count ->
+     Count, Type.Unit
+  | Syntax.ShowExec ->
+     ShowExec, Type.Unit
+  | Syntax.SetCurExec ->
+     SetCurExec, Type.Unit
+  | Syntax.GetExecDiff ->
+     GetExecDiff, Type.Unit
   | Syntax.GetHp(e1) ->
      insert_let (g env e1)
 	              (fun x -> GetHp(x), Type.Int)

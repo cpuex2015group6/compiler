@@ -69,9 +69,14 @@ let rec g oc = function (* 命令列のアセンブリ生成 *)
 and g' oc = function (* 各命令のアセンブリ生成 *)
   (* 末尾でなかったら計算結果を dest にセット *)
   | (NonTail(_), Nop) -> ()
-  | (NonTail(x), Li(i)) -> 
+  | (NonTail(x), Li(C(i))) -> 
      limm oc (reg x) i
-  | (NonTail(x), FLi(Id.L(l))) ->
+  | (NonTail(x), Li(L(Id.L(l)))) -> 
+     llabel oc reg_imm l;
+     op3 oc "ldw" (reg x) reg_imm reg_zero
+  | (NonTail(x), FLi(C(i))) -> 
+     limm oc (reg x) i
+  | (NonTail(x), FLi(L(Id.L(l)))) ->
      llabel oc reg_imm l;
      op3 oc "ldw" (reg x) reg_imm reg_zero
   | (NonTail(x), SetL(Id.L(y))) -> 
@@ -117,6 +122,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), Ldw(y, V(z))) ->
      op3 oc "add" reg_tmp (reg y) (reg z);
      op3 oc "ldw" (reg x) reg_tmp reg_zero
+  | (NonTail(x), Ldw(y, C(0))) -> 
+     op3 oc "ldw" (reg x) (reg y) reg_zero
   | (NonTail(x), Ldw(y, C(z))) -> 
      limm oc reg_imm z;
      op3 oc "add" reg_imm (reg y) reg_imm;
@@ -124,6 +131,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(_), Stw(x, y, V(z))) ->
      op3 oc "add" reg_imm (reg y) (reg z);
      op3 oc "stw" reg_imm (reg x) reg_zero
+  | (NonTail(_), Stw(x, y, C(0))) -> 
+     op3 oc "stw" (reg y) (reg x) reg_zero
   | (NonTail(_), Stw(x, y, C(z))) -> 
      limm oc reg_imm z;
      op3 oc "add" reg_imm (reg y) reg_imm;
@@ -135,7 +144,7 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "fadd" (reg x) (reg y) (reg z)
   | (NonTail(x), FMul(y, z)) -> 
      op3 oc "fmul" (reg x) (reg y) (reg z)
-  | (NonTail(x), FDiv(y, z)) -> 
+  | (NonTail(x), FDiv(y, z)) ->
      op3 oc "finv" reg_imm (reg z) reg_zero;
      op3 oc "fmul" (reg x) (reg y) reg_imm
   | (NonTail(x), Sqrt(y)) -> 
@@ -143,6 +152,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), Lfd(y, V(z))) ->
      op3 oc "add" reg_tmp (reg y) (reg z);
      op3 oc "ldw" (reg x) reg_tmp reg_zero
+  | (NonTail(x), Lfd(y, C(0))) -> 
+     op3 oc "ldw" (reg x) (reg y) reg_zero
   | (NonTail(x), Lfd(y, C(z))) -> 
      limm oc reg_imm z;
      op3 oc "add" reg_imm (reg y) reg_imm;
@@ -150,6 +161,8 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(_), Stfd(x, y, V(z))) ->
      op3 oc "add" reg_imm (reg y) (reg z);
      op3 oc "stw" reg_imm (reg x) reg_zero
+  | (NonTail(_), Stfd(x, y, C(0))) -> 
+     op3 oc "stw" (reg y) (reg x) reg_zero
   | (NonTail(_), Stfd(x, y, C(z))) -> 
      limm oc reg_imm z;
      op3 oc "add" reg_imm (reg y) reg_imm;
@@ -164,44 +177,64 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op1 oc "in" (reg x) 0
   | (NonTail(x), Out(y)) -> 
      op1 oc "out" (reg y) 0
+  | (NonTail(x), Count) -> 
+     op1 oc "count" reg_zero 0
+  | (NonTail(x), ShowExec) ->
+     op1 oc "showexec" reg_zero 0
+  | (NonTail(x), SetCurExec) ->
+     op1 oc "setcurexec" reg_zero 0
+  | (NonTail(x), GetExecDiff) ->
+     op1 oc "getexecdiff" reg_zero 0
   | (NonTail(x), GetHp) -> 
      op3 oc "or" (reg x) (reg reg_hp) reg_zero
   | (NonTail(x), SetHp(y)) ->
      op3 oc "or" (reg reg_hp) (reg y) reg_zero
   | (NonTail(_), Comment(s)) -> Printf.fprintf oc "#\t%s\n" s
   (* 退避の仮想命令の実装 *)
-  | (NonTail(_), Save(x, y))
-       when not (S.mem y !stackset) ->
+  | (NonTail(_), Save(x, y)) when not (S.mem y !stackset) ->
      save y;
-(*Printf.fprintf oc "save %s,%d\n" y (offset y);*)
-     limm oc reg_imm (offset y);
-     op3 oc "add" reg_tmp reg_sp reg_imm;
-     op3 oc "stw" reg_tmp (reg x) reg_zero
+    (*Printf.fprintf oc "save %s,%d\n" y (offset y);*)
+    if (offset y) = 0 then
+      op3 oc "stw" reg_sp (reg x) reg_zero
+    else
+      (
+	limm oc reg_imm (offset y);
+	op3 oc "add" reg_tmp reg_sp reg_imm;
+	op3 oc "stw" reg_tmp (reg x) reg_zero
+      )
   | (NonTail(_), Save(x, y)) -> assert (S.mem y !stackset); ()
   (* 復帰の仮想命令の実装 *)
   | (NonTail(x), Restore(y)) ->
-(*Printf.fprintf oc "restore %s,%d\n" y (offset y);*)
-     limm oc reg_imm (offset y);
-     op3 oc "add" reg_tmp reg_sp reg_imm;
-     op3 oc "ldw" (reg x) reg_tmp reg_zero
+     (*Printf.fprintf oc "restore %s,%d\n" y (offset y);*)
+     if (offset y) = 0 then
+       op3 oc "ldw" (reg x) reg_sp reg_zero
+     else
+       (
+	 limm oc reg_imm (offset y);
+	 op3 oc "add" reg_tmp reg_sp reg_imm;
+	 op3 oc "ldw" (reg x) reg_tmp reg_zero
+       )
   (* 末尾だったら計算結果を第一レジスタにセット *)
   | (Tail, (Nop | Stw _ | Stfd _ | Comment _ | Save _ as exp)) ->
      g' oc (NonTail(Id.gentmp Type.Unit), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
-  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Out _ | GetHp | SetHp _ | ToInt _ | ToArray _ as exp)) -> 
+  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | ToInt _ | ToArray _ as exp)) -> 
      g' oc (NonTail(regs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, (FLi _ | FMr _ | FAdd _ | FMul _ | FDiv _ | Sqrt _ | ToFloat _ | Lfd _ as exp)) ->
-     g' oc (NonTail(fregs.(0)), exp);
+     g' oc (NonTail(regs.(0)), exp);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, (Restore(x) as exp)) ->
      (match locate x with
 	    | [i] -> g' oc (NonTail(regs.(0)), exp)
-	    | [i; j] when (i + 1 = j) -> g' oc (NonTail(fregs.(0)), exp)
+	    | [i; j] when (i + 1 = j) -> g' oc (NonTail(regs.(0)), exp)
 	    | _ -> assert false);
      op3 oc "jr" reg_tmp reg_lr reg_zero
   | (Tail, IfEq(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
+     g'_tail_if oc e1 e2 "jreq" "jrneq"
+  | (Tail, IfEq(x, C(0), e1, e2)) ->
+     op3 oc "cmp" reg_cond (reg x) reg_zero;
      g'_tail_if oc e1 e2 "jreq" "jrneq"
   | (Tail, IfEq(x, C(y), e1, e2)) ->
      limm oc reg_imm y;
@@ -210,12 +243,18 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (Tail, IfLE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
      g'_tail_if oc e1 e2 "jrle" "jrgt"
+  | (Tail, IfLE(x, C(0), e1, e2)) ->
+     op3 oc "cmp" reg_cond (reg x) reg_zero;
+     g'_tail_if oc e1 e2 "jrle" "jrgt"
   | (Tail, IfLE(x, C(y), e1, e2)) ->
      limm oc reg_imm y;
      op3 oc "cmp" reg_cond (reg x) reg_imm;
      g'_tail_if oc e1 e2 "jrle" "jrgt"
   | (Tail, IfGE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
+     g'_tail_if oc e1 e2 "jrge" "jrlt"
+  | (Tail, IfGE(x, C(0), e1, e2)) ->
+     op3 oc "cmp" reg_cond (reg x) reg_zero;
      g'_tail_if oc e1 e2 "jrge" "jrlt"
   | (Tail, IfGE(x, C(y), e1, e2)) ->
      limm oc reg_imm y;
@@ -230,6 +269,9 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(z), IfEq(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
      g'_non_tail_if oc (NonTail(z)) e1 e2 "jreq" "jrneq"
+  | (NonTail(z), IfEq(x, C(0), e1, e2)) ->
+     op3 oc "cmp" reg_cond (reg x) reg_zero;
+     g'_non_tail_if oc (NonTail(z)) e1 e2 "jreq" "jrneq"
   | (NonTail(z), IfEq(x, C(y), e1, e2)) ->
      limm oc reg_imm y;
      op3 oc "cmp" reg_cond (reg x) reg_imm;
@@ -237,12 +279,18 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
   | (NonTail(z), IfLE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
      g'_non_tail_if oc (NonTail(z)) e1 e2 "jrle" "jrgt"
+  | (NonTail(z), IfLE(x, C(0), e1, e2)) ->
+     op3 oc "cmp" reg_cond (reg x) reg_zero;
+     g'_non_tail_if oc (NonTail(z)) e1 e2 "jrle" "jrgt"
   | (NonTail(z), IfLE(x, C(y), e1, e2)) ->
      limm oc reg_imm y;
      op3 oc "cmp" reg_cond (reg x) reg_imm;
      g'_non_tail_if oc (NonTail(z)) e1 e2 "jrle" "jrgt"
   | (NonTail(z), IfGE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
+     g'_non_tail_if oc (NonTail(z)) e1 e2 "jrge" "jrlt"
+  | (NonTail(z), IfGE(x, C(0), e1, e2)) ->
+     op3 oc "cmp" reg_cond (reg x) reg_zero;
      g'_non_tail_if oc (NonTail(z)) e1 e2 "jrge" "jrlt"
   | (NonTail(z), IfGE(x, C(y), e1, e2)) ->
      limm oc reg_imm y;
@@ -255,17 +303,17 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "fcmp" reg_cond (reg x) (reg y);
      g'_non_tail_if oc (NonTail(z)) e1 e2 "jrle" "jrgt"
   (* 関数呼び出しの仮想命令の実装 *)
-  | (Tail, CallCls(x, ys, zs)) -> (* 末尾呼び出し *)
-     g'_args oc [(x, reg_cl)] ys zs;
+  | (Tail, CallCls(x, ys)) -> (* 末尾呼び出し *)
+     g'_args oc [(x, reg_cl)] ys;
      op3 oc "ldw" (reg reg_sw) (reg reg_cl) reg_zero;
      op3 oc "jr" reg_tmp (reg reg_sw) reg_zero
-  | (Tail, CallDir(Id.L(x), ys, zs)) -> (* 末尾呼び出し *)
-     g'_args oc [] ys zs;
+  | (Tail, CallDir(Id.L(x), ys)) -> (* 末尾呼び出し *)
+     g'_args oc [] ys;
      llabel oc reg_imm x;
      op3 oc "jr" reg_tmp reg_imm reg_zero
-  | (NonTail(a), CallCls(x, ys, zs)) ->
+  | (NonTail(a), CallCls(x, ys)) ->
      op3 oc "or" reg_tmp reg_lr reg_zero;
-     g'_args oc [(x, reg_cl)] ys zs;
+     g'_args oc [(x, reg_cl)] ys;
      let ss = stacksize () in
      limm oc reg_imm (ss - 1);
      op3 oc "add" reg_imm reg_sp reg_imm;
@@ -281,29 +329,39 @@ and g' oc = function (* 各命令のアセンブリ生成 *)
      op3 oc "ldw" reg_tmp reg_tmp reg_zero;
 	   (if List.mem a allregs && a <> regs.(0) then 
         op3 oc "or" (reg a) (reg regs.(0)) reg_zero
-	    else if List.mem a allfregs && a <> fregs.(0) then 
-        op3 oc "or" (reg a) (reg fregs.(0)) reg_zero);
+	    else if List.mem a allregs && a <> regs.(0) then 
+        op3 oc "or" (reg a) (reg regs.(0)) reg_zero);
      op3 oc "or" reg_lr reg_tmp reg_zero
-  | (NonTail(a), CallDir(Id.L(x), ys, zs)) -> 
+  | (NonTail(a), CallDir(Id.L(x), ys)) -> 
      op3 oc "or" reg_tmp reg_lr reg_zero;
-     g'_args oc [] ys zs;
+     g'_args oc [] ys;
      let ss = stacksize () in
-     limm oc reg_imm (ss - 1);
-     op3 oc "add" reg_imm reg_sp reg_imm;
-     op3 oc "stw" reg_imm reg_tmp reg_zero;
+     if (ss - 1) = 0 then
+       op3 oc "stw" reg_sp reg_tmp reg_zero
+     else
+       (
+	 limm oc reg_imm (ss - 1);
+	 op3 oc "add" reg_imm reg_sp reg_imm;
+	 op3 oc "stw" reg_imm reg_tmp reg_zero;
+       );
      limm oc reg_imm ss;
      op3 oc "add" reg_sp reg_sp reg_imm;
      llabel oc reg_imm x;
      op3 oc "jr" reg_lr reg_imm reg_zero;
      limm oc reg_imm ss;
      op3 oc "sub" reg_sp reg_sp reg_imm;
-     limm oc reg_imm (ss - 1);
-     op3 oc "add" reg_tmp reg_sp reg_imm;
-     op3 oc "ldw" reg_tmp reg_tmp reg_zero;
-	   (if List.mem a allregs && a <> regs.(0) then
-        op3 oc "or" (reg a) (reg regs.(0)) reg_zero
-	    else if List.mem a allfregs && a <> fregs.(0) then
-        op3 oc "or" (reg a) (reg fregs.(0)) reg_zero);
+     if (ss - 1) = 0 then
+       op3 oc "ldw" reg_tmp reg_sp reg_zero
+     else
+       (
+	 limm oc reg_imm (ss - 1);
+	 op3 oc "add" reg_tmp reg_sp reg_imm;
+	 op3 oc "ldw" reg_tmp reg_tmp reg_zero
+       );
+     if List.mem a allregs && a <> regs.(0) then
+       op3 oc "or" (reg a) (reg regs.(0)) reg_zero
+     else if List.mem a allregs && a <> regs.(0) then
+       op3 oc "or" (reg a) (reg regs.(0)) reg_zero;
      op3 oc "or" reg_lr reg_tmp reg_zero
 and g'_tail_if oc e1 e2 b bn = 
   let b_else = Id.genid (b ^ "_else") in
@@ -330,23 +388,16 @@ and g'_non_tail_if oc dest e1 e2 b bn =
 	Printf.fprintf oc "%s:\n" b_cont;
 	let stackset2 = !stackset in
 	stackset := S.inter stackset1 stackset2
-and g'_args oc x_reg_cl ys zs = 
+and g'_args oc x_reg_cl ys = 
   let (i, yrs) = 
     List.fold_left
       (fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs))
       (0, x_reg_cl) ys in
   List.iter
     (fun (y, r) -> op3 oc "or" (reg r) (reg y) reg_zero)
-    (shuffle reg_sw yrs);
-  let (d, zfrs) = 
-    List.fold_left
-	    (fun (d, zfrs) z -> (d + 1, (z, fregs.(d)) :: zfrs))
-	    (0, []) zs in
-  List.iter
-    (fun (z, fr) -> op3 oc "or" (reg fr) (reg z) reg_zero)
-	  (shuffle reg_fsw zfrs)
+    (shuffle reg_sw yrs)
 
-let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
+let h oc { name = Id.L(x); args = _; body = e; ret = _ } =
   Printf.fprintf oc "%s:\n" x;
   stackset := S.empty;
   stackmap := [];
@@ -366,9 +417,13 @@ and i' indent = function
 and j indent = function
   | Nop ->
      Printf.fprintf stdout "nop\n"
-  | Li(i) ->
+  | Li(C(i)) ->
      Printf.fprintf stdout "li %d\n" i
-  | FLi(Id.L(l)) ->
+  | Li(L(Id.L(l))) ->
+     Printf.fprintf stdout "li %s\n" l
+  | FLi(C(i)) ->
+     Printf.fprintf stdout "fli %d\n" i
+  | FLi(L(Id.L(l))) ->
      Printf.fprintf stdout "fli %s\n" l
   | SetL(Id.L(y)) -> 
      Printf.fprintf stdout "setl %s\n" y
@@ -438,6 +493,14 @@ and j indent = function
      Printf.fprintf stdout "in\n"
   | Out(y) -> 
      Printf.fprintf stdout "out %s\n" y
+  | Count -> 
+     Printf.fprintf stdout "count\n"
+  | ShowExec -> 
+     Printf.fprintf stdout "showexec\n"
+  | SetCurExec ->
+     Printf.fprintf stdout "setcurexec\n"
+  | GetExecDiff ->
+     Printf.fprintf stdout "getexecdiff\n"
   | GetHp -> 
      Printf.fprintf stdout "gethp\n"
   | SetHp(y) -> 
@@ -528,24 +591,20 @@ and j indent = function
      Printf.fprintf stdout "%selse:\n" indent;
      print_string indent;
      i indent (Tail, e2)
-  | CallCls(x, ys, zs) ->
+  | CallCls(x, ys) ->
      Printf.fprintf stdout "callcls %s, " x;
      Printf.fprintf stdout "ys:";
      List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
-     Printf.fprintf stdout "zs:";
-     List.iter (fun y -> Printf.fprintf stdout "%s, " y) zs;
      Printf.fprintf stdout "\n"
-  | CallDir(Id.L(x), ys, zs) -> 
+  | CallDir(Id.L(x), ys) -> 
      Printf.fprintf stdout "calldir %s, " x;
      Printf.fprintf stdout "ys:";
      List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
-     Printf.fprintf stdout "zs:";
-     List.iter (fun y -> Printf.fprintf stdout "%s, " y) zs;
      Printf.fprintf stdout "\n"
 
 let show fundefs e =
   print_endline ">>>>>>>>>>>>>>>>emit.ml>>>>>>>>>>>>>>>>>";
-  List.iter (fun {name= Id.L(name); args=_; fargs=_; body= e; ret=r} -> print_string (name^":\n"); i "" (Tail, e)) fundefs;
+  List.iter (fun {name= Id.L(name); args=_; body= e; ret=r} -> print_string (name^":\n"); i "" (Tail, e)) fundefs;
   print_endline "min_caml_start:";
   i "" (NonTail("r08"), e)
        
@@ -557,23 +616,13 @@ let f oc (Prog(data, vars, fundefs, e)) =
   Printf.fprintf oc "\t.align 2\n";
   llabel oc reg_imm "_min_caml_init";
   op3 oc "jr" reg_tmp reg_imm reg_zero;
-  let conv_float f =
-    let s = if f >= 0.0 then 0 else 1 in
-    let f = abs_float(f) in
-    let e, m = if f = 0.0 then 0, 0 else
-	let m', e = frexp f in
-	let get_man f = int_of_float (ldexp (f -. 0.5) 24) in
-	e + 126, get_man m'
-    in
-    (s lsl 31) + (e lsl 23) + m
-  in
   (if data <> [] then
       (Printf.fprintf oc "\t.data\n\t.literal8\n";
        List.iter
 	 (fun (Id.L(x), d) ->
 	   Printf.fprintf oc "\t.align 3\n";
-	   Printf.fprintf oc "%s:\t # %f\n" x d;
-	   Printf.fprintf oc "\t.long\t%d\n" (conv_float d))
+	   Printf.fprintf oc "%s:\n" x;
+	   Printf.fprintf oc "\t.long\t%d\n" d)
 	 data));
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.align 2\n";

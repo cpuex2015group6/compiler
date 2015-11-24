@@ -22,6 +22,10 @@ type t =
   | ToArray of Id.t
   | In
   | Out of Id.t
+  | Count
+  | ShowExec
+  | SetCurExec
+  | GetExecDiff
   | GetHp
   | SetHp of Id.t
   | IfEq of Id.t * Id.t * t * t

@@ -33,6 +33,10 @@ type t =
   | ToArray of Id.t
   | In of Id.t
   | Out of Id.t
+  | Count
+  | ShowExec
+  | SetCurExec
+  | GetExecDiff
   | GetHp of Id.t
   | SetHp of Id.t
   | ExtFunApp of Id.t * Id.t list

@@ -115,6 +115,14 @@ rule token = parse
     { INPUT }
 | "output"
     { OUTPUT }
+| "count"
+    { COUNT }
+| "showexec"
+    { SHOWEXEC }
+| "setcurexec"
+    { SETCUREXEC }
+| "getexecdiff"
+    { GETEXECDIFF }
 | "set_hp"
     { SET_HP }
 | "get_hp"

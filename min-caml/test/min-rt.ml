@@ -876,7 +876,7 @@ let rec solver_rect_fast m v dconst b0 b1 b2 =
     else false
   then
     (solver_dist.(0) <- d0; 1)
-  else let d1 = (dconst.(2) -. b1) *. dconst.(3) in 
+  else let d1 = (dconst.(2) -. b1) *. dconst.(3) in
   if  (* ZX平面との衝突判定 *)
     if fless (fabs (d1 *. v.(0) +. b0)) (o_param_a m) then
       if fless (fabs (d1 *. v.(2) +. b2)) (o_param_c m) then
@@ -885,7 +885,7 @@ let rec solver_rect_fast m v dconst b0 b1 b2 =
     else false
   then
     (solver_dist.(0) <- d1; 2)
-  else let d2 = (dconst.(4) -. b2) *. dconst.(5) in 
+  else let d2 = (dconst.(4) -. b2) *. dconst.(5) in
   if  (* XY平面との衝突判定 *)
     if fless (fabs (d2 *. v.(0) +. b0)) (o_param_a m) then
       if fless (fabs (d2 *. v.(1) +. b1)) (o_param_b m) then
@@ -1349,7 +1349,6 @@ let rec judge_intersection dirvec = (
   tmin.(0) <- (1000000000.0);
   trace_or_matrix 0 (or_net.(0)) dirvec;
   let t = tmin.(0) in
-
   if (fless (-0.1) t) then
     (fless t 100000000.0)
   else false
@@ -1371,7 +1370,6 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
         (* 交点がある時は、その交点が他の要素の中に含まれるかどうか調べる。*)
         (* 今までの中で最小の t の値と比べる。*)
        let t0p = solver_dist.(0) in
-
        if (fless 0.0 t0p) then
 	 if (fless t0p tmin.(0)) then
 	   (
@@ -1416,19 +1414,19 @@ let rec trace_or_matrix_fast ofs or_network dirvec =
   let range_primitive = head.(0) in
   if range_primitive = -1 then (* 全オブジェクト終了 *)
     ()
-  else ( 
+  else (
     if range_primitive = 99 (* range primitive なし *)
     then solve_one_or_network_fast 1 head dirvec
     else 
       (
-	(* range primitive の衝突しなければ交点はない *)
-       let t = solver_fast2 range_primitive dirvec in
+       (* range primitive の衝突しなければ交点はない *)
+	let t = solver_fast2 range_primitive dirvec in
        if t <> 0 then
 	 let tp = solver_dist.(0) in
 	 if fless tp tmin.(0)
 	 then (solve_one_or_network_fast 1 head dirvec)
 	 else ()
-       else ()
+       else ();
       );
     trace_or_matrix_fast (ofs + 1) or_network dirvec
    )
@@ -1695,7 +1693,7 @@ let rec trace_ray nref energy dirvec pixel dist =
 	  trace_ray (nref+1) energy2 dirvec pixel (dist +. tmin.(0))
 	 ) else ();
 	
-       ) else ()
+       ) else ();
       
      ) else ( 
       (* どの物体にも当たらなかった場合。光源からの光を加味 *)
@@ -1728,20 +1726,19 @@ in
 (* 間接光の方向ベクトル dirvecに関しては定数テーブルが作られており、衝突判定
    が高速に行われる。物体に当たったら、その後の反射は追跡しない *)
 let rec trace_diffuse_ray dirvec energy =
- 
   (* どれかの物体に当たるか調べる *)
   if judge_intersection_fast dirvec then
     let obj = objects.(intersected_object_id.(0)) in
     get_nvector obj (d_vec dirvec); 
     utexture obj intersection_point;      
-
+    
     (* その物体が放射する光の強さを求める。直接光源光のみを計算 *)
     if not (shadow_check_one_or_matrix 0 or_net.(0)) then 
       let br =  fneg (veciprod nvector light) in
       let bright = (if fispos br then br else 0.0) in
       vecaccum diffuse_ray (energy *. bright *. o_diffuse obj) texture_color
-    else ()
-  else ()
+      else ();
+  else ();
 in
 
 (* あらかじめ決められた方向ベクトルの配列に対し、各ベクトルの方角から来る
@@ -1837,7 +1834,7 @@ let rec calc_diffuse_using_5points x prev cur next nref =
 in
 
 (* 上下左右4点を使わずに直接光の各衝突点における間接受光を計算する *)
-let rec do_without_neighbors pixel nref = 
+let rec do_without_neighbors pixel nref =
   if nref <= 4 then
     (* 衝突面番号が有効(非負)かチェック *)
     let surface_ids = p_surface_ids pixel in
@@ -1848,7 +1845,7 @@ let rec do_without_neighbors pixel nref =
       else ();
       do_without_neighbors pixel (nref + 1)
      ) else ()
-  else ()
+  else ();
 in
 
 (* 画像上で上下左右に点があるか(要するに、画像の端で無い事)を確認 *)
@@ -1985,7 +1982,6 @@ in
 
 let rec pretrace_pixels line x group_id lc0 lc1 lc2 = 
   if x >= 0 then (
-
     let xdisp = scan_pitch.(0) *. float_of_int (x - image_center.(0)) in
     ptrace_dirvec.(0) <- xdisp *. screenx_dir.(0) +. lc0;
     ptrace_dirvec.(1) <- xdisp *. screenx_dir.(1) +. lc1;
@@ -2015,7 +2011,7 @@ let rec pretrace_line line y group_id =
   let lc0 = ydisp *. screeny_dir.(0) +. screenz_dir.(0) in
   let lc1 = ydisp *. screeny_dir.(1) +. screenz_dir.(1) in
   let lc2 = ydisp *. screeny_dir.(2) +. screenz_dir.(2) in
-  pretrace_pixels line (image_size.(0) - 1) group_id lc0 lc1 lc2
+  pretrace_pixels line (image_size.(0) - 1) group_id lc0 lc1 lc2;
 in
 
 
@@ -2299,7 +2295,7 @@ let rec rt size_x size_y =
  setup_dirvec_constants light_dirvec;
  setup_reflections (n_objects.(0) - 1);
  pretrace_line cur 0 0;
- scan_line 0 prev cur next 2 
+ scan_line 0 prev cur next 2 ;
 )
 in
 
