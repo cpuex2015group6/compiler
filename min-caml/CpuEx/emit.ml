@@ -12,7 +12,7 @@ let locate x =
     | y :: zs when x = y -> 0 :: List.map succ (loc zs)
     | y :: zs -> List.map succ (loc zs) in
     loc !stackmap
-let offset x = 1 * List.hd (locate x)
+let offset x = prerr_endline x;1 * List.hd (locate x)
 let stacksize () = align ((List.length !stackmap + 1) * 1)
 
 let reg r = 
@@ -30,6 +30,12 @@ let llabel oc r1 label =
 
 let op1 oc inst r1 imm =
   print oc (Printf.sprintf "\t%s\t%s, %d\n" inst r1 imm)
+
+let op2i oc inst r1 r2 imm =
+  print oc (Printf.sprintf "\t%s\t%s, %s, %d\n" inst r1 r2 imm)
+
+let op2l oc inst r1 r2 label =
+  print oc (Printf.sprintf "\t%s\t%s, %s, %s\n" inst r1 r2 label)
 
 let op3 oc inst r1 r2 r3 =
   print oc (Printf.sprintf "\t%s\t%s, %s, %s\n" inst r1 r2 r3)
@@ -70,25 +76,11 @@ let rec shuffle sw xys =
 let store_lr oc =
   save "reg_lr";
   let ix = (offset "reg_lr") in
-  if ix = 0 then
-    op3 oc "stw" reg_sp reg_lr reg_zero
-  else
-    (
-      limm oc reg_imm ix;
-      op3 oc "add" reg_imm reg_sp reg_imm;
-      op3 oc "stw" reg_imm reg_lr reg_zero;
-    )
+  op2i oc "stwi" reg_sp reg_lr ix
 
 let restore_lr oc =
   let ix = (offset "reg_lr") in
-  if ix = 0 then
-    op3 oc "ldw" reg_lr reg_sp reg_zero
-  else
-    (
-      limm oc reg_imm ix;
-      op3 oc "add" reg_tmp reg_sp reg_imm;
-      op3 oc "ldw" reg_lr reg_tmp reg_zero
-    )
+  op2i oc "ldwi" reg_lr reg_sp ix
 	 
 type dest = Tail | NonTail of Id.t (* 末尾かどうかを表すデータ型 *)
 let rec g oc cflag = function (* 命令列のアセンブリ生成 *)
@@ -103,36 +95,32 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      limm oc (reg x) i;
     cflag
   | (NonTail(x), Li(L(Id.L(l)))) -> 
-     llabel oc reg_imm l;
-     op3 oc "ldw" (reg x) reg_imm reg_zero;
+     op2l oc "ldwi" (reg x) (reg reg_zero) l;
     cflag
   | (NonTail(x), FLi(C(i))) -> 
      limm oc (reg x) i;
     cflag
   | (NonTail(x), FLi(L(Id.L(l)))) ->
-     llabel oc reg_imm l;
-    op3 oc "ldw" (reg x) reg_imm reg_zero;
+    op2l oc "ldwi" (reg x) (reg reg_zero) l;
     cflag
   | (NonTail(x), SetL(Id.L(y))) -> 
      llabel oc (reg x) y;
     cflag
   | (NonTail(x), Mr(y)) when x = y -> cflag
   | (NonTail(x), Mr(y)) ->
-     op3 oc "or" (reg x) (reg y) reg_zero;
+     op3 oc "or" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), Add(y, V(z))) -> 
      op3 oc "add" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), Add(y, C(z))) -> 
-     limm oc reg_imm z;
-    op3 oc "add" (reg x) (reg y) reg_imm;
+    op2i oc "addi" (reg x) (reg y) z;
     cflag
   | (NonTail(x), Sub(y, V(z))) -> 
      op3 oc "sub" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), Sub(y, C(z))) -> 
-     limm oc reg_imm z;
-    op3 oc "sub" (reg x) (reg y) reg_imm;
+    op2i oc "subi" (reg x) (reg y) z;
     cflag
   | (NonTail(x), Xor(y, V(z))) -> 
      op3 oc "xor" (reg x) (reg y) (reg z);
@@ -170,32 +158,20 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     op3 oc "srl" (reg x) (reg y) reg_imm;
     cflag
   | (NonTail(x), Ldw(y, V(z))) ->
-     op3 oc "add" reg_tmp (reg y) (reg z);
-    op3 oc "ldw" (reg x) reg_tmp reg_zero;
-    cflag
-  | (NonTail(x), Ldw(y, C(0))) -> 
-     op3 oc "ldw" (reg x) (reg y) reg_zero;
+    op3 oc "ldw" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), Ldw(y, C(z))) -> 
-     limm oc reg_imm z;
-     op3 oc "add" reg_imm (reg y) reg_imm;
-     op3 oc "ldw" (reg x) reg_imm reg_zero;
+     op2i oc "ldwi" (reg x) (reg y) z;
      cflag
   | (NonTail(_), Stw(x, y, V(z))) ->
-     op3 oc "add" reg_imm (reg y) (reg z);
-    op3 oc "stw" reg_imm (reg x) reg_zero;
-    cflag
-  | (NonTail(_), Stw(x, y, C(0))) -> 
-     op3 oc "stw" (reg y) (reg x) reg_zero;
+    op3 oc "stw" (reg y) (reg x) (reg z);
     cflag
   | (NonTail(_), Stw(x, y, C(z))) -> 
-     limm oc reg_imm z;
-     op3 oc "add" reg_imm (reg y) reg_imm;
-     op3 oc "stw" reg_imm (reg x) reg_zero;
+     op2i oc "stwi" (reg y) (reg x) z;
      cflag
   | (NonTail(x), FMr(y)) when x = y -> cflag
   | (NonTail(x), FMr(y)) ->
-     op3 oc "or" (reg x) (reg y) reg_zero;
+     op3 oc "or" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), FAdd(y, z)) -> 
      op3 oc "fadd" (reg x) (reg y) (reg z);
@@ -204,47 +180,38 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      op3 oc "fmul" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), FDiv(y, z)) ->
-     op3 oc "finv" reg_imm (reg z) reg_zero;
+     op3 oc "finv" reg_imm (reg z) (reg reg_zero);
     op3 oc "fmul" (reg x) (reg y) reg_imm;
     cflag
+  | (NonTail(x), FAbs(y)) -> 
+     op3 oc "fabs" (reg x) (reg y) (reg reg_zero);
+    cflag
   | (NonTail(x), Sqrt(y)) -> 
-     op3 oc "fsqrt" (reg x) (reg y) reg_zero;
+     op3 oc "fsqrt" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), Lfd(y, V(z))) ->
-     op3 oc "add" reg_tmp (reg y) (reg z);
-    op3 oc "ldw" (reg x) reg_tmp reg_zero;
-    cflag
-  | (NonTail(x), Lfd(y, C(0))) -> 
-     op3 oc "ldw" (reg x) (reg y) reg_zero;
+    op3 oc "ldw" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), Lfd(y, C(z))) -> 
-     limm oc reg_imm z;
-     op3 oc "add" reg_imm (reg y) reg_imm;
-     op3 oc "ldw" (reg x) reg_imm reg_zero;
+     op2i oc "ldwi" (reg x) (reg y) z;
      cflag
   | (NonTail(_), Stfd(x, y, V(z))) ->
-     op3 oc "add" reg_imm (reg y) (reg z);
-    op3 oc "stw" reg_imm (reg x) reg_zero;
-    cflag
-  | (NonTail(_), Stfd(x, y, C(0))) -> 
-     op3 oc "stw" (reg y) (reg x) reg_zero;
+    op3 oc "stw" (reg y) (reg x) (reg z);
     cflag
   | (NonTail(_), Stfd(x, y, C(z))) -> 
-     limm oc reg_imm z;
-     op3 oc "add" reg_imm (reg y) reg_imm;
-     op3 oc "stw" reg_imm (reg x) reg_zero;
+     op2i oc "stwi" (reg y) (reg x) z;
      cflag
   | (NonTail(x), ToFloat(y)) when x = y -> cflag
   | (NonTail(x), ToFloat(y)) -> 
-     op3 oc "or" (reg x) (reg y) reg_zero;
+     op3 oc "or" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), ToInt(y)) when x = y -> cflag
   | (NonTail(x), ToInt(y)) -> 
-     op3 oc "or" (reg x) (reg y) reg_zero;
+     op3 oc "or" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), ToArray(y)) when x = y -> cflag
   | (NonTail(x), ToArray(y)) -> 
-     op3 oc "or" (reg x) (reg y) reg_zero;
+     op3 oc "or" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), In) -> 
      op1 oc "in" (reg x) 0;
@@ -253,22 +220,22 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      op1 oc "out" (reg y) 0;
     cflag
   | (NonTail(x), Count) -> 
-     op1 oc "count" reg_zero 0;
+     op1 oc "count" (reg reg_zero) 0;
     cflag
   | (NonTail(x), ShowExec) ->
-     op1 oc "showexec" reg_zero 0;
+     op1 oc "showexec" (reg reg_zero) 0;
     cflag
   | (NonTail(x), SetCurExec) ->
-     op1 oc "setcurexec" reg_zero 0;
+     op1 oc "setcurexec" (reg reg_zero) 0;
     cflag
   | (NonTail(x), GetExecDiff) ->
-     op1 oc "getexecdiff" reg_zero 0;
+     op1 oc "getexecdiff" (reg reg_zero) 0;
     cflag
   | (NonTail(x), GetHp) -> 
-     op3 oc "or" (reg x) (reg reg_hp) reg_zero;
+     op3 oc "or" (reg x) (reg reg_hp) (reg reg_zero);
     cflag
   | (NonTail(x), SetHp(y)) ->
-     op3 oc "or" (reg reg_hp) (reg y) reg_zero;
+     op3 oc "or" (reg reg_hp) (reg y) (reg reg_zero);
     cflag
   | (NonTail(_), Comment(s)) ->
      print oc (Printf.sprintf "#\t%s\n" s);
@@ -277,38 +244,24 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (NonTail(_), Save(x, y)) when not (S.mem y !stackset) ->
      save y;
     (*print oc (Printf.sprintf "save %s,%d\n" y (offset y));*)
-    if (offset y) = 0 then
-      op3 oc "stw" reg_sp (reg x) reg_zero
-    else
-      (
-	limm oc reg_imm (offset y);
-	op3 oc "add" reg_tmp reg_sp reg_imm;
-	op3 oc "stw" reg_tmp (reg x) reg_zero
-      );
+    op2i oc "stwi" reg_sp (reg x) (offset y);
     cflag
   | (NonTail(_), Save(x, y)) -> assert (S.mem y !stackset); cflag
   (* 復帰の仮想命令の実装 *)
   | (NonTail(x), Restore(y)) ->
-     (*print oc (Printf.sprintf "restore %s,%d\n" y (offset y));*)
-     if (offset y) = 0 then
-       op3 oc "ldw" (reg x) reg_sp reg_zero
-     else
-       (
-	 limm oc reg_imm (offset y);
-	 op3 oc "add" reg_tmp reg_sp reg_imm;
-	 op3 oc "ldw" (reg x) reg_tmp reg_zero
-       );
+    (*print oc (Printf.sprintf "restore %s,%d\n" y (offset y));*)
+    op2i oc "ldwi" (reg x) reg_sp (offset y);
     cflag
   (* 末尾だったら計算結果を第一レジスタにセット *)
   | (Tail, (Nop | Stw _ | Stfd _ | Out _ | Comment _ | Save _ as exp)) ->
      let cflag = g' oc cflag (NonTail(Id.gentmp Type.Unit), exp) in
      (if cflag then restore_lr oc);
-     op3 oc "jr" reg_tmp reg_lr reg_zero;
+     op3 oc "jr" reg_tmp reg_lr (reg reg_zero);
      cflag
-  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | ToInt _ | ToArray _ | FLi _ | FMr _ | FAdd _ | FMul _ | FDiv _ | Sqrt _ | ToFloat _ | Lfd _ as exp)) ->
+  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | ToInt _ | ToArray _ | FLi _ | FMr _ | FAdd _ | FMul _ | FDiv _ | FAbs _ | Sqrt _ | ToFloat _ | Lfd _ as exp)) ->
      let cflag = g' oc cflag (NonTail(regs.(0)), exp) in
      (if cflag then restore_lr oc);
-     op3 oc "jr" reg_tmp reg_lr reg_zero;
+     op3 oc "jr" reg_tmp reg_lr (reg reg_zero);
      cflag
   | (Tail, (Restore(x) as exp)) ->
      let cflag = (match locate x with
@@ -316,123 +269,110 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
        | [i; j] when (i + 1 = j) -> g' oc cflag (NonTail(regs.(0)), exp)
        | _ -> assert false) in
      (if cflag then restore_lr oc);
-     op3 oc "jr" reg_tmp reg_lr reg_zero;
+     op3 oc "jr" reg_tmp reg_lr (reg reg_zero);
      cflag
   | (Tail, IfEq(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
-     g'_tail_if oc cflag e1 e2 "jreq" "jrneq"
+     g'_tail_if oc cflag e1 e2 "jreqi" "jrneqi"
   | (Tail, IfEq(x, C(0), e1, e2)) ->
-     op3 oc "cmp" reg_cond (reg x) reg_zero;
-     g'_tail_if oc cflag e1 e2 "jreq" "jrneq"
+     op3 oc "cmp" reg_cond (reg x) (reg reg_zero);
+     g'_tail_if oc cflag e1 e2 "jreqi" "jrneqi"
   | (Tail, IfEq(x, C(y), e1, e2)) ->
-     limm oc reg_imm y;
-     op3 oc "cmp" reg_cond (reg x) reg_imm;
-     g'_tail_if oc cflag e1 e2 "jreq" "jrneq"
+     op2i oc "cmpi" reg_cond (reg x) y;
+     g'_tail_if oc cflag e1 e2 "jreqi" "jrneqi"
   | (Tail, IfLE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
-     g'_tail_if oc cflag e1 e2 "jrle" "jrgt"
+     g'_tail_if oc cflag e1 e2 "jrlei" "jrgti"
   | (Tail, IfLE(x, C(0), e1, e2)) ->
-     op3 oc "cmp" reg_cond (reg x) reg_zero;
-     g'_tail_if oc cflag e1 e2 "jrle" "jrgt"
+     op3 oc "cmp" reg_cond (reg x) (reg reg_zero);
+     g'_tail_if oc cflag e1 e2 "jrlei" "jrgti"
   | (Tail, IfLE(x, C(y), e1, e2)) ->
-     limm oc reg_imm y;
-     op3 oc "cmp" reg_cond (reg x) reg_imm;
-     g'_tail_if oc cflag e1 e2 "jrle" "jrgt"
+     op2i oc "cmpi" reg_cond (reg x) y;
+     g'_tail_if oc cflag e1 e2 "jrlei" "jrgti"
   | (Tail, IfGE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
-     g'_tail_if oc cflag e1 e2 "jrge" "jrlt"
+     g'_tail_if oc cflag e1 e2 "jrgei" "jrlti"
   | (Tail, IfGE(x, C(0), e1, e2)) ->
-     op3 oc "cmp" reg_cond (reg x) reg_zero;
-     g'_tail_if oc cflag e1 e2 "jrge" "jrlt"
+     op3 oc "cmp" reg_cond (reg x) (reg reg_zero);
+     g'_tail_if oc cflag e1 e2 "jrgei" "jrlti"
   | (Tail, IfGE(x, C(y), e1, e2)) ->
-     limm oc reg_imm y;
-     op3 oc "cmp" reg_cond (reg x) reg_imm;
-     g'_tail_if oc cflag e1 e2 "jrge" "jrlt"
+     op2i oc "cmpi" reg_cond (reg x) y;
+     g'_tail_if oc cflag e1 e2 "jrgei" "jrlti"
   | (Tail, IfFEq(x, y, e1, e2)) ->
      op3 oc "fcmp" reg_cond (reg x) (reg y);
-     g'_tail_if oc cflag e1 e2 "jreq" "jrneq"
+     g'_tail_if oc cflag e1 e2 "jreqi" "jrneqi"
   | (Tail, IfFLE(x, y, e1, e2)) ->
      op3 oc "fcmp" reg_cond (reg x) (reg y);
-     g'_tail_if oc cflag e1 e2 "jrle" "jrgt"
+     g'_tail_if oc cflag e1 e2 "jrlei" "jrgti"
   | (NonTail(z), IfEq(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreq" "jrneq"
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreqi" "jrneqi"
   | (NonTail(z), IfEq(x, C(0), e1, e2)) ->
-     op3 oc "cmp" reg_cond (reg x) reg_zero;
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreq" "jrneq"
+     op3 oc "cmp" reg_cond (reg x) (reg reg_zero);
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreqi" "jrneqi"
   | (NonTail(z), IfEq(x, C(y), e1, e2)) ->
-     limm oc reg_imm y;
-     op3 oc "cmp" reg_cond (reg x) reg_imm;
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreq" "jrneq"
+     op2i oc "cmpi" reg_cond (reg x) y;
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreqi" "jrneqi"
   | (NonTail(z), IfLE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrle" "jrgt"
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrlei" "jrgti"
   | (NonTail(z), IfLE(x, C(0), e1, e2)) ->
-     op3 oc "cmp" reg_cond (reg x) reg_zero;
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrle" "jrgt"
+     op3 oc "cmp" reg_cond (reg x) (reg reg_zero);
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrlei" "jrgti"
   | (NonTail(z), IfLE(x, C(y), e1, e2)) ->
-     limm oc reg_imm y;
-     op3 oc "cmp" reg_cond (reg x) reg_imm;
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrle" "jrgt"
+     op2i oc "cmpi" reg_cond (reg x) y;
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrlei" "jrgti"
   | (NonTail(z), IfGE(x, V(y), e1, e2)) ->
      op3 oc "cmp" reg_cond (reg x) (reg y);
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrge" "jrlt"
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrgei" "jrlti"
   | (NonTail(z), IfGE(x, C(0), e1, e2)) ->
-     op3 oc "cmp" reg_cond (reg x) reg_zero;
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrge" "jrlt"
+     op3 oc "cmp" reg_cond (reg x) (reg reg_zero);
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrgei" "jrlti"
   | (NonTail(z), IfGE(x, C(y), e1, e2)) ->
-     limm oc reg_imm y;
-     op3 oc "cmp" reg_cond (reg x) reg_imm;
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrge" "jrlt"
+     op2i oc "cmpi" reg_cond (reg x) y;
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrgei" "jrlti"
   | (NonTail(z), IfFEq(x, y, e1, e2)) ->
      op3 oc "fcmp" reg_cond (reg x) (reg y);
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreq" "jrneq"
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jreqi" "jrneqi"
   | (NonTail(z), IfFLE(x, y, e1, e2)) ->
      op3 oc "fcmp" reg_cond (reg x) (reg y);
-     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrle" "jrgt"
+     g'_non_tail_if oc cflag (NonTail(z)) e1 e2 "jrlei" "jrgti"
   (* 関数呼び出しの仮想命令の実装 *)
   | (Tail, CallCls(x, ys)) -> (* 末尾呼び出し *)
      g'_args oc [(x, reg_cl)] ys;
     (if cflag then restore_lr oc);
-    op3 oc "ldw" (reg reg_sw) (reg reg_cl) reg_zero;
-    op3 oc "jr" reg_tmp (reg reg_sw) reg_zero;
+    op3 oc "ldw" (reg reg_sw) (reg reg_cl) (reg reg_zero);
+    op3 oc "jr" reg_tmp (reg reg_sw) (reg reg_zero);
     true
   | (Tail, CallDir(Id.L(x), ys)) -> (* 末尾呼び出し *)
      g'_args oc [] ys;
     (if cflag then restore_lr oc);
-    llabel oc reg_imm x;
-    op3 oc "jr" reg_tmp reg_imm reg_zero;
+    op2l oc "jri" reg_tmp (reg reg_zero) x;
     true
   | (NonTail(a), CallCls(x, ys)) ->
      g'_args oc [(x, reg_cl)] ys;
     (if not cflag then store_lr oc);
     let ss = stacksize () in
-    limm oc reg_imm ss;
-    op3 oc "add" reg_sp reg_sp reg_imm;
-    op3 oc "ldw"reg_tmp (reg reg_cl) reg_zero;
-    op3 oc "jr" reg_lr reg_tmp reg_zero;
-    limm oc reg_imm ss;
-    op3 oc "sub" reg_sp reg_sp reg_imm;
+    op2i oc "addi" reg_sp reg_sp ss;
+    op3 oc "ldw"reg_tmp (reg reg_cl) (reg reg_zero);
+    op3 oc "jr" reg_lr reg_tmp (reg reg_zero);
+    op2i oc "subi" reg_sp reg_sp ss;
     (if List.mem a allregs && a <> regs.(0) then 
-        op3 oc "or" (reg a) (reg regs.(0)) reg_zero);
+        op3 oc "or" (reg a) (reg regs.(0)) (reg reg_zero));
     true
   | (NonTail(a), CallDir(Id.L(x), ys)) -> 
      g'_args oc [] ys;
     (if not cflag then store_lr oc);
     let ss = stacksize () in
-    limm oc reg_imm ss;
-    op3 oc "add" reg_sp reg_sp reg_imm;
-    llabel oc reg_imm x;
-    op3 oc "jr" reg_lr reg_imm reg_zero;
-    limm oc reg_imm ss;
-    op3 oc "sub" reg_sp reg_sp reg_imm;
+    op2i oc "addi" reg_sp reg_sp ss;
+    op2l oc "jri" reg_lr (reg reg_zero) x;
+    op2i oc "subi" reg_sp reg_sp ss;
     (if List.mem a allregs && a <> regs.(0) then
-	op3 oc "or" (reg a) (reg regs.(0)) reg_zero);
+	op3 oc "or" (reg a) (reg regs.(0)) (reg reg_zero));
     true
 and g'_tail_if oc cflag e1 e2 b bn = 
   let b_else = Id.genid (b ^ "_else") in
-  llabel oc reg_imm b_else;
-  op3 oc bn reg_tmp reg_cond reg_imm;
+  op2l oc bn reg_tmp reg_cond b_else;
   let stackset_back = !stackset in
   let _ = g oc cflag (Tail, e1) in
   print oc (Printf.sprintf "%s:\n" b_else);
@@ -447,14 +387,12 @@ and g'_non_tail_if oc cflag dest e1 e2 b bn =
   let cflag2 = g None cflag (dest, e2) in
   stackset := stackset';
   stackmap := stackmap';
-  llabel oc reg_imm b_else;
-  op3 oc bn reg_tmp reg_cond reg_imm;
+  op3 oc bn reg_tmp reg_cond b_else;
   let stackset_back = !stackset in
   let _ = g oc cflag (dest, e1) in
   let stackset1 = !stackset in
   (if (cflag1 || cflag2) && (not cflag) && (not cflag1) then store_lr oc);
-  llabel oc reg_imm b_cont;
-  op3 oc "jr" reg_tmp reg_imm reg_zero;
+  op2l oc "jri" reg_tmp (reg reg_zero) b_cont;
   print oc (Printf.sprintf "%s:\n" b_else);
   stackset := stackset_back;
   let _ = g oc cflag (dest, e2) in
@@ -469,7 +407,7 @@ and g'_args oc x_reg_cl ys =
       (fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs))
       (0, x_reg_cl) ys in
   List.iter
-    (fun (y, r) -> op3 oc "or" (reg r) (reg y) reg_zero)
+    (fun (y, r) -> op3 oc "or" (reg r) (reg y) (reg reg_zero))
     (shuffle reg_sw yrs)
 
 let h oc { name = Id.L(x); args = _; body = e; ret = _ } =
@@ -549,6 +487,8 @@ and j indent = function
      Printf.fprintf stdout "fmul %s, %s\n" y z
   | FDiv(y, z) -> 
      Printf.fprintf stdout "fdiv %s, %s\n" y z
+  | FAbs(y) -> 
+     Printf.fprintf stdout "fabs %s\n" y
   | Sqrt(y) -> 
      Printf.fprintf stdout "sqrt %s\n" y
   | Lfd(y, V(z)) ->
@@ -690,8 +630,7 @@ let f oc (Prog(data, vars, fundefs, e)) =
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_init\n";
   Printf.fprintf oc "\t.align 2\n";
-  llabel (Some oc) reg_imm "_min_caml_init";
-  op3 (Some oc) "jr" reg_tmp reg_imm reg_zero;
+  op2l (Some oc) "jri" reg_tmp (reg reg_zero) "_min_caml_init";
   (if data <> [] then
       (Printf.fprintf oc "\t.data\n\t.literal8\n";
        List.iter
@@ -713,5 +652,5 @@ let f oc (Prog(data, vars, fundefs, e)) =
   stackset := S.empty;
   stackmap := [];
   let _ = g (Some oc) false (NonTail("r08"), e) in
-  op1 (Some oc) "hlt" reg_zero 0;
+  op1 (Some oc) "hlt" (reg reg_zero) 0;
   Printf.fprintf oc "   # main program end\n";

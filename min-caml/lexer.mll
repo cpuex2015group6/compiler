@@ -121,7 +121,11 @@ rule token = parse
     { SHOWEXEC }
 | "setcurexec"
     { SETCUREXEC }
+| "sce"
+    { SETCUREXEC }
 | "getexecdiff"
+    { GETEXECDIFF }
+| "ged"
     { GETEXECDIFF }
 | "set_hp"
     { SET_HP }

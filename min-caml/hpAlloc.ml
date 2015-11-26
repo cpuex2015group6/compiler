@@ -41,7 +41,7 @@ let rec g env fenv = function
   | Tuple(xs) as exp->
      (match !hp with
      | Some x ->
-	Format.eprintf "heap pre-allocated at %d for tuple@." x;
+	(*	Format.eprintf "heap pre-allocated at %d for tuple@." x;*)
 	hp := Some (x + List.length xs)
      | None -> ());
      exp
@@ -51,7 +51,7 @@ let rec g env fenv = function
   | GetHp(_) as exp->
      (match !hp with
      | Some x ->
-	Format.eprintf "heap pre-allocated at %d@." x;
+       (*	Format.eprintf "heap pre-allocated at %d@." x;*)
        Int(x)
      | None -> exp)
   | App(x, _) as exp->

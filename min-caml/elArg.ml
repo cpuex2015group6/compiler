@@ -43,8 +43,8 @@ let rec g env fenv fn = function
 	     let e1 = h x fn cargs ys e1 in
 	     let e2 = h x fn cargs ys e2 in
 	     let ys' = List.fold_left(fun nys (y, t) -> if M.mem y cargs then nys else nys@[(y, t)]) [] ys in
-	     Format.eprintf "remove const argument(s) %s from %s and generate %s@."
-	       (Id.pp_list (M.fold (fun k _ l -> k::l) cargs [])) x fn;
+	       (*	     Format.eprintf "remove const argument(s) %s from %s and generate %s@."
+			     (Id.pp_list (M.fold (fun k _ l -> k::l) cargs [])) x fn;*)
 	     match t with
 	     | Type.Fun(ats, rt) ->
 		let ats = List.fold_left2 (fun nats at (y, t) -> if M.mem y cargs then nats else nats@[at]) [] ats ys in
@@ -123,8 +123,6 @@ let rec g env fenv fn = function
 
 
 let rec f e =
-  prerr_endline "eliminating args...";
   argenv := M.empty;
-  let e = g M.empty M.empty "" e in
-  prerr_endline "eliminating args end";
-  e
+  g M.empty M.empty "" e
+

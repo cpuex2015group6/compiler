@@ -22,6 +22,7 @@ and exp =
   | FAdd of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | FAbs of Id.t
   | Sqrt of Id.t
   | Lfd of Id.t * id_or_imm
   | Stfd of Id.t * Id.t * id_or_imm
@@ -70,9 +71,12 @@ val heap_start : int
 val stack_start : int
 val is_reg : Id.t -> bool
 
+val fv_if : Id.t -> id_or_imm -> Id.t list -> Id.t list -> Id.t list
+val fv_iff : Id.t -> Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_exp : exp -> Id.t list
+val fv_o : t -> Id.t list
 val fv : t -> Id.t list
-val fv2 : t -> Id.t list
-val fv3 : t -> (Id.t -> Id.t option) -> Id.t list -> Id.t list
 val concat : t -> Id.t * Type.t -> t -> t
 val concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list
 

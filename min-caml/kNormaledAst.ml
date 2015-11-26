@@ -89,6 +89,8 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FMul " ^ e1 ^ " " ^ e2 ^ "\n")
   | FDiv(e1, e2) ->
      print_string (indent ^ "FDiv " ^ e1 ^ " " ^ e2 ^ "\n")
+  | FAbs(e1) ->
+     print_string (indent ^ "FAbs " ^ e1 ^ "\n")
   | Sqrt(e1) ->
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
   | IfEq(e1, e2, t1, t2) ->

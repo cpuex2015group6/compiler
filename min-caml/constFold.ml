@@ -1,7 +1,6 @@
 open KNormal
 
 let exenv = ref M.empty
-let exfunc = ref []
 
 let memi x env =
   try (match M.find x env with Int(_) -> true | _ -> false)
@@ -135,23 +134,28 @@ let genfn x lc =
   )) lc x)
      
 let generate x fn t lc zs body =
-  Format.eprintf "generating function %s@." fn;
-  let args = List.fold_left (fun a (y,t) -> if M.mem y lc then a else a@[(y,t)]) [] zs
-  in
-  let t = match t with
-    | Type.Fun(ts, rt) ->
-       let ts = List.fold_left2
-	 (fun a (y,_) t ->
-	   if M.mem y lc then a else a@[t])
-	 []
-	 zs
-	 ts
-       in
-       Type.Fun(ts, rt)
-    | _ -> assert false
-  in
-  exenv := M.add fn lc !exenv;
-  exfunc := (x, { name = (fn, t); args = args; body = Alpha.f body }) :: !exfunc
+  (*  Format.eprintf "generating function %s@." fn;*)
+  if M.mem fn !exenv then
+    false
+  else
+    (
+      let args = List.fold_left (fun a (y,t) -> if M.mem y lc then a else a@[(y,t)]) [] zs
+      in
+      let t = match t with
+	| Type.Fun(ts, rt) ->
+	   let ts = List.fold_left2
+	     (fun a (y,_) t ->
+	       if M.mem y lc then a else a@[t])
+	     []
+	     zs
+	     ts
+	   in
+	   Type.Fun(ts, rt)
+	| _ -> assert false
+      in
+      exenv := M.add fn (x, { name = (fn, t); args = args; body = Alpha.f body }) !exenv;
+      true
+    )
 
 let genarg cys =
   List.fold_left
@@ -161,73 +165,88 @@ let genarg cys =
 	| _ -> assert false
     ) [] cys
     
-(* getとかを追加 *) 
+(* getとかを追加 *)
 let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
-  | Var(x) when memi x env -> Int(findi x env)
-  | Var(x) when memf x env -> Float(findf x env)
-  | Var(x) when memt x env -> Tuple(findt x env)
-  | ToArray(x) when memi x env -> Array(findi x env)
-  | Neg(x) when memi x env -> Int(-(findi x env))
-  | Add(x, y) when memi x env && memi y env -> Int(findi x env + findi y env) (* 足し算のケース (caml2html: constfold_add) *)
-  | Sub(x, y) when memi x env && memi y env -> Int(findi x env - findi y env)
-  | Xor(x, y) when memi x env && memi y env -> Int(findi x env lxor findi y env)
-  | Or(x, y) when memi x env && memi y env -> Int(findi x env lor findi y env)
-  | And(x, y) when memi x env && memi y env -> Int(findi x env land findi y env)
-  | Sll(x, y) when memi x env && memi y env -> Int(findi x env lsl findi y env)
-  | Srl(x, y) when memi x env && memi y env -> Int(findi x env lsr findi y env)
-  | FNeg(x) when memf x env -> Float(-.(findf x env))
-  | FAdd(x, y) when memf x env && memf y env -> Float(findf x env +. findf y env)
-  | FSub(x, y) when memf x env && memf y env -> Float(findf x env -. findf y env)
-  | FMul(x, y) when memf x env && memf y env -> Float(findf x env *. findf y env)
-  | FDiv(x, y) when memf x env && memf y env -> Float(findf x env /. findf y env)
-  | Sqrt(x) when memf x env -> Float(sqrt (findf x env))
+  | Var(x) when memi x env -> Int(findi x env), false
+  | Var(x) when memf x env -> Float(findf x env), false
+  | Var(x) when memt x env -> Tuple(findt x env), false
+  | ToArray(x) when memi x env -> Array(findi x env), false
+  | Neg(x) when memi x env -> Int(-(findi x env)), false
+  | Add(x, y) when memi x env && memi y env -> Int(findi x env + findi y env), false
+  | Sub(x, y) when memi x env && memi y env -> Int(findi x env - findi y env), false
+  | Xor(x, y) when memi x env && memi y env -> Int(findi x env lxor findi y env), false
+  | Or(x, y) when memi x env && memi y env -> Int(findi x env lor findi y env), false
+  | And(x, y) when memi x env && memi y env -> Int(findi x env land findi y env), false
+  (*| And(x, y) when memi x env && (findi x env = 2147483647) -> FAbs(y), false
+    | And(x, y) when memi y env && (findi y env = 2147483647) -> FAbs(x), false*)
+  | Sll(x, y) when memi x env && memi y env -> Int(findi x env lsl findi y env), false
+  | Srl(x, y) when memi x env && memi y env -> Int(findi x env lsr findi y env), false
+  | FNeg(x) when memf x env -> Float(-.(findf x env)), false
+  | FAdd(x, y) when memf x env && memf y env -> Float(findf x env +. findf y env), false
+  | FSub(x, y) when memf x env && memf y env -> Float(findf x env -. findf y env), false
+  | FMul(x, y) when memf x env && memf y env -> Float(findf x env *. findf y env), false
+  | FDiv(x, y) when memf x env && memf y env -> Float(findf x env /. findf y env), false
+  | FAbs(x) when memf x env -> Float(-.(findf x env)), false
+  | Sqrt(x) when memf x env -> Float(sqrt (findf x env)), false
   | IfEq(x, y, e1, e2) when memi x env && memi y env -> if findi x env = findi y env then g env fenv fn e1 else g env fenv fn e2
   | IfEq(x, y, e1, e2) when memf x env && memf y env -> if findf x env = findf y env then g env fenv fn e1 else g env fenv fn e2
-  | IfEq(x, y, e1, e2) -> IfEq(x, y, g env fenv fn e1, g env fenv fn e2)
+  | IfEq(x, y, e1, e2) ->
+     let e1, f1 = g env fenv fn e1 in
+     let e2, f2 = g env fenv fn e2 in
+     IfEq(x, y, e1, e2), f1 || f2
   | IfLE(x, y, e1, e2) when memi x env && memi y env -> if findi x env <= findi y env then g env fenv fn e1 else g env fenv fn e2
   | IfLE(x, y, e1, e2) when memf x env && memf y env -> if findf x env <= findf y env then g env fenv fn e1 else g env fenv fn e2
-  | IfLE(x, y, e1, e2) -> IfLE(x, y, g env fenv fn e1, g env fenv fn e2)
+  | IfLE(x, y, e1, e2) ->
+     let e1, f1 = g env fenv fn e1 in
+     let e2, f2 = g env fenv fn e2 in
+     IfLE(x, y, e1, e2), f1 || f2
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
-     let e1' = g env fenv fn e1 in
+     let e1, f1 = g env fenv fn e1 in
      let env =
-       (match e1' with
-       | Int (_) | Float(_) | Tuple(_) | Array(_) -> (M.add x e1' env)
+       (match e1 with
+       | Int (_) | Float(_) | Tuple(_) | Array(_) -> (M.add x e1 env)
        | _ -> env)
      in
-     let e2' = g env fenv fn e2 in
-     Let((x, t), e1', e2')
+     let e2, f2 = g env fenv fn e2 in
+     Let((x, t), e1, e2), f1 || f2
   | LetRec({ name = (x, t); args = ys; body = e1 }, e2) ->
      let fenv = M.add x (ys, e1, t) fenv in
-     LetRec({ name = (x, t); args = ys; body = g env fenv fn e1 }, g env fenv fn e2)
+     let e1, f1 = g env fenv fn e1 in
+     let e2, f2 = g env fenv fn e2 in
+     LetRec({ name = (x, t); args = ys; body = e1 }, e2), f1 || f2
   | LetTuple(xts, y, e) when memt y env ->
      g env fenv fn (List.fold_left2
-		   (fun e' xt z -> Let(xt, Var(z), e'))
-		   e
-		   xts
-		   (findt y env))
-  | LetTuple(xts, y, e) -> LetTuple(xts, y, g env fenv fn e)
+				   (fun e' xt z -> Let(xt, Var(z), e'))
+				   e
+				   xts
+				   (findt y env))
+  | LetTuple(xts, y, e) ->
+     let e, f = g env fenv fn e in
+     LetTuple(xts, y, e), f
   | App(x, ys) as exp when M.mem x fenv && fn <> x ->
      let (zs, e, t) = M.find x fenv in
      let cys = gencys ys env in
      let lc = listconst cys zs in
      let ffold body = 
        let fn = genfn x lc in
-       if M.mem fn fenv || M.mem fn !exenv then
-	 ()
-       else
-	 generate x fn t lc zs body;
-       App(fn, genarg cys)
+       let f = if M.mem fn fenv then
+	   false
+	 else
+	   generate x fn t lc zs body in
+       App(fn, genarg cys), f
      in
      let opt limit e =
        let rec opt_sub e =
-	 let e' = g env fenv x (Assoc.f (Beta.f e)) in
+	 let e', f = g env fenv x (Assoc.f (Beta.f e)) in
 	 if e = e' || KNormal.size e > limit then
-	   e
+	   e, f
 	 else
-	   opt_sub e'
+	   let e', f' = opt_sub e' in
+	   e', f || f'
        in
-       let e = Elim.f (opt_sub e) in
-       e
+       let e', f = opt_sub e in
+       let e = Elim.f e' in
+       e, f
      in
      let body = (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc e) in
      if lc <> M.empty then
@@ -239,51 +258,49 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	   (
 	     if not (Inline.is_rec x body) then
 	       (
-	       let exfunc2 = !exfunc in
-	       let body' = opt ((KNormal.size e) * 2) body in
-	       if KNormal.size body' < (KNormal.size e) / 2 || List.length !exfunc <> List.length exfunc2 then
+	       let body', f = opt ((KNormal.size e) * 2) body in
+	       if KNormal.size body' < (KNormal.size e) / 2 || f then
 		 ffold body'
 	       else
-		 exp
+		 exp, false
 	       )
 	     else
 	       (
 		 let body, sflag, r = h M.empty x (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc body) in
 		 if not sflag || r > 1 then
 		   (
-		     exp
+		     exp, false
 		   )
 		 else
 		   (
-		     let exfunc2 = !exfunc in
-		     let body' = opt ((KNormal.size e) * 4) body in
-		     if KNormal.size body' < 2 * KNormal.size e || List.length !exfunc <> List.length exfunc2 then
+		     let body', f = opt ((KNormal.size e) * 4) body in
+		     if KNormal.size body' < 2 * KNormal.size e || f then
 		       ffold body'
 		     else
-		       exp
+		       exp, false
 		   )
 	       )
 	   )
        )
      else
-       exp
+       exp, false
   | App(x, ys) as exp when fn = x ->
      let (zs, e, _) = M.find x fenv in
      let cys = gencys ys env in
      let lc = listconst cys zs in
-     if lc <> M.empty then
-       let env' =
-	 List.fold_left2
-  	   (fun env' (z, t) y -> M.add z y env')
-	   M.empty
-	   zs
-	   ys in
-       Alpha.g env' e
-     else
-       exp
-  | ToInt(x) when memf x env -> Int(Type.conv_float(findf x env))
-  | ToFloat(x) when memi x env -> Float(Type.conv_int(findi x env))
-  | e -> e
+     (if lc <> M.empty then
+	 let env' =
+	   List.fold_left2
+  	     (fun env' (z, t) y -> M.add z y env')
+	     M.empty
+	     zs
+	     ys in
+	 Alpha.g env' e
+      else
+	 exp), false
+  | ToInt(x) when memf x env -> Int(Type.conv_float(findf x env)), false
+  | ToFloat(x) when memi x env -> Float(Type.conv_int(findi x env)), false
+  | e -> e, false
 
 (* 関数生成 *)
 let rec i = function
@@ -295,9 +312,9 @@ let rec i = function
      Let((x, t), i e1, i e2)
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) ->
      let e2 =
-       List.fold_right
-	 (fun (fn, func) e -> if x = fn then LetRec(func, e) else e)
-	 !exfunc
+       M.fold
+	 (fun _ (fn, func) e -> if x = fn then LetRec(func, e) else e)
+	 !exenv
 	 (i e2)
      in
      LetRec({ name = (x, t); args = yts; body = i e1}, e2)
@@ -306,5 +323,5 @@ let rec i = function
 
 let rec f e =
   exenv := M.empty;
-  exfunc := [];
-  i (g M.empty M.empty "" e)
+  let e, _ = g M.empty M.empty "" e in
+  i e

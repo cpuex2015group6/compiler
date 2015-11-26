@@ -71,5 +71,5 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
 let f e =
   log := "";
   let e = g M.empty (h e) e in
-  prerr_string !log;
+  (*  prerr_string !log;*)
   e

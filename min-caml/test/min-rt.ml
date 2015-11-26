@@ -936,7 +936,7 @@ let rec solver_fast index dirvec org =
   let dconsts = d_const dirvec in
   let dconst = dconsts.(index) in
   let m_shape = o_form m in
-  if m_shape = 1 then       
+  if m_shape = 1 then
     solver_rect_fast m (d_vec dirvec) dconst b0 b1 b2
   else if m_shape = 2 then  
     solver_surface_fast m dconst b0 b1 b2
@@ -1378,7 +1378,7 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
 	    let q1 = vec.(1) *. t +. startp_fast.(1) in
 	    let q2 = vec.(2) *. t +. startp_fast.(2) in
 	    if check_all_inside 0 and_group q0 q1 q2 then 
-	      ( 
+	      (
 		tmin.(0) <- t;
 		vecset intersection_point q0 q1 q2;
 		intersected_object_id.(0) <- iobj;
