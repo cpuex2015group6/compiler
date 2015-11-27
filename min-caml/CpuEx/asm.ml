@@ -153,3 +153,212 @@ let rec concatfv e1 xt e2 =
 
 (* align : int -> int *)
 let align i = i
+
+(* デバッグ用 *)
+type dest = Tail | NonTail of Id.t (* 末尾かどうかを表すデータ型 *)
+
+let rec i indent = function
+  | (dest, Ans (exp)) -> i' indent (dest, exp)
+  | (dest, Let((x, t), exp, e)) -> i' indent (NonTail (x), exp); i indent (dest, e)
+and i' indent = function
+  | (NonTail(x), exp) ->
+     print_string (indent^x^" ");
+     j indent exp
+  | (Tail, exp) ->
+     print_string (indent^"_ ");
+     j indent exp
+and j indent = function
+  | Nop ->
+     Printf.fprintf stdout "nop\n"
+  | Li(C(i)) ->
+     Printf.fprintf stdout "li %d\n" i
+  | Li(L(Id.L(l))) ->
+     Printf.fprintf stdout "li %s\n" l
+  | FLi(C(i)) ->
+     Printf.fprintf stdout "fli %d\n" i
+  | FLi(L(Id.L(l))) ->
+     Printf.fprintf stdout "fli %s\n" l
+  | SetL(Id.L(y)) -> 
+     Printf.fprintf stdout "setl %s\n" y
+  | Mr(y) ->
+     Printf.fprintf stdout "mr %s\n" y
+  | Add(y, V(z)) -> 
+     Printf.fprintf stdout "add %s, %s\n" y z
+  | Add(y, C(z)) -> 
+     Printf.fprintf stdout "add %s, %d\n" y z
+  | Sub(y, V(z)) -> 
+     Printf.fprintf stdout "sub %s, %s\n" y z
+  | Sub(y, C(z)) -> 
+     Printf.fprintf stdout "sub %s, %d\n" y z
+  | Xor(y, V(z)) -> 
+     Printf.fprintf stdout "xor %s, %s\n" y z
+  | Xor(y, C(z)) -> 
+     Printf.fprintf stdout "xor %s, %d\n" y z
+  | Or(y, V(z)) -> 
+     Printf.fprintf stdout "or %s, %s\n" y z
+  | Or(y, C(z)) -> 
+     Printf.fprintf stdout "or %s, %d\n" y z
+  | And(y, V(z)) -> 
+     Printf.fprintf stdout "and %s, %s\n" y z
+  | And(y, C(z)) -> 
+     Printf.fprintf stdout "and %s, %d\n" y z
+  | Sll(y, V(z)) -> 
+     Printf.fprintf stdout "sll %s, %s\n" y z
+  | Sll(y, C(z)) -> 
+     Printf.fprintf stdout "sll %s, %d\n" y z
+  | Srl(y, V(z)) -> 
+     Printf.fprintf stdout "srl %s, %s\n" y z
+  | Srl(y, C(z)) -> 
+     Printf.fprintf stdout "srl %s, %d\n" y z
+  | Ldw(y, V(z)) ->
+     Printf.fprintf stdout "ldw %s, %s\n" y z
+  | Ldw(y, C(z)) -> 
+     Printf.fprintf stdout "ldw %s, %d\n" y z
+  | Stw(x, y, V(z)) ->
+     Printf.fprintf stdout "stw %s, %s, %s\n" x y z
+  | Stw(x, y, C(z)) -> 
+     Printf.fprintf stdout "stw %s, %s, %d\n" x y z
+  | FMr(y) ->
+     Printf.fprintf stdout "fmr %s\n" y
+  | FAdd(y, z) -> 
+     Printf.fprintf stdout "fadd %s, %s\n" y z
+  | FMul(y, z) -> 
+     Printf.fprintf stdout "fmul %s, %s\n" y z
+  | FDiv(y, z) -> 
+     Printf.fprintf stdout "fdiv %s, %s\n" y z
+  | FAbs(y) -> 
+     Printf.fprintf stdout "fabs %s\n" y
+  | Sqrt(y) -> 
+     Printf.fprintf stdout "sqrt %s\n" y
+  | Lfd(y, V(z)) ->
+     Printf.fprintf stdout "lfd %s, %s\n" y z
+  | Lfd(y, C(z)) -> 
+     Printf.fprintf stdout "lfd %s, %d\n" y z
+  | Stfd(x, y, V(z)) ->
+     Printf.fprintf stdout "stfd %s, %s, %s\n" x y z
+  | Stfd(x, y, C(z)) -> 
+     Printf.fprintf stdout "stfd %s, %s, %d\n" x y z
+  | ToFloat(y) -> 
+     Printf.fprintf stdout "tofloat %s\n" y
+  | ToInt(y) -> 
+     Printf.fprintf stdout "toint %s\n" y
+  | ToArray(y) -> 
+     Printf.fprintf stdout "toarray %s\n" y
+  | In -> 
+     Printf.fprintf stdout "in\n"
+  | Out(y) -> 
+     Printf.fprintf stdout "out %s\n" y
+  | Count -> 
+     Printf.fprintf stdout "count\n"
+  | ShowExec -> 
+     Printf.fprintf stdout "showexec\n"
+  | SetCurExec ->
+     Printf.fprintf stdout "setcurexec\n"
+  | GetExecDiff ->
+     Printf.fprintf stdout "getexecdiff\n"
+  | GetHp -> 
+     Printf.fprintf stdout "gethp\n"
+  | SetHp(y) -> 
+     Printf.fprintf stdout "sethp %s\n" y
+  | Comment(s) ->
+     Printf.fprintf stdout "comment %s\n" s
+  | Save(x, y) ->
+     Printf.fprintf stdout "save %s,%s\n" y x
+  | Restore(y) ->
+     Printf.fprintf stdout "restore %s\n" y
+  | IfEq(x, V(y), e1, e2) ->
+     Printf.fprintf stdout "ifeq %s, %s\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfEq(x, C(y), e1, e2) ->
+     Printf.fprintf stdout "ifeq %s, %d\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfLE(x, V(y), e1, e2) ->
+     Printf.fprintf stdout "ifle %s, %s\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfLE(x, C(y), e1, e2) ->
+     Printf.fprintf stdout "ifle %s, %d\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfGE(x, V(y), e1, e2) ->
+     Printf.fprintf stdout "ifge %s, %s\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfGE(x, C(y), e1, e2) ->
+     Printf.fprintf stdout "ifge %s, %d\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfFEq(x, y, e1, e2) ->
+     Printf.fprintf stdout "iffeq %s, %s\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | IfFLE(x, y, e1, e2) ->
+     Printf.fprintf stdout "iffle %s, %s\n" x y;
+     let indent = indent ^ "  "
+     in
+     Printf.fprintf stdout "%scont:\n" indent;
+     print_string indent;
+     i indent (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     print_string indent;
+     i indent (Tail, e2)
+  | CallCls(x, ys) ->
+     Printf.fprintf stdout "callcls %s, " x;
+     Printf.fprintf stdout "ys:";
+     List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
+     Printf.fprintf stdout "\n"
+  | CallDir(Id.L(x), ys) -> 
+     Printf.fprintf stdout "calldir %s, " x;
+     Printf.fprintf stdout "ys:";
+     List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
+     Printf.fprintf stdout "\n"
+
+let show fundefs e =
+  print_endline ">>>>>>>>>>>>>>>>assmbly>>>>>>>>>>>>>>>>>";
+  List.iter (fun {name= Id.L(name); args=_; body= e; ret=r} -> print_string (name^":\n"); i "" (Tail, e)) fundefs;
+  print_endline "min_caml_start:";
+  i "" (NonTail("r08"), e)

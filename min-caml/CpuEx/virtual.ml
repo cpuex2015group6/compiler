@@ -162,16 +162,14 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	   (match M.find x env with
 	    | Type.Array (Type.Unit) -> Ans (Nop)
 	    | Type.Array (_) ->
-	       Let ((offset, Type.Int), Mr(y),
-		          Ans (Ldw (x, V (offset))))
+	       Ans (Ldw (x, V (y)))
 	    | _ -> assert false)
   | Closure.Put (x, y, z) ->
      let offset = Id.genid "o" in 
 	   (match M.find x env with
 	    | Type.Array (Type.Unit) -> Ans (Nop)
 	    | Type.Array (_) ->
-	       Let ((offset, Type.Int), Mr(y), 
-		          Ans (Stw (z, x, V (offset)))) 
+	       Ans (Stw (z, x, V (y)))
 	    | _ -> assert false)
   | Closure.ExtArray (Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))
 

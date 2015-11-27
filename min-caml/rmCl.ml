@@ -30,7 +30,7 @@ let rec g env fenv venv = function
        let yts = List.fold_left (fun yts (_, x, t) -> (x,t)::yts) yts list in
        let env = M.add x (fn, list) env in
        let env' = List.fold_left (fun env' (x, x', _) -> M.add x x' env') M.empty list in
-       Format.eprintf "delete free variable(s) %s from %s and generate %s@." (Id.pp_list (List.rev_map (fun (x, _, _) -> x) list)) x fn;
+       (*Format.eprintf "delete free variable(s) %s from %s and generate %s@." (Id.pp_list (List.rev_map (fun (x, _, _) -> x) list)) x fn;*)
        let body = Alpha.g env' (g env fenv venv e1) in
        (match t with
        | Type.Fun(ats, rt) ->

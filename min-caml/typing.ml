@@ -70,7 +70,7 @@ let rec deref_term = function
   | Get(e1, e2) -> Get(deref_term e1, deref_term e2)
   | Put(e1, e2, e3) -> Put(deref_term e1, deref_term e2, deref_term e3)
   | e -> e
-
+  
 let rec occur r1 = function (* occur check (caml2html: typing_occur) *)
   | Type.Fun(t2s, t2) -> List.exists (occur r1) t2s || occur r1 t2
   | Type.Tuple(t2s) -> List.exists (occur r1) t2s
@@ -114,11 +114,11 @@ let rec g env e = (* ∑øø‰œ¿•Î°º•¡•Û (caml2html: typing_g) *)
     | Int(_) -> Type.Int
     | Float(_) -> Type.Float
     | Not(e) ->
-	     unify Type.Bool (g env e);
-	     Type.Bool
+       unify Type.Bool (g env e);
+      Type.Bool
     | Neg(e) ->
-	     unify Type.Int (g env e);
-	     Type.Int
+       unify Type.Int (g env e);
+      Type.Int
     | Add(e1, e2) | Sub(e1, e2) | Mul(e1, e2) | Div(e1, e2) | Xor(e1, e2) | Or(e1, e2) | And(e1, e2) | Sll(e1, e2) | Srl(e1, e2)-> (* ≥∆ºÔ¿∞øÙ±Èªª§Œ∑øø‰œ¿ (caml2html: typing_add) *)
 	                   unify Type.Int (g env e1);
 	                   unify Type.Int (g env e2);

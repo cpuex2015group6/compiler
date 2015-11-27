@@ -133,7 +133,7 @@ let genfn x lc =
     | _ -> assert false
   )) lc x)
      
-let generate x fn t lc zs body =
+let rec generate x fn t lc zs body =
   (*  Format.eprintf "generating function %s@." fn;*)
   if M.mem fn !exenv then
     false
@@ -177,8 +177,8 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | Xor(x, y) when memi x env && memi y env -> Int(findi x env lxor findi y env), false
   | Or(x, y) when memi x env && memi y env -> Int(findi x env lor findi y env), false
   | And(x, y) when memi x env && memi y env -> Int(findi x env land findi y env), false
-  (*| And(x, y) when memi x env && (findi x env = 2147483647) -> FAbs(y), false
-    | And(x, y) when memi y env && (findi y env = 2147483647) -> FAbs(x), false*)
+  | And(x, y) when memi x env && (findi x env = 2147483647) -> FAbs(y), false
+  | And(x, y) when memi y env && (findi y env = 2147483647) -> FAbs(x), false
   | Sll(x, y) when memi x env && memi y env -> Int(findi x env lsl findi y env), false
   | Srl(x, y) when memi x env && memi y env -> Int(findi x env lsr findi y env), false
   | FNeg(x) when memf x env -> Float(-.(findf x env)), false
@@ -239,7 +239,7 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
        let rec opt_sub e =
 	 let e', f = g env fenv x (Assoc.f (Beta.f e)) in
 	 if e = e' || KNormal.size e > limit then
-	   e, f
+	     e, f
 	 else
 	   let e', f' = opt_sub e' in
 	   e', f || f'

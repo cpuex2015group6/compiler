@@ -81,3 +81,6 @@ val concat : t -> Id.t * Type.t -> t -> t
 val concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list
 
 val align : int -> int
+
+type dest = Tail | NonTail of Id.t
+val show : fundef list -> t -> unit

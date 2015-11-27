@@ -23,7 +23,6 @@ let conv_float f =
 let conv_int i =
   if i = 0 then 0.0 else
     let x, _ = frexp (float_of_int ((i land 8388607) lor 8388608)) in
-    print_float x;
     let f = ldexp (x *. 2.0) (((i lsr 23) land 255) - 127) in
     if (i land 2147483648) = 0 then
       f
