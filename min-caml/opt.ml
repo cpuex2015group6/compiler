@@ -14,6 +14,7 @@ let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
 	  iter1 (m - 1) e'
     in
     if n = 0 then e else
+      (
       let e = Elim.f e in
       let e' = (Elim.f (Inline.f (ElArg.f (iter1 !limit e)))) in
       if e = e' then
@@ -21,6 +22,7 @@ let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
 	 e)
       else
 	f (n - 1) e'
+      )
   else
     e
 

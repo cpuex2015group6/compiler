@@ -116,7 +116,7 @@ let rec g dest cont contfv regenv = function (* 命令列のレジスタ割り当て (caml2h
 and g'_and_restore dest cont contfv regenv exp = (* 使用される変数をスタックからレジスタへRestore (caml2html: regalloc_unspill) *)
   try g' dest cont contfv regenv exp
   with NoReg(x, t) ->
-    ( Format.eprintf "restoring %s@." x;
+    ((* Format.eprintf "restoring %s@." x;*)
      g dest cont contfv regenv (Let((x, t), Restore(x), Ans(exp))))
 and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html: regalloc_gprime) *)
   | Nop | Li _ | SetL _ | Comment _ | Restore _ | FLi _ as exp -> (Ans(exp), regenv)

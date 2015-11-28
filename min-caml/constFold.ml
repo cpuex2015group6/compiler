@@ -1,6 +1,7 @@
 open KNormal
 
 let exenv = ref M.empty
+let ofenv = ref S.empty
 
 let memi x env =
   try (match M.find x env with Int(_) -> true | _ -> false)
@@ -134,7 +135,7 @@ let genfn x lc =
   )) lc x)
      
 let rec generate x fn t lc zs body =
-  (*  Format.eprintf "generating function %s@." fn;*)
+  (*Format.eprintf "generating function %s@." fn;*)
   if M.mem fn !exenv then
     false
   else
@@ -213,6 +214,12 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      let fenv = M.add x (ys, e1, t) fenv in
      let e1, f1 = g env fenv fn e1 in
      let e2, f2 = g env fenv fn e2 in
+     let e2 =
+       M.fold
+	 (fun _ (fn, func) e -> if x = fn then LetRec(func, e) else e)
+	 !exenv
+	 e2
+     in
      LetRec({ name = (x, t); args = ys; body = e1 }, e2), f1 || f2
   | LetTuple(xts, y, e) when memt y env ->
      g env fenv fn (List.fold_left2
@@ -235,11 +242,14 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	   generate x fn t lc zs body in
        App(fn, genarg cys), f
      in
-     let opt limit e =
+     let opt fn limit e =
        let rec opt_sub e =
 	 let e', f = g env fenv x (Assoc.f (Beta.f e)) in
 	 if e = e' || KNormal.size e > limit then
+	   (
+	     (if e <> e' then ofenv := S.add fn !ofenv;);
 	     e, f
+	   )
 	 else
 	   let e', f' = opt_sub e' in
 	   e', f || f'
@@ -248,39 +258,35 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
        let e = Elim.f e' in
        e, f
      in
-     let body = (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc e) in
      if lc <> M.empty then
        (
 	 let fn = genfn x lc in
+	 let body = (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc e) in
 	 if M.mem fn fenv || M.mem fn !exenv then
 	   ffold body
 	 else
-	   (
-	     if not (Inline.is_rec x body) then
-	       (
-	       let body', f = opt ((KNormal.size e) * 2) body in
+	   if not (Inline.is_rec x body) then
+	     if S.mem fn !ofenv then
+	       exp, false
+	     else
+	       let body', f = opt fn ((KNormal.size e) * 2) body in
 	       if KNormal.size body' < (KNormal.size e) / 2 || f then
 		 ffold body'
 	       else
 		 exp, false
-	       )
+	   else
+	     let body, sflag, r = h M.empty x (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc body) in
+	     if not sflag || r > 1 then
+	       exp, false
 	     else
-	       (
-		 let body, sflag, r = h M.empty x (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc body) in
-		 if not sflag || r > 1 then
-		   (
-		     exp, false
-		   )
+	       if S.mem fn !ofenv then
+		 exp, false
+	       else
+		 let body', f = opt fn ((KNormal.size e) * 4) body in
+		 if KNormal.size body' < 2 * KNormal.size e || f then
+		   ffold body'
 		 else
-		   (
-		     let body', f = opt ((KNormal.size e) * 4) body in
-		     if KNormal.size body' < 2 * KNormal.size e || f then
-		       ffold body'
-		     else
-		       exp, false
-		   )
-	       )
-	   )
+		   exp, false
        )
      else
        exp, false
@@ -302,26 +308,8 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | ToFloat(x) when memi x env -> Float(Type.conv_int(findi x env)), false
   | e -> e, false
 
-(* 関数生成 *)
-let rec i = function
-  | IfEq(x, y, e1, e2) ->
-     IfEq(x, y, i e1, i e2)
-  | IfLE(x, y, e1, e2) ->
-     IfLE(x, y, i e1, i e2)
-  | Let((x, t), e1, e2) ->
-     Let((x, t), i e1, i e2)
-  | LetRec({ name = (x, t); args = yts; body = e1 }, e2) ->
-     let e2 =
-       M.fold
-	 (fun _ (fn, func) e -> if x = fn then LetRec(func, e) else e)
-	 !exenv
-	 (i e2)
-     in
-     LetRec({ name = (x, t); args = yts; body = i e1}, e2)
-  | LetTuple(xts, y, e) -> LetTuple(xts, y, i e)
-  | e -> e
-
 let rec f e =
+  ofenv := S.empty;
   exenv := M.empty;
   let e, _ = g M.empty M.empty "" e in
-  i e
+  e
