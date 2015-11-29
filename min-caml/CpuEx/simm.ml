@@ -40,8 +40,10 @@ and g' env e =
     | Stw(x, y, C(c)) -> Stw(rmzero env x, y, C(c))
     | FMr(x) -> FMr(rmzero env x)
     | FAdd(x, y) -> FAdd(rmzero env x, rmzero env y)
+    | FSub(x, y) -> FSub(rmzero env x, rmzero env y)
     | FMul(x, y) -> FMul(rmzero env x, rmzero env y)
     | FDiv(x, y) -> FDiv(rmzero env x, rmzero env y)
+    | FAM(x, y, z) -> FAM(rmzero env x, rmzero env y, rmzero env z)
     | FAbs(x) -> FAbs(rmzero env x)
     | Sqrt(x) -> Sqrt(rmzero env x)
     | Lfd(x, V(y)) -> Lfd(rmzero env x, V(rmzero env y))
@@ -53,14 +55,9 @@ and g' env e =
     | ToArray(x) -> ToArray(rmzero env x)
     | Out(x) -> Out(rmzero env x)
     | SetHp(x) -> SetHp(rmzero env x)
-    | IfEq(x, V(y), e1, e2) -> IfEq(rmzero env x, V(rmzero env y), e1, e2)
-    | IfEq(x, C(c), e1, e2) -> IfEq(rmzero env x, C(c), e1, e2)
-    | IfLE(x, V(y), e1, e2) -> IfLE(rmzero env x, V(rmzero env y), e1, e2)
-    | IfLE(x, C(c), e1, e2) -> IfLE(rmzero env x, C(c), e1, e2)
-    | IfGE(x, V(y), e1, e2) -> IfGE(rmzero env x, V(rmzero env y), e1, e2)
-    | IfGE(x, C(c), e1, e2) -> IfGE(rmzero env x, C(c), e1, e2)
-    | IfFEq(x, y, e1, e2) -> IfFEq(rmzero env x, rmzero env y, e1, e2)
-    | IfFLE(x, y, e1, e2) -> IfFLE(rmzero env x, rmzero env y, e1, e2)
+    | If(cond, x, V(y), e1, e2) -> If(cond, rmzero env x, V(rmzero env y), e1, e2)
+    | If(cond, x, C(c), e1, e2) -> If(cond, rmzero env x, C(c), e1, e2)
+    | IfF(cond, x, y, e1, e2) -> IfF(cond, rmzero env x, rmzero env y, e1, e2)
     | Save(x, y) -> Save(rmzero env x, rmzero env y)
     | Restore(x) -> Restore(rmzero env x)
     | e -> e
@@ -70,7 +67,7 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
   | Add(x, V(y)) when M.mem y env ->
      let e = Add(x, C(M.find y env)) in
      e, fv_exp e
-  | Add(x, V(y)) when M.mem x env -> g' env (Add(y, V(x)))
+  | Add(x, V(y)) when M.mem x env -> g'' env (Add(y, V(x)))
   | Sub(x, V(y)) when M.mem y env ->
      let e = Sub(x, C(M.find y env)) in
      e, fv_exp e
@@ -104,67 +101,28 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
   | Stfd(x, y, V(z)) when M.mem z env ->
      let e = Stfd(x, y, C(M.find z env)) in
      e, fv_exp e
-  | IfEq(x, V(y), e1, e2) when M.mem y env ->
+  | If(cond, x, V(y), e1, e2) when M.mem y env ->
      let e1, fve1 = g env e1 in
      let e2, fve2 = g env e2 in
      let c : id_or_imm = C(M.find y env) in
      let fv = fv_if x c fve1 fve2 in
-     IfEq(x, c, e1, e2), fv
-  | IfLE(x, V(y), e1, e2) when M.mem y env ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let c : id_or_imm = C(M.find y env) in
-     let fv = fv_if x c fve1 fve2 in
-     IfLE(x, c, e1, e2), fv
-  | IfGE(x, V(y), e1, e2) when M.mem y env -> 
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let c : id_or_imm = C(M.find y env) in
-     let fv = fv_if x c fve1 fve2 in
-     IfGE(x, c, e1, e2), fv
-  | IfEq(x, V(y), e1, e2) when M.mem x env -> 
+     If(cond, x, c, e1, e2), fv
+  | If(cond, x, V(y), e1, e2) when M.mem x env -> 
      let e1, fve1 = g env e1 in
      let e2, fve2 = g env e2 in
      let c : id_or_imm = C(M.find x env) in
      let fv = fv_if y c fve1 fve2 in
-     IfEq(y, c, e1, e2), fv
-  | IfLE(x, V(y), e1, e2) when M.mem x env -> 
+     If(Asm.swapcond cond, y, c, e1, e2), fv
+  | If(cond, x, V(y), e1, e2) -> 
      let e1, fve1 = g env e1 in
      let e2, fve2 = g env e2 in
-     let c : id_or_imm = C(M.find x env) in
-     let fv = fv_if y c fve1 fve2 in
-     IfGE(y, c, e1, e2), fv
-  | IfGE(x, V(y), e1, e2) when M.mem x env -> 
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let c : id_or_imm = C(M.find x env) in
-     let fv = fv_if y c fve1 fve2 in
-     IfLE(y, c, e1, e2), fv
-  | IfEq(x, y', e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_if x y' fve1 fve2 in
-     IfEq(x, y', e1, e2), fv
-  | IfLE(x, y', e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_if x y' fve1 fve2 in
-     IfLE(x, y', e1, e2), fv
-  | IfGE(x, y', e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_if x y' fve1 fve2 in
-     IfGE(x, y', e1, e2), fv
-  | IfFEq(x, y, e1, e2) ->
+     let fv = fv_if x (V(y)) fve1 fve2 in
+     If(cond, x, V(y), e1, e2), fv
+  | IfF(cond, x, y, e1, e2) ->
      let e1, fve1 = g env e1 in
      let e2, fve2 = g env e2 in
      let fv = fv_iff x y fve1 fve2 in
-     IfFEq(x, y, e1, e2), fv
-  | IfFLE(x, y, e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_iff x y fve1 fve2 in
-     IfFLE(x, y, e1, e2), fv
+     IfF(cond, x, y, e1, e2), fv
   | e -> e, fv_exp e
 
 (* トップレベル関数の 16 bit 即値最適化 *)

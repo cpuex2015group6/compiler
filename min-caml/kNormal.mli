@@ -16,10 +16,10 @@ type t =
   | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
-  | IfEq of Id.t * Id.t * t * t
-  | IfLE of Id.t * Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t

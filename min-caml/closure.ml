@@ -16,6 +16,7 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
   | ToFloat of Id.t
@@ -29,8 +30,7 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | GetExecDiff
   | GetHp
   | SetHp of Id.t
-  | IfEq of Id.t * Id.t * t * t
-  | IfLE of Id.t * Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t
@@ -53,7 +53,8 @@ let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp | Count | ShowExec | SetCurExec | GetExecDiff -> S.empty
   | Neg(x) | FNeg(x) | FAbs(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out(x) | SetHp(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
-  | IfEq(x, y, e1, e2)| IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
+  | FAM(x, y, z) -> S.of_list [x; y; z]
+  | If(_, x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
   | Var(x) -> S.singleton x
   | MakeCls((x, t), { entry = l; actual_fv = ys }, e) -> S.remove x (S.union (S.of_list ys) (fv e))
@@ -82,6 +83,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.FSub(x, y) -> FSub(x, y)
   | KNormal.FMul(x, y) -> FMul(x, y)
   | KNormal.FDiv(x, y) -> FDiv(x, y)
+  | KNormal.FAM(x, y, z) -> FAM(x, y, z)
   | KNormal.FAbs(x) -> FAbs(x)
   | KNormal.Sqrt(x) -> Sqrt(x)
   | KNormal.ToFloat(x) -> ToFloat(x)
@@ -95,8 +97,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.GetExecDiff -> GetExecDiff
   | KNormal.GetHp(x) -> GetHp
   | KNormal.SetHp(x) -> SetHp(x)
-  | KNormal.IfEq(x, y, e1, e2) -> IfEq(x, y, g env known e1, g env known e2)
-  | KNormal.IfLE(x, y, e1, e2) -> IfLE(x, y, g env known e1, g env known e2)
+  | KNormal.If(c, x, y, e1, e2) -> If(c, x, y, g env known e1, g env known e2)
   | KNormal.Let((x, t), e1, e2) ->
      let e1' = g env known e1 in
      Let((x, t), e1', g (M.add x t env) known e2)

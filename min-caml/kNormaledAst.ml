@@ -89,19 +89,14 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FMul " ^ e1 ^ " " ^ e2 ^ "\n")
   | FDiv(e1, e2) ->
      print_string (indent ^ "FDiv " ^ e1 ^ " " ^ e2 ^ "\n")
+  | FAM(e1, e2, e3) ->
+     print_string (indent ^ "FAM " ^ e1 ^ " " ^ e2 ^ " " ^ e3 ^ "\n")
   | FAbs(e1) ->
      print_string (indent ^ "FAbs " ^ e1 ^ "\n")
   | Sqrt(e1) ->
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
-  | IfEq(e1, e2, t1, t2) ->
-     print_string (indent ^ "IfEq " ^ e1 ^ " " ^ e2 ^ "\n");
-    print_string (indent ^ "{\n");
-    g (indent ^ "  ") t1;
-    print_string (indent ^ "} Else {" ^ "\n");
-    g (indent ^ "  ") t2;
-    print_string (indent ^ "}\n")
-  | IfLE(e1, e2, t1, t2) ->
-     print_string (indent ^ "IfLE " ^ e1 ^ " " ^ e2 ^ "\n");
+  | If(c, e1, e2, t1, t2) ->
+     Printf.printf "%sIf %d %s %s\n" indent c e1 e2;
     print_string (indent ^ "{\n");
     g (indent ^ "  ") t1;
     print_string (indent ^ "} Else {" ^ "\n");

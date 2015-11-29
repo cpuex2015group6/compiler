@@ -20,8 +20,10 @@ and exp =
   | Stw of Id.t * Id.t * id_or_imm
   | FMr of Id.t
   | FAdd of Id.t * Id.t
+  | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
   | Lfd of Id.t * id_or_imm
@@ -39,11 +41,8 @@ and exp =
   | SetHp of Id.t
   | Comment of string
   (* virtual instructions *)
-  | IfEq of Id.t * id_or_imm * t * t
-  | IfLE of Id.t * id_or_imm * t * t
-  | IfGE of Id.t * id_or_imm * t * t (* for simm *)
-  | IfFEq of Id.t * Id.t * t * t
-  | IfFLE of Id.t * Id.t * t * t
+  | If of int * Id.t * id_or_imm * t * t
+  | IfF of int * Id.t * Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -53,7 +52,9 @@ type fundef =
     { name : Id.l; args : Id.t list; body : t; ret : Type.t }
 type prog = Prog of (Id.l * int) list * Id.l list * fundef list * t
 
-val fletd : Id.t * exp * t -> t (* shorthand of Let for float *)
+val negcond : int -> int
+val swapcond : int -> int
+    
 val seq : exp * t -> t (* shorthand of Let for unit *)
 
 val regs : Id.t array
@@ -70,7 +71,7 @@ val reg_zero : Id.t
 val heap_start : int
 val stack_start : int
 val is_reg : Id.t -> bool
-
+  
 val fv_if : Id.t -> id_or_imm -> Id.t list -> Id.t list -> Id.t list
 val fv_iff : Id.t -> Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list

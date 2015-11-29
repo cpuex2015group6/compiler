@@ -3,12 +3,9 @@ open KNormal
 let flag = true
 
 let rec g env fenv venv = function
-  | IfEq(x, y, e1, e2) ->
+  | If(c, x, y, e1, e2) ->
      let e1 = g env fenv venv e1 in
-     IfEq(x, y, e1, (g env fenv venv e2))
-  | IfLE(x, y, e1, e2) ->
-     let e1 = g env fenv venv e1 in
-     IfLE(x, y, e1, (g env fenv venv e2))
+     If(c, x, y, e1, (g env fenv venv e2))
   | Let((x, t), e1, e2) ->
      let e1 = g env fenv venv e1 in
      Let((x, t), e1, (g env fenv (M.add x t venv) e2))

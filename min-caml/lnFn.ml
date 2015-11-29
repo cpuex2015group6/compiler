@@ -3,8 +3,7 @@ open KNormal
 let toplevel : fundef list option ref  = ref (Some [])
   
 let rec g env = function
-  | IfEq(x, y, e1, e2) -> IfEq(x, y, (g env e1), (g env e2))
-  | IfLE(x, y, e1, e2) -> IfLE(x, y, (g env e1), (g env e2))
+  | If(c, x, y, e1, e2) -> If(c, x, y, (g env e1), (g env e2))
   | Let(xt, e1, e2) -> Let(xt, e1, (g env e2))
   | LetRec({ name = (x, t); args = yts; body = e1}, e2) when !toplevel <> None->
      let env = S.add x env in

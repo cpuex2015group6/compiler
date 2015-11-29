@@ -7,7 +7,7 @@ let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
     let rec iter1 m e = 
       Format.eprintf "iteration %d, %d@." n m;
       if m = 0 then e else
-	let e' = (HpAlloc.f (ConstFold.f (Celm.h (Assoc.f (Beta.f e))))) in
+	let e' = (HpAlloc.f (ConstFold.f (Celm.h (Union.f (Assoc.f (Beta.f e)))))) in
 	if e = e' then
 	  e
 	else

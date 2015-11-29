@@ -10,7 +10,7 @@
    in
    let abs = (mul_sub 0 30) land 2147483647
    in
-   if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
+   if ((a lsr 31) lxor (b lsr 31)) = 0 then
      abs
    else
      -abs);
@@ -27,7 +27,7 @@
    in
    let abs = (div_sub 0 a b 30) land 2147483647
    in
-   if ((a land 2147483648) lxor (b land 2147483648)) = 0 then
+   if ((a lsr 31) lxor (b lsr 31)) = 0 then
      abs
    else
      -abs);
@@ -113,8 +113,7 @@
      else
        (fraction lsl (exp - 23))
    in
-   let rval = rval land 2147483647
-   in
+   let rval = rval land 2147483647 in
    if f >= 0.0 then
      rval
    else
@@ -246,7 +245,7 @@
    abs_float f);
 
 (let rec fneg i =
-   Float(Int(i) lxor 2147483648));
+   -.i);
 
 (let rec print_char i =
    print_byte i);

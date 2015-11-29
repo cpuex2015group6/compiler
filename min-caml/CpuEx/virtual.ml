@@ -62,33 +62,13 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Sll (x, y) -> Ans (Sll (x, V (y)))
   | Closure.Srl (x, y) -> Ans (Srl (x, V (y)))
   | Closure.FNeg (x) ->
-     let d = 0x80000000 in
-     let l = 
-       try
-	 let (l, _) = List.find (fun (_, d') -> d = d') !data in
-	 l
-       with Not_found ->
-	 let l = Id.L (Id.genid "l") in
-	 data := (l, d) :: !data;
-	 l in
      let y = Id.genid "t" in
-     Let((y, Type.Float), Li (L(l)), Ans(Xor(x, V(y))))
+     Let((y, Type.Float), Li (C(0)), Ans(FSub(y, x)))
   | Closure.FAdd (x, y) -> Ans (FAdd (x, y))
-  | Closure.FSub (x, y) ->
-     let d = 0x80000000 in
-     let l = 
-       try
-	 let (l, _) = List.find (fun (_, d') -> d = d') !data in
-	 l
-       with Not_found ->
-	 let l = Id.L (Id.genid "l") in
-	 data := (l, d) :: !data;
-	 l in
-     let z = Id.genid "t" in
-     let w = Id.genid "t" in
-     Let((z, Type.Float), Li (L(l)), Let((w, Type.Float), Xor(y, V(z)), Ans(FAdd(x, w))))
+  | Closure.FSub (x, y) -> Ans (FSub (x, y))
   | Closure.FMul (x, y) -> Ans (FMul (x, y))
   | Closure.FDiv (x, y) -> Ans (FDiv (x, y))
+  | Closure.FAM (x, y, z) -> Ans (FAM (x, y, z))
   | Closure.FAbs (x) -> Ans (FAbs (x))
   | Closure.Sqrt (x) -> Ans (Sqrt (x))
   | Closure.ToFloat (x) -> Ans (ToFloat (x))
@@ -102,16 +82,11 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.GetExecDiff -> Ans (GetExecDiff)
   | Closure.GetHp -> Ans (GetHp)
   | Closure.SetHp (x) -> Ans (SetHp (x))
-  | Closure.IfEq (x, y, e1, e2) -> 
+  | Closure.If (c, x, y, e1, e2) -> 
      (match M.find x env with
-	    | Type.Bool | Type.Int -> Ans (IfEq (x, V (y), g env e1, g env e2))
-	    | Type.Float -> Ans (IfFEq (x, y, g env e1, g env e2))
-	    | _ -> failwith "equality supported only for bool, int, and float")
-  | Closure.IfLE (x, y, e1, e2) ->
-     (match M.find x env with
-	    | Type.Bool | Type.Int -> Ans (IfLE (x, V (y), g env e1, g env e2))
-	    | Type.Float -> Ans (IfFLE (x, y, g env e1, g env e2))
-	    | _ -> failwith "inequality supported only for bool, int, and float")
+	    | Type.Bool | Type.Int -> Ans (If (c, x, V (y), g env e1, g env e2))
+	    | Type.Float -> Ans (IfF (c, x, y, g env e1, g env e2))
+	    | _ -> failwith "comparition supported only for bool, int, and float")
   | Closure.Let ((x, t1), e1, e2) ->
      let e1' = g env e1 in
      let e2' = g (M.add x t1 env) e2 in
@@ -158,19 +133,17 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	        else Let ((x, t), Ldw (y, C (offset)), load)) in
 	   load
   | Closure.Get (x, y) -> (* 配列の読み出し *)
-     let offset = Id.genid "o" in
-	   (match M.find x env with
-	    | Type.Array (Type.Unit) -> Ans (Nop)
-	    | Type.Array (_) ->
-	       Ans (Ldw (x, V (y)))
-	    | _ -> assert false)
+     (match M.find x env with
+     | Type.Array (Type.Unit) -> Ans (Nop)
+     | Type.Array (_) ->
+	Ans (Ldw (x, V (y)))
+     | _ -> assert false)
   | Closure.Put (x, y, z) ->
-     let offset = Id.genid "o" in 
-	   (match M.find x env with
-	    | Type.Array (Type.Unit) -> Ans (Nop)
-	    | Type.Array (_) ->
-	       Ans (Stw (z, x, V (y)))
-	    | _ -> assert false)
+     (match M.find x env with
+     | Type.Array (Type.Unit) -> Ans (Nop)
+     | Type.Array (_) ->
+	Ans (Stw (z, x, V (y)))
+     | _ -> assert false)
   | Closure.ExtArray (Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))
 
 (* 関数の仮想マシンコード生成 *)

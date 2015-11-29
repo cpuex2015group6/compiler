@@ -22,10 +22,10 @@ let rec g env = function (* β簡約ルーチン本体 (caml2html: beta_g) *)
   | FSub(x, y) -> FSub(find x env, find y env)
   | FMul(x, y) -> FMul(find x env, find y env)
   | FDiv(x, y) -> FDiv(find x env, find y env)
+  | FAM(x, y, z) -> FAM(find x env, find y env, find z env)
   | FAbs(x) -> FAbs(find x env)
   | Sqrt(x) -> Sqrt(find x env)
-  | IfEq(x, y, e1, e2) -> IfEq(find x env, find y env, g env e1, g env e2) (* TODO *)
-  | IfLE(x, y, e1, e2) -> IfLE(find x env, find y env, g env e1, g env e2)
+  | If(c, x, y, e1, e2) -> If(c, find x env, find y env, g env e1, g env e2) (* TODO *)
   | Let((x, t), e1, e2) -> (* letのβ簡約 (caml2html: beta_let) *)
       (match g env e1 with
       | Var(y) ->

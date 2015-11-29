@@ -10,8 +10,8 @@ let rec target' src (dest, t) = function
   | FMr(x) when x = src && is_reg dest ->
       assert (t = Type.Float);
       false, [dest]
-  | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) | IfGE(_, _, e1, e2)
-  | IfFEq(_, _, e1, e2) | IfFLE(_, _, e1, e2) ->
+  | If(_, _, _, e1, e2)
+  | IfF(_, _, _, e1, e2) ->
       let c1, rs1 = target src (dest, t) e1 in
       let c2, rs2 = target src (dest, t) e2 in
       c1 && c2, rs1 @ rs2
@@ -132,8 +132,10 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | Stw(x, y, z') -> (Ans(Stw(find x Type.Int regenv, find y Type.Int regenv, find' z' regenv)), regenv)
   | FMr(x) -> (Ans(FMr(find x Type.Float regenv)), regenv)
   | FAdd(x, y) -> (Ans(FAdd(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | FSub(x, y) -> (Ans(FSub(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FMul(x, y) -> (Ans(FMul(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FDiv(x, y) -> (Ans(FDiv(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | FAM(x, y, z) -> (Ans(FAM(find x Type.Float regenv, find y Type.Float regenv, find z Type.Float regenv)), regenv)
   | FAbs(x) -> (Ans(FAbs(find x Type.Float regenv)), regenv)
   | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)
   | Lfd(x, y') -> (Ans(Lfd(find x Type.Int regenv, find' y' regenv)), regenv)
@@ -149,11 +151,8 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | GetExecDiff -> (Ans(GetExecDiff), regenv)
   | GetHp -> (Ans(GetHp), regenv)
   | SetHp(x) -> (Ans(SetHp(find x Type.Int regenv)), regenv)
-  | IfEq(x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfEq(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
-  | IfLE(x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfLE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
-  | IfGE(x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfGE(find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
-  | IfFEq(x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfFEq(find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
-  | IfFLE(x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfFLE(find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
+  | If(cond, x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> If(cond, find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
+  | IfF(cond, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfF(cond, find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
   | CallCls(x, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallCls(find x Type.Int regenv, ys)) ys
   | CallDir(l, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallDir(l, ys)) ys
   | Save(x, y) -> assert false

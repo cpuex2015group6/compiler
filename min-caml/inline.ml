@@ -6,7 +6,7 @@ let threshold = ref 50 (* Mainで-inlineオプションによりセットされる *)
 let log = ref ""
   
 let rec is_rec x = function
-  | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) -> (is_rec x e1) || (is_rec x e2)
+  | If(_, _, _, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | Let(_, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | LetRec({ name = _; args = _; body = e1 }, e2) -> (is_rec x e1) || (is_rec x e2)
   | App(x', _) -> if x' = x then true else false
@@ -15,7 +15,7 @@ let rec is_rec x = function
 
 let rec h' e =
   match e with
-  | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) ->
+  | If(_, _, _, e1, e2) ->
      (h' e1)@(h' e2)
   | Let(_, e1, e2) ->
      (h' e1)@(h' e2)
@@ -33,14 +33,10 @@ let h e =
 
      
 let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g) *)
-  | IfEq(x, y, e1, e2) ->
+  | If(c, x, y, e1, e2) ->
      let e1' = g env fmap e1 in
      let e2' = g env fmap e2 in
-     IfEq(x, y, e1', e2')
-  | IfLE(x, y, e1, e2) ->
-     let e1' = g env fmap e1 in
-     let e2' = g env fmap e2 in
-     IfLE(x, y, e1', e2')
+     If(c, x, y, e1', e2')
   | Let((x, t), e1, e2) ->
      let e1' = g env fmap e1 in
      let e2' = g env fmap e2 in

@@ -21,7 +21,7 @@ clean:: nobackup
 SOURCES = float.c type.ml id.ml m.ml s.ml \
 asm.mli asm.ml \
 syntax.ml ast.mli ast.ml kNormaledAst.mli kNormaledAst.ml celm.mli celm.ml lexer.mll parser.mly typing.mli typing.ml kNormal.mli kNormal.ml alpha.mli alpha.ml rmCl.mli rmCl.ml lnFn.mli lnFn.ml \
-beta.mli beta.ml assoc.mli assoc.ml \
+beta.mli beta.ml assoc.mli assoc.ml union.mli union.ml \
 inline.mli inline.ml elim.mli elim.ml hpAlloc.mli hpAlloc.ml constFold.mli constFold.ml elArg.mli elArg.ml \
 opt.mli opt.ml closure.mli closure.ml virtual.mli virtual.ml \
 simm.mli simm.ml regAlloc.mli regAlloc.ml emit.mli emit.ml \
