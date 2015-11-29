@@ -191,7 +191,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      op3 oc "fmul" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), FDiv(y, z)) ->
-     op1 oc "count" (reg reg_zero) 0;
      op3 oc "finv" reg_imm (reg z) (reg reg_zero);
     op3 oc "fmul" (reg x) (reg y) reg_imm;
     cflag
