@@ -1384,7 +1384,7 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
 		intersected_object_id.(0) <- iobj;
 		intsec_rectside.(0) <- t0;
 	       )
-	    else ()
+	    else ();
 	   )
 	 else ()
        else ();
@@ -1419,7 +1419,7 @@ let rec trace_or_matrix_fast ofs or_network dirvec =
     then solve_one_or_network_fast 1 head dirvec
     else 
       (
-       (* range primitive の衝突しなければ交点はない *)
+	(* range primitive の衝突しなければ交点はない *)
 	let t = solver_fast2 range_primitive dirvec in
        if t <> 0 then
 	 let tp = solver_dist.(0) in
@@ -1997,9 +1997,8 @@ let rec pretrace_pixels line x group_id lc0 lc1 lc2 =
     
     (* 間接光の20%を追跡 *)
     pretrace_diffuse_rays line.(x) 0;
-    
-    pretrace_pixels line (x-1) (add_mod5 group_id 1) lc0 lc1 lc2
-    
+
+    pretrace_pixels line (x-1) (add_mod5 group_id 1) lc0 lc1 lc2;
    ) else ()
 in
 

@@ -25,6 +25,7 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
+  | FAbA of Id.t * Id.t
   | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
@@ -105,7 +106,7 @@ let rec fv_exp = function
   | Mr (x) | FMr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> 
       x :: fv_id_or_imm y'
-  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) ->
+  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y)->
      [x; y]
   | FAM (x, y, z) ->
      [x; y; z]
@@ -229,8 +230,10 @@ and j indent = function
      Printf.fprintf stdout "fmul %s, %s\n" y z
   | FDiv(y, z) -> 
      Printf.fprintf stdout "fdiv %s, %s\n" y z
+  | FAbA(y, z) -> 
+     Printf.fprintf stdout "faba %s, %s\n" y z
   | FAM(y, z, w) -> 
-     Printf.fprintf stdout "fdiv %s, %s, %s\n" y z w
+     Printf.fprintf stdout "fam %s, %s, %s\n" y z w
   | FAbs(y) -> 
      Printf.fprintf stdout "fabs %s\n" y
   | Sqrt(y) -> 

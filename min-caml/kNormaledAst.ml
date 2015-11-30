@@ -89,6 +89,8 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FMul " ^ e1 ^ " " ^ e2 ^ "\n")
   | FDiv(e1, e2) ->
      print_string (indent ^ "FDiv " ^ e1 ^ " " ^ e2 ^ "\n")
+  | FAbA(e1, e2) ->
+     print_string (indent ^ "FAbA " ^ e1 ^ " " ^ e2 ^ "\n")
   | FAM(e1, e2, e3) ->
      print_string (indent ^ "FAM " ^ e1 ^ " " ^ e2 ^ " " ^ e3 ^ "\n")
   | FAbs(e1) ->

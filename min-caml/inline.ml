@@ -49,7 +49,7 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
        LetRec({ name = (x, t); args = yts; body = g env fmap e1}, g env fmap e2)
   | App(x, ys) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
      let (zs, e) = M.find x env in
-     if is_rec x e = false && ((size e) < 50 || (M.find x fmap) <= 2) then
+     if is_rec x e = false && ((size e) < 500 || (M.find x fmap) <= 3) then
        ((*log := !log ^ (Format.sprintf "inlining %s@." x);*)
 	let env' =
 	  List.fold_left2

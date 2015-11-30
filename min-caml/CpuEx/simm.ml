@@ -43,6 +43,7 @@ and g' env e =
     | FSub(x, y) -> FSub(rmzero env x, rmzero env y)
     | FMul(x, y) -> FMul(rmzero env x, rmzero env y)
     | FDiv(x, y) -> FDiv(rmzero env x, rmzero env y)
+    | FAbA(x, y) -> FAbA(rmzero env x, rmzero env y)
     | FAM(x, y, z) -> FAM(rmzero env x, rmzero env y, rmzero env z)
     | FAbs(x) -> FAbs(rmzero env x)
     | Sqrt(x) -> Sqrt(rmzero env x)

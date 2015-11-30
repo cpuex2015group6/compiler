@@ -135,6 +135,7 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | FSub(x, y) -> (Ans(FSub(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FMul(x, y) -> (Ans(FMul(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FDiv(x, y) -> (Ans(FDiv(find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | FAbA(x, y) -> (Ans(FAbA(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FAM(x, y, z) -> (Ans(FAM(find x Type.Float regenv, find y Type.Float regenv, find z Type.Float regenv)), regenv)
   | FAbs(x) -> (Ans(FAbs(find x Type.Float regenv)), regenv)
   | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)

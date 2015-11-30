@@ -5,7 +5,7 @@ exception Unmatched
 let check env x f c = try f (M.find x env) with | Unmatched | Not_found -> c ()
   
 let pat = [
-(*  (fun env -> function
+  (*(fun env -> function
   | FAdd(x, y) ->
      check env x (fun e -> match e with
      | FMul(z, w) -> FAM(z, w, y)
@@ -13,7 +13,18 @@ let pat = [
        (fun _ -> check env y (fun e -> match e with
        | FMul(z, w) -> FAM(z, w, x)
        | _ -> raise Unmatched) (fun _ -> raise Unmatched))
-    | _ -> raise Unmatched)*)
+  | _ -> raise Unmatched);*)
+  (fun env -> function
+  | FAbs(x) ->
+     check env x (fun e -> match e with
+     | FAdd(y, z) -> FAbA(y, z)
+     | ToInt(x) ->
+	check env x (fun e -> match e with
+	| FAdd(y, z) -> FAbA(y, z)
+	| _ -> raise Unmatched) (fun _ -> raise Unmatched)
+     | _ -> raise Unmatched)
+       (fun _ -> raise Unmatched)
+  | _ -> raise Unmatched)
 ]
 
 let h env e =

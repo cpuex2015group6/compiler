@@ -194,6 +194,9 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      op3 oc "finv" reg_imm (reg z) (reg reg_zero);
     op3 oc "fmul" (reg x) (reg y) reg_imm;
     cflag
+  | (NonTail(x), FAbA(y, z)) -> 
+     op3 oc "faba" (reg x) (reg y) (reg z);
+    cflag
   | (NonTail(x), FAM(y, z, w)) ->
     op4 oc "fam" (reg x) (reg y) (reg z) (reg w);
     cflag
@@ -272,7 +275,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      (if cflag then restore_lr oc);
      op3 oc "jr" reg_tmp reg_lr (reg reg_zero);
      cflag
-  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | ToInt _ | ToArray _ | FLi _ | FMr _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAM _ | FAbs _ | Sqrt _ | ToFloat _ | Lfd _ as exp)) ->
+  | (Tail, (Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | ToInt _ | ToArray _ | FLi _ | FMr _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAM _ | FAbs _ | Sqrt _ | ToFloat _ | Lfd _ as exp)) ->
      let cflag = g' oc cflag (NonTail(regs.(0)), exp) in
      (if cflag then restore_lr oc);
      op3 oc "jr" reg_tmp reg_lr (reg reg_zero);
