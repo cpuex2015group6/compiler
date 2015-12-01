@@ -3,8 +3,8 @@ open KNormal
 let argenv = ref M.empty
 
 let rec h fn nfn cargs zs = function
-  | If(c, x, y, e1, e2) ->
-     If(c, x, y, h fn nfn cargs zs e1, h fn nfn cargs zs e2)
+  | If(x, e1, e2) ->
+     If(x, h fn nfn cargs zs e1, h fn nfn cargs zs e2)
   | Let(xt, e1, e2) ->
      Let(xt, h fn nfn cargs zs e1, h fn nfn cargs zs e2)
   | LetRec({ name = xt; args = ys; body = e1 }, e2) ->
@@ -18,8 +18,8 @@ let rec h fn nfn cargs zs = function
      
   
 let rec g env fenv fn = function
-  | If(c, x, y, e1, e2) ->
-     If(c, x, y, g env fenv fn e1, g env fenv fn e2)
+  | If(x, e1, e2) ->
+     If(x, g env fenv fn e1, g env fenv fn e2)
   | Let((x, t), e1, e2) ->
      let e1 = g env fenv fn e1 in
      let e2 = g (M.add x e1 env) fenv fn e2 in
@@ -39,12 +39,12 @@ let rec g env fenv fn = function
 	     let e1 = h x fn cargs ys e1 in
 	     let e2 = h x fn cargs ys e2 in
 	     let ys' = List.fold_left(fun nys (y, t) -> if M.mem y cargs then nys else nys@[(y, t)]) [] ys in
-	       (*	     Format.eprintf "remove const argument(s) %s from %s and generate %s@."
-			     (Id.pp_list (M.fold (fun k _ l -> k::l) cargs [])) x fn;*)
+	     (*Format.eprintf "remove const argument(s) %s from %s and generate %s@."
+	       (Id.pp_list (M.fold (fun k _ l -> k::l) cargs [])) x fn;*)
 	     match t with
 	     | Type.Fun(ats, rt) ->
 		let ats = List.fold_left2 (fun nats at (y, t) -> if M.mem y cargs then nats else nats@[at]) [] ats ys in
-		LetRec({ name = (fn, Type.Fun(ats, rt)); args = ys'; body = e1 }, e2)
+		g env fenv "" (LetRec({ name = (fn, Type.Fun(ats, rt)); args = ys'; body = e1 }, e2))
 	     | _ -> assert false
 	   )
 	 else

@@ -56,9 +56,10 @@ and g' env e =
     | ToArray(x) -> ToArray(rmzero env x)
     | Out(x) -> Out(rmzero env x)
     | SetHp(x) -> SetHp(rmzero env x)
-    | If(cond, x, V(y), e1, e2) -> If(cond, rmzero env x, V(rmzero env y), e1, e2)
-    | If(cond, x, C(c), e1, e2) -> If(cond, rmzero env x, C(c), e1, e2)
-    | IfF(cond, x, y, e1, e2) -> IfF(cond, rmzero env x, rmzero env y, e1, e2)
+    | Cmp(cond, x, V(y)) -> Cmp(cond, rmzero env x, V(rmzero env y))
+    | Cmp(cond, x, C(c)) -> Cmp(cond, rmzero env x, C(c))
+    | FCmp(cond, x, y) -> FCmp(cond, rmzero env x, rmzero env y)
+    | If(x, e1, e2) -> If(rmzero env x, e1, e2)
     | Save(x, y) -> Save(rmzero env x, rmzero env y)
     | Restore(x) -> Restore(rmzero env x)
     | e -> e
@@ -102,28 +103,19 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
   | Stfd(x, y, V(z)) when M.mem z env ->
      let e = Stfd(x, y, C(M.find z env)) in
      e, fv_exp e
-  | If(cond, x, V(y), e1, e2) when M.mem y env ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
+  | Cmp(cond, x, V(y)) when M.mem y env ->
      let c : id_or_imm = C(M.find y env) in
-     let fv = fv_if x c fve1 fve2 in
-     If(cond, x, c, e1, e2), fv
-  | If(cond, x, V(y), e1, e2) when M.mem x env -> 
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
+     let e = Cmp(cond, x, c) in
+     e, fv_exp e
+  | Cmp(cond, x, V(y)) when M.mem x env ->
      let c : id_or_imm = C(M.find x env) in
-     let fv = fv_if y c fve1 fve2 in
-     If(Asm.swapcond cond, y, c, e1, e2), fv
-  | If(cond, x, V(y), e1, e2) -> 
+     let e = Cmp(Asm.swapcond cond, y, c) in
+     e, fv_exp e
+  | If(x, e1, e2) ->
      let e1, fve1 = g env e1 in
      let e2, fve2 = g env e2 in
-     let fv = fv_if x (V(y)) fve1 fve2 in
-     If(cond, x, V(y), e1, e2), fv
-  | IfF(cond, x, y, e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_iff x y fve1 fve2 in
-     IfF(cond, x, y, e1, e2), fv
+     let fv = fv_if x fve1 fve2 in
+     If(x, e1, e2), fv
   | e -> e, fv_exp e
 
 (* トップレベル関数の 16 bit 即値最適化 *)

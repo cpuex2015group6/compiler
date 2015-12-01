@@ -31,14 +31,15 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | GetExecDiff
   | GetHp
   | SetHp of Id.t
-  | If of int * Id.t * Id.t * t * t
+  | Cmp of int * Id.t * Id.t
+  | If of Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t
   | AppCls of Id.t * Id.t list
   | AppDir of Id.l * Id.t list
   | Tuple of Id.t list
-  | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | GetTuple of Id.t * int
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.l
@@ -52,16 +53,15 @@ let log = ref ""
     
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp | Count | ShowExec | SetCurExec | GetExecDiff -> S.empty
-  | Neg(x) | FNeg(x) | FAbs(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out(x) | SetHp(x) -> S.singleton x
-  | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) -> S.of_list [x; y]
+  | Neg(x) | FNeg(x) | FAbs(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out(x) | SetHp(x) | GetTuple(x, _) -> S.singleton x
+  | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) | Cmp(_, x, y) -> S.of_list [x; y]
   | FAM(x, y, z) -> S.of_list [x; y; z]
-  | If(_, x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
+  | If(x, e1, e2) -> S.add x (S.union (fv e1) (fv e2))
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
   | Var(x) -> S.singleton x
   | MakeCls((x, t), { entry = l; actual_fv = ys }, e) -> S.remove x (S.union (S.of_list ys) (fv e))
   | AppCls(x, ys) -> S.of_list (x :: ys)
   | AppDir(_, xs) | Tuple(xs) -> S.of_list xs
-  | LetTuple(xts, y, e) -> S.add y (S.diff (fv e) (S.of_list (List.map fst xts)))
   | Put(x, y, z) -> S.of_list [x; y; z]
 
 let toplevel : fundef list ref = ref []
@@ -99,7 +99,8 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.GetExecDiff -> GetExecDiff
   | KNormal.GetHp(x) -> GetHp
   | KNormal.SetHp(x) -> SetHp(x)
-  | KNormal.If(c, x, y, e1, e2) -> If(c, x, y, g env known e1, g env known e2)
+  | KNormal.Cmp(c, x, y) -> Cmp(c, x, y)
+  | KNormal.If(x, e1, e2) -> If(x, g env known e1, g env known e2)
   | KNormal.Let((x, t), e1, e2) ->
      let e1' = g env known e1 in
      Let((x, t), e1', g (M.add x t env) known e2)
@@ -145,9 +146,14 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
       (*log := !log ^ Format.sprintf "directly applying %s@." x;*)
       AppDir(Id.L(x), ys)
-  | KNormal.App(f, xs) -> assert (not RmCl.flag);AppCls(f, xs)
+  | KNormal.App(f, xs) ->
+     if RmCl.flag then
+       assert false
+     else
+       AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)
-  | KNormal.LetTuple(xts, y, e) -> LetTuple(xts, y, g (M.add_list xts env) known e)
+  | KNormal.LetTuple(xts, y, e) -> assert false;
+  | KNormal.GetTuple(x, i) -> GetTuple(x, i)
   | KNormal.Get(x, y) -> Get(x, y)
   | KNormal.Put(x, y, z) -> Put(x, y, z)
   | KNormal.ExtArray(x) -> ExtArray(Id.L(x))

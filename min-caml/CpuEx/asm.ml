@@ -44,8 +44,9 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | SetHp of Id.t
   | Comment of string
   (* virtual instructions *)
-  | If of int * Id.t * id_or_imm * t * t
-  | IfF of int * Id.t * Id.t * t * t
+  | Cmp of int * Id.t * id_or_imm
+  | FCmp of int * Id.t * Id.t
+  | If of Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -63,7 +64,7 @@ let swapcond c = (if c land 1 <> 0 then 4 else 0) lor (if c land 2 <> 0 then 2 e
 (* seq : exp * t -> t *)
 let seq (e1, e2) = Let ((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
-let regs = [| "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
+let regs = [| "%r07"; "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
               "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17";
 	      "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; |]
 let allregs = Array.to_list regs
@@ -73,7 +74,6 @@ let reg_hp = "%r04"
 let reg_sp = "r03"
 let reg_tmp = "r05"
 let reg_imm = "r06"
-let reg_cond = "r07"
 let reg_lr = "r02"
 let reg_zero = "%rFF"
 let heap_start = 256
@@ -95,26 +95,21 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 let rec fv_let x exp e =
   exp @ remove_and_uniq (S.singleton x) e
 
-let rec fv_if x y' e1 e2 =
-    x :: fv_id_or_imm y' @ remove_and_uniq S.empty (e1 @ e2)
-
-let rec fv_iff x y e1 e2 =
-    x :: y :: remove_and_uniq S.empty (e1 @ e2)
+let rec fv_if x e1 e2 =
+    x :: remove_and_uniq S.empty (e1 @ e2)
 
 let rec fv_exp = function
   | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
   | Mr (x) | FMr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
-  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') -> 
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') | Cmp (_, x, y')-> 
       x :: fv_id_or_imm y'
-  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y)->
+  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y) | FCmp(_, x, y) ->
      [x; y]
   | FAM (x, y, z) ->
      [x; y; z]
   | Stw (x, y, z') | Stfd (x, y, z') -> x :: y :: fv_id_or_imm z'
-  | If (_, x, y', e1, e2) ->
-     fv_if x y' (fv_o e1) (fv_o e2)
-  | IfF (_, x, y, e1, e2) ->
-     fv_iff x y (fv_o e1) (fv_o e2)
+  | If (x, e1, e2) ->
+     fv_if x (fv_o e1) (fv_o e2)
   | CallCls (x, ys) -> x :: ys
   | CallDir (_, ys) -> ys
 and fv_o = function 
@@ -274,26 +269,16 @@ and j indent = function
      Printf.fprintf stdout "save %s,%s\n" y x
   | Restore(y) ->
      Printf.fprintf stdout "restore %s\n" y
-  | If(c, x, V(y), e1, e2) ->
-     Printf.fprintf stdout "if %d, %s, %s\n" c x y;
+  | Cmp(c, x, V(y)) ->
+     Printf.fprintf stdout "cmp %d, %s, %s\n" c x y;
+  | Cmp(c, x, C(const)) ->
+     Printf.fprintf stdout "cmp %d, %s, %d\n" c x const;
+  | FCmp(c, x, y) ->
+     Printf.fprintf stdout "fcmp %d, %s, %s\n" c x y;
+  | If(x, e1, e2) ->
+     Printf.fprintf stdout "if %s\n" x;
      let indent = indent ^ "  " in
      Printf.fprintf stdout "%scont:\n" indent;
-     let indent' = indent ^ "  " in
-     i indent' (Tail, e1);
-     Printf.fprintf stdout "%selse:\n" indent;
-     i indent' (Tail, e2)
-  | If(cond, x, C(c), e1, e2) ->
-     Printf.fprintf stdout "if %d, %s, %d\n" cond x c;
-     let indent = indent ^ "  " in
-     Printf.fprintf stdout "%sthen:\n" indent;
-     let indent' = indent ^ "  " in
-     i indent' (Tail, e1);
-     Printf.fprintf stdout "%selse:\n" indent;
-     i indent' (Tail, e2)
-  | IfF(c, x, y, e1, e2) ->
-     Printf.fprintf stdout "iff %d, %s, %s\n" c x y;
-     let indent = indent ^ "  " in
-     Printf.fprintf stdout "%sthen:\n" indent;
      let indent' = indent ^ "  " in
      i indent' (Tail, e1);
      Printf.fprintf stdout "%selse:\n" indent;

@@ -3,12 +3,12 @@
 open KNormal
 
 let rec i venv env = function
-  | If(c, x, y, e1, e2) ->
+  | If(x, e1, e2) ->
      let e1, env1 = i venv env e1 in
      let e2, env2 = i venv env e2 in
      let env = M.fold (fun k d m -> if (M.mem k env1) && (M.mem k env2) then M.add k d m else m) env M.empty
      in
-     If(c, x, y, e1, e2), env
+     If(x, e1, e2), env
   | Let((x, t), (Get(a, ix)), e2) when M.mem ix venv ->
      let av = Format.sprintf "%s_i%d" a (M.find ix venv) in
      (
@@ -64,10 +64,10 @@ let rec search history e =
             search xs e
 	      
 let rec g history = function
-  | If(c, e1, e2, t1, t2) ->
+  | If(x, t1, t2) ->
      let nt1 = g history t1 in
      let nt2 = g history t2 in
-     If(c, e1, e2, nt1, nt2)
+     If(x, nt1, nt2)
   | Let((e, t), t1, t2) ->
      let nt1 = g history t1 in
      let nt2 = g ((e,nt1)::history) t2 in

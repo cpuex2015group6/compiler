@@ -6,7 +6,7 @@ let threshold = ref 50 (* Mainで-inlineオプションによりセットされる *)
 let log = ref ""
   
 let rec is_rec x = function
-  | If(_, _, _, e1, e2) -> (is_rec x e1) || (is_rec x e2)
+  | If(_, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | Let(_, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | LetRec({ name = _; args = _; body = e1 }, e2) -> (is_rec x e1) || (is_rec x e2)
   | App(x', _) -> if x' = x then true else false
@@ -15,7 +15,7 @@ let rec is_rec x = function
 
 let rec h' e =
   match e with
-  | If(_, _, _, e1, e2) ->
+  | If(_, e1, e2) ->
      (h' e1)@(h' e2)
   | Let(_, e1, e2) ->
      (h' e1)@(h' e2)
@@ -33,10 +33,10 @@ let h e =
 
      
 let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g) *)
-  | If(c, x, y, e1, e2) ->
+  | If(x, e1, e2) ->
      let e1' = g env fmap e1 in
      let e2' = g env fmap e2 in
-     If(c, x, y, e1', e2')
+     If(x, e1', e2')
   | Let((x, t), e1, e2) ->
      let e1' = g env fmap e1 in
      let e2' = g env fmap e2 in
@@ -49,7 +49,7 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
        LetRec({ name = (x, t); args = yts; body = g env fmap e1}, g env fmap e2)
   | App(x, ys) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
      let (zs, e) = M.find x env in
-     if is_rec x e = false && ((size e) < 500 || (M.find x fmap) <= 3) then
+     if is_rec x e = false (*&& ((size e) < 50 || (M.find x fmap) <= 3)*) then
        ((*log := !log ^ (Format.sprintf "inlining %s@." x);*)
 	let env' =
 	  List.fold_left2

@@ -83,11 +83,12 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.GetExecDiff -> Ans (GetExecDiff)
   | Closure.GetHp -> Ans (GetHp)
   | Closure.SetHp (x) -> Ans (SetHp (x))
-  | Closure.If (c, x, y, e1, e2) -> 
+  | Closure.Cmp(c, x, y) ->
      (match M.find x env with
-	    | Type.Bool | Type.Int -> Ans (If (c, x, V (y), g env e1, g env e2))
-	    | Type.Float -> Ans (IfF (c, x, y, g env e1, g env e2))
+	    | Type.Bool | Type.Int -> Ans (Cmp (c, x, V (y)))
+	    | Type.Float -> Ans (FCmp (c, x, y))
 	    | _ -> failwith "comparition supported only for bool, int, and float")
+  | Closure.If (x, e1, e2) -> Ans (If(x, g env e1, g env e2))
   | Closure.Let ((x, t1), e1, e2) ->
      let e1' = g env e1 in
      let e2' = g (M.add x t1 env) e2 in
@@ -123,16 +124,11 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	       (fun x _ offset store -> seq (Stw (x, y, C (offset)), store))  in
      Let ((y, Type.Tuple (List.map (fun x -> M.find x env) xs)), Mr (reg_hp),
 	  Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), store))
-  | Closure.LetTuple (xts, y, e2) ->
-     let s = Closure.fv e2 in
-     let (offset, load) = 
-	     expand
-	       xts
-	       (0, g (M.add_list xts env) e2)
-	       (fun x t offset load ->
-	        if not (S.mem x s) then load 
-	        else Let ((x, t), Ldw (y, C (offset)), load)) in
-	   load
+  | Closure.GetTuple (x, i) ->
+     (match M.find x env with
+     | Type.Tuple(_) ->
+	Ans(Ldw (x, C(i)))
+     | _ -> assert false)
   | Closure.Get (x, y) -> (* 配列の読み出し *)
      (match M.find x env with
      | Type.Array (Type.Unit) -> Ans (Nop)

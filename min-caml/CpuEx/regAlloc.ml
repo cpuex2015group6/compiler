@@ -10,8 +10,7 @@ let rec target' src (dest, t) = function
   | FMr(x) when x = src && is_reg dest ->
       assert (t = Type.Float);
       false, [dest]
-  | If(_, _, _, e1, e2)
-  | IfF(_, _, _, e1, e2) ->
+  | If(_, e1, e2) ->
       let c1, rs1 = target src (dest, t) e1 in
       let c2, rs2 = target src (dest, t) e2 in
       c1 && c2, rs1 @ rs2
@@ -152,8 +151,9 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | GetExecDiff -> (Ans(GetExecDiff), regenv)
   | GetHp -> (Ans(GetHp), regenv)
   | SetHp(x) -> (Ans(SetHp(find x Type.Int regenv)), regenv)
-  | If(cond, x, y', e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> If(cond, find x Type.Int regenv, find' y' regenv, e1', e2')) e1 e2
-  | IfF(cond, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> IfF(cond, find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
+  | Cmp(c, x, y') -> (Ans(Cmp(c, find x Type.Int regenv, find' y' regenv)), regenv)
+  | FCmp(c, x, y) -> (Ans(FCmp(c, find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | If(x, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> If(find x Type.Int regenv, e1', e2')) e1 e2
   | CallCls(x, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallCls(find x Type.Int regenv, ys)) ys
   | CallDir(l, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallDir(l, ys)) ys
   | Save(x, y) -> assert false

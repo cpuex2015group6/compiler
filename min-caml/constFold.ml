@@ -55,31 +55,37 @@ let rec h env fn = function
   | FAM(x, y, z) when memf x env && memf y env && memf z env -> (Float(findf x env *. findf y env +. findf z env), true, 0)
   | FAbs(x) when memf x env -> (Float(abs_float(findf x env)), true, 0)
   | Sqrt(x) when memf x env -> (Float(sqrt (findf x env)), true, 0)
-  | If(c, x, y, e1, e2) when memi x env && memi y env ->
+  | Cmp(c, x, y) when memi x env && memi y env ->
+     let x = findi x env in
+     let y = findi y env in
+     let i = 
+     if c land 1 <> 0 && x < y then 1 else
+       if c land 2 <> 0 && x = y then 1 else
+	 if c land 4 <> 0 && x > y then 1 else
+	   0
+     in
+     (Int(i), true, 0)
+  | Cmp(c, x, y) when memf x env && memf y env ->
+     let x = findf x env in
+     let y = findf y env in
+     let i = 
+     if c land 1 <> 0 && x < y then 1 else
+       if c land 2 <> 0 && x = y then 1 else
+	 if c land 4 <> 0 && x > y then 1 else
+	   0
+     in
+     (Int(i), true, 0)
+  | If(x, e1, e2) when memi x env ->
      let e1', f1, r1 = h env fn e1 in
      let e2', f2, r2 = h env fn e2 in
      let f = f1 || f2 in
      let x = findi x env in
-     let y = findi y env in
-     if c land 1 <> 0 && x < y then (e1', f, r1) else
-       if c land 2 <> 0 && x = y then (e1', f, r1) else
-	 if c land 4 <> 0 && x > y then (e1', f, r1) else
-	   (e2', f, r2)
-  | If(c, x, y, e1, e2) when memf x env && memf y env ->
-     let e1', f1, r1 = h env fn e1 in
-     let e2', f2, r2 = h env fn e2 in
-     let f = f1 || f2 in
-     let x = findf x env in
-     let y = findf y env in
-     if c land 1 <> 0 && x < y then (e1', f, r1) else
-       if c land 2 <> 0 && x = y then (e1', f, r1) else
-	 if c land 4 <> 0 && x > y then (e1', f, r1) else
-    (e2', f, r2)
-  | If(c, x, y, e1, e2) ->
+     if x <> 0 then (e1', f, r1) else (e2', f, r2)
+  | If(x, e1, e2) ->
      let e1', f1, r1 = h env fn e1 in
      let e2', f2, r2 = h env fn e2 in
      let f = f1 && f2 in
-     (If(c, x, y, e1', e2'), f, r1 + r2)
+     (If(x, e1', e2'), f, r1 + r2)
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1', f1, r1 = h env fn e1 in
      let env =
@@ -189,24 +195,33 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | FAM(x, y, z) when memf x env && memf y env && memf z env -> Float(findf x env *. findf y env +. findf z env), false
   | FAbs(x) when memf x env -> Float(abs_float(findf x env)), false
   | Sqrt(x) when memf x env -> Float(sqrt (findf x env)), false
-  | If(c, x, y, e1, e2) when memi x env && memi y env ->
+  | Cmp(c, x, y) when memi x env && memi y env ->
      let x = findi x env in
      let y = findi y env in
-     if c land 1 <> 0 && x < y then g env fenv fn e1 else
-       if c land 2 <> 0 && x = y then g env fenv fn e1 else
-	 if c land 4 <> 0 && x > y then g env fenv fn e1 else
-	   g env fenv fn e2
-  | If(c, x, y, e1, e2) when memf x env && memf y env ->
+     let i = 
+     if c land 1 <> 0 && x < y then 1 else
+       if c land 2 <> 0 && x = y then 1 else
+	 if c land 4 <> 0 && x > y then 1 else
+	   0
+     in
+     Int(i), false
+  | Cmp(c, x, y) when memf x env && memf y env ->
      let x = findf x env in
      let y = findf y env in
-     if c land 1 <> 0 && x < y then g env fenv fn e1 else
-       if c land 2 <> 0 && x = y then g env fenv fn e1 else
-	 if c land 4 <> 0 && x > y then g env fenv fn e1 else
-	   g env fenv fn e2
-  | If(c, x, y, e1, e2) ->
+     let i = 
+     if c land 1 <> 0 && x < y then 1 else
+       if c land 2 <> 0 && x = y then 1 else
+	 if c land 4 <> 0 && x > y then 1 else
+	   0
+     in
+     Int(i), false
+  | If(x, e1, e2) when memi x env ->
+     let x = findi x env in
+     if x <> 0 then g env fenv fn e1 else g env fenv fn e2
+  | If(x, e1, e2) ->
      let e1, f1 = g env fenv fn e1 in
      let e2, f2 = g env fenv fn e2 in
-     If(c, x, y, e1, e2), f1 || f2
+     If(x, e1, e2), f1 || f2
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1, f1 = g env fenv fn e1 in
      let env =

@@ -42,8 +42,9 @@ and exp =
   | SetHp of Id.t
   | Comment of string
   (* virtual instructions *)
-  | If of int * Id.t * id_or_imm * t * t
-  | IfF of int * Id.t * Id.t * t * t
+  | Cmp of int * Id.t * id_or_imm
+  | FCmp of int * Id.t * Id.t
+  | If of Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -66,15 +67,13 @@ val reg_hp : Id.t
 val reg_sp : Id.t
 val reg_tmp : Id.t
 val reg_imm : Id.t
-val reg_cond : Id.t
 val reg_lr : Id.t
 val reg_zero : Id.t
 val heap_start : int
 val stack_start : int
 val is_reg : Id.t -> bool
   
-val fv_if : Id.t -> id_or_imm -> Id.t list -> Id.t list -> Id.t list
-val fv_iff : Id.t -> Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_if : Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_exp : exp -> Id.t list
 val fv_o : t -> Id.t list

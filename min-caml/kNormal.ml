@@ -22,13 +22,15 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
-  | If of int * Id.t * Id.t * t * t (* 比較 + 分岐 (caml2html: knormal_branch) *)
+  | Cmp of int * Id.t * Id.t
+  | If of Id.t * t * t (* 比較 + 分岐 (caml2html: knormal_branch) *)
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t
   | App of Id.t * Id.t list
   | Tuple of Id.t list
   | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | GetTuple of Id.t * int
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.t
@@ -46,8 +48,10 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | ExtFunApp of Id.t * Id.t list
  and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
+let negcond c = c lxor 7
+  
 let rec size = function
-  | If(_, _, _, e1, e2)
+  | If(_, e1, e2)
   | Let(_, e1, e2) | LetRec({ body = e1 }, e2) -> 1 + size e1 + size e2
   | LetTuple(_, _, e) -> 1 + size e
   | _ -> 1
@@ -55,8 +59,8 @@ let rec size = function
 let rec fv_let x e1 e2 =
   S.union e1 (S.remove x e2)
 
-let rec fv_if x y e1 e2 =
-  S.add x (S.add y (S.union e1 e2))
+let rec fv_if x e1 e2 =
+  S.add x (S.union e1 e2)
 
 let rec fv_func x yts e1 =
   let zs = S.diff e1 (S.of_list (List.map fst yts)) in
@@ -71,11 +75,11 @@ let rec fv_lettuple xs y e =
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Unit | Count | ShowExec | SetCurExec | GetExecDiff | Int(_) | Float(_) | Array(_) | ExtArray(_) -> S.empty
-  | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) | FAbs(x) -> S.singleton x
-  | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) -> S.of_list [x; y]
+  | Neg(x) | FNeg(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) | FAbs(x) | GetTuple(x, _) -> S.singleton x
+  | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) | Cmp(_, x, y) -> S.of_list [x; y]
   | FAM(x, y, z) -> S.of_list [x; y; z]
-  | If(_, x, y, e1, e2) ->
-     fv_if x y (fv e1) (fv e2)
+  | If(x, e1, e2) ->
+     fv_if x (fv e1) (fv e2)
   | Let((x, _), e1, e2) -> fv_let x (fv e1) (fv e2)
   | Var(x) -> S.singleton x
   | LetRec({ name = (x, _); args = yts; body = e1 }, e2) ->
@@ -170,14 +174,16 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
 	                                   (fun y ->
 	                                    let e3', t3 = g env e3 in
 	                                    let e4', t4 = g env e4 in
-	                                    If(2, x, y, e3', e4'), t3))
+					    insert_let (Cmp(2, x, y), Type.Int)
+					      (fun z -> If(z, e3', e4'), t3)))
   | Syntax.If(Syntax.LE(e1, e2), e3, e4) ->
      insert_let (g env e1)
 	              (fun x -> insert_let (g env e2)
 	                                   (fun y ->
 	                                    let e3', t3 = g env e3 in
 	                                    let e4', t4 = g env e4 in
-	                                    If(3, x, y, e3', e4'), t3))
+					    insert_let (Cmp(3, x, y), Type.Int)
+					      (fun z -> If(z, e3', e4'), t3)))
   | Syntax.If(e1, e2, e3) -> g env (Syntax.If(Syntax.Eq(e1, Syntax.Bool(false)), e3, e2)) (* 比較のない分岐を変換 (caml2html: knormal_if) *)
   | Syntax.Let((x, t), e1, e2) ->
      (match e1 with

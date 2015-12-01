@@ -97,8 +97,10 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FAbs " ^ e1 ^ "\n")
   | Sqrt(e1) ->
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
-  | If(c, e1, e2, t1, t2) ->
-     Printf.printf "%sIf %d %s %s\n" indent c e1 e2;
+  | Cmp(c, e1, e2) ->
+     Printf.printf "%sCmp %d %s %s\n" indent c e1 e2;
+  | If(e1, t1, t2) ->
+     Printf.printf "%sIf %s\n" indent e1;
     print_string (indent ^ "{\n");
     g (indent ^ "  ") t1;
     print_string (indent ^ "} Else {" ^ "\n");
@@ -152,9 +154,12 @@ let rec g indent e = (* AST表示ルーチン *)
        | [] -> ()
        | e::l -> print_string (e ^ " "); print_list l
      in
+     print_string (indent ^ "  ");
      print_list (List.map (fun (x, t) -> x) xts);
      print_string (indent ^ "  " ^ e1 ^ "\n");
      g indent e2
+  | GetTuple(e, i) ->
+     Format.printf "%sGetTuple %s %d\n" indent e i
   | Get(e1, e2) ->
      print_string (indent ^ "Get " ^ e1 ^ " " ^ e2 ^ "\n")
   | Put(e1, e2, e3) ->

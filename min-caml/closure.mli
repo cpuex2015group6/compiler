@@ -31,14 +31,15 @@ type t =
   | GetExecDiff
   | GetHp
   | SetHp of Id.t
-  | If of int * Id.t * Id.t * t * t
+  | Cmp of int * Id.t * Id.t
+  | If of Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t
   | AppCls of Id.t * Id.t list
   | AppDir of Id.l * Id.t list
   | Tuple of Id.t list
-  | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | GetTuple of Id.t * int
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.l
