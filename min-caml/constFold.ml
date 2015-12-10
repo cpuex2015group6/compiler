@@ -4,18 +4,22 @@ let exenv = ref M.empty
 let ofenv = ref S.empty
 
 let memi x env =
-  try (match M.find x env with Int(_) -> true | _ -> false)
+  try (match M.find x env with Int(_), _ -> true | _ -> false)
   with Not_found -> false
 let memf x env =
-  try (match M.find x env with Float(_) -> true | _ -> false)
+  try (match M.find x env with Float(_), _ -> true | _ -> false)
   with Not_found -> false
 let memt x env =
-  try (match M.find x env with Tuple(_) -> true | _ -> false)
+  try (match M.find x env with Tuple(_), _ -> true | _ -> false)
+  with Not_found -> false
+let mema x env =
+  try (match M.find x env with Array(_), _ -> true | _ -> false)
   with Not_found -> false
 
-let findi x env = (match M.find x env with Int(i) -> i | _ -> raise Not_found)
-let findf x env = (match M.find x env with Float(d) -> d | _ -> raise Not_found)
-let findt x env = (match M.find x env with Tuple(ys) -> ys | _ -> raise Not_found)	
+let findi x env = (match M.find x env with Int(i), _ -> i | _ -> raise Not_found)
+let findf x env = (match M.find x env with Float(d), _ -> d | _ -> raise Not_found)
+let findt x env = (match M.find x env with Tuple(ys), _ -> ys | _ -> raise Not_found)	
+let finda x env = (match M.find x env with Array(i), t -> i, t | _ -> raise Not_found)
   
 let isconst y = 
   match y with
@@ -25,13 +29,13 @@ let isconst y =
 let rec expandconst y env =
   try
     (match M.find y env with
-    | Int(_) | Float (_) | Array(_) as e -> e
-    | Var(v) -> expandconst v env
+    | Int(_), _ | Float (_), _ | Array(_), _ as e -> let e, _ = e in e
+    | Var(v), _ -> expandconst v env
     | _ -> Var(y))
   with Not_found -> Var(y)
 
 (* プログラム解析 *)
-(* gethp, sethpについては必要ないので省略 *)
+(* gethp, sethp, get, setについては必要ないので省略 *)
 (* 戻り値：停止性(bool)、爆発性（int）*)
 let rec h env fn = function
   | Var(x) when memi x env -> (Int(findi x env), true, 0)
@@ -55,7 +59,7 @@ let rec h env fn = function
   | FAM(x, y, z) when memf x env && memf y env && memf z env -> (Float(findf x env *. findf y env +. findf z env), true, 0)
   | FAbs(x) when memf x env -> (Float(abs_float(findf x env)), true, 0)
   | Sqrt(x) when memf x env -> (Float(sqrt (findf x env)), true, 0)
-  | Cmp(c, x, y) when memi x env && memi y env ->
+  | If(c, x, y, e1, e2) when memi x env && memi y env ->
      let x = findi x env in
      let y = findi y env in
      let i = 
@@ -64,8 +68,11 @@ let rec h env fn = function
 	 if c land 4 <> 0 && x > y then 1 else
 	   0
      in
-     (Int(i), true, 0)
-  | Cmp(c, x, y) when memf x env && memf y env ->
+     let e1', f1, r1 = h env fn e1 in
+     let e2', f2, r2 = h env fn e2 in
+     let f = f1 || f2 in
+     if i <> 0 then (e1', f, r1) else (e2', f, r2)
+  | If(c, x, y, e1, e2) when memf x env && memf y env ->
      let x = findf x env in
      let y = findf y env in
      let i = 
@@ -74,23 +81,20 @@ let rec h env fn = function
 	 if c land 4 <> 0 && x > y then 1 else
 	   0
      in
-     (Int(i), true, 0)
-  | If(x, e1, e2) when memi x env ->
      let e1', f1, r1 = h env fn e1 in
      let e2', f2, r2 = h env fn e2 in
      let f = f1 || f2 in
-     let x = findi x env in
-     if x <> 0 then (e1', f, r1) else (e2', f, r2)
-  | If(x, e1, e2) ->
+     if i <> 0 then (e1', f, r1) else (e2', f, r2)
+  | If(c, x, y, e1, e2) ->
      let e1', f1, r1 = h env fn e1 in
      let e2', f2, r2 = h env fn e2 in
      let f = f1 && f2 in
-     (If(x, e1', e2'), f, r1 + r2)
+     (If(c, x, y, e1', e2'), f, r1 + r2)
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1', f1, r1 = h env fn e1 in
      let env =
        (match e1' with
-       | Int (_) | Float(_) | Tuple(_) | Array (_) -> (M.add x e1' env)
+       | Int (_) | Float(_) | Tuple(_) | Array (_) -> (M.add x (e1', t) env)
        | _ -> env)
      in
      let e2', f2, r2 = h env fn e2 in
@@ -170,7 +174,6 @@ let genarg cys =
 	| _ -> assert false
     ) [] cys
     
-(* getとかを追加 *)
 let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
   | Var(x) when memi x env -> Int(findi x env), false
   | Var(x) when memf x env -> Float(findf x env), false
@@ -195,7 +198,7 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | FAM(x, y, z) when memf x env && memf y env && memf z env -> Float(findf x env *. findf y env +. findf z env), false
   | FAbs(x) when memf x env -> Float(abs_float(findf x env)), false
   | Sqrt(x) when memf x env -> Float(sqrt (findf x env)), false
-  | Cmp(c, x, y) when memi x env && memi y env ->
+  | If(c, x, y, e1, e2) when memi x env && memi y env ->
      let x = findi x env in
      let y = findi y env in
      let i = 
@@ -204,8 +207,8 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	 if c land 4 <> 0 && x > y then 1 else
 	   0
      in
-     Int(i), false
-  | Cmp(c, x, y) when memf x env && memf y env ->
+     if i <> 0 then g env fenv fn e1 else g env fenv fn e2
+  | If(c, x, y, e1, e2) when memf x env && memf y env ->
      let x = findf x env in
      let y = findf y env in
      let i = 
@@ -214,19 +217,16 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	 if c land 4 <> 0 && x > y then 1 else
 	   0
      in
-     Int(i), false
-  | If(x, e1, e2) when memi x env ->
-     let x = findi x env in
-     if x <> 0 then g env fenv fn e1 else g env fenv fn e2
-  | If(x, e1, e2) ->
+     if i <> 0 then g env fenv fn e1 else g env fenv fn e2
+  | If(c, x, y, e1, e2) ->
      let e1, f1 = g env fenv fn e1 in
      let e2, f2 = g env fenv fn e2 in
-     If(x, e1, e2), f1 || f2
+     If(c, x, y, e1, e2), f1 || f2
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1, f1 = g env fenv fn e1 in
      let env =
        (match e1 with
-       | Int (_) | Float(_) | Tuple(_) | Array(_) -> (M.add x e1 env)
+       | Int (_) | Float(_) | Tuple(_) | Array(_) -> (M.add x (e1, t) env)
        | _ -> env)
      in
      let e2, f2 = g env fenv fn e2 in
@@ -251,6 +251,16 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | LetTuple(xts, y, e) ->
      let e, f = g env fenv fn e in
      LetTuple(xts, y, e), f
+  | Get(x, y) when mema x env && memi y env && findi y env <> 0  ->
+     let t1 = Id.genid "t" in
+     let t2 = Id.genid "t" in
+     let ax, at = (finda x env) in
+     Let((t1, at), Array(ax + (findi y env)), Let((t2, Type.Int), Int(0), Get(t1, t2))), false
+  | Put(x, y, z) when mema x env && memi y env && findi y env <> 0  ->
+     let t1 = Id.genid "t" in
+     let t2 = Id.genid "t" in
+     let ax, at = (finda x env) in
+     Let((t1, at), Array(ax + (findi y env)), Let((t2, Type.Int), Int(0), Put(t1, t2, z))), false
   | App(x, ys) as exp when M.mem x fenv && fn <> x ->
      let (zs, e, t) = M.find x fenv in
      let cys = gencys ys env in

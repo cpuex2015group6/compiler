@@ -3,7 +3,7 @@ open KNormal
 let hp = ref (Some 0)
 
 let rec h fenv = function
-  | If(_, e1, e2) -> h fenv e1 && h fenv e2
+  | If(_, _, _, e1, e2) -> h fenv e1 && h fenv e2
   | Let(_, e1, e2) -> h fenv e1 && h fenv e2
   | LetRec(_, e) -> assert false; h fenv e
   | LetTuple(_, _, e) -> h fenv e
@@ -13,7 +13,7 @@ let rec h fenv = function
   | e -> true
   
 let rec g env fenv = function
-  | If(x, e1, e2) -> If(x, g env fenv e1, g env fenv e2)
+  | If(c, x, y, e1, e2) -> If(c, x, y, g env fenv e1, g env fenv e2)
   | Add(x, y) when M.mem x env && M.mem y env -> Int(M.find x env + M.find y env)
   | Let((x, t), e1, e2) as exp ->
      if !hp = None then

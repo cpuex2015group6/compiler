@@ -59,7 +59,8 @@ and g' env e =
     | Cmp(cond, x, V(y)) -> Cmp(cond, rmzero env x, V(rmzero env y))
     | Cmp(cond, x, C(c)) -> Cmp(cond, rmzero env x, C(c))
     | FCmp(cond, x, y) -> FCmp(cond, rmzero env x, rmzero env y)
-    | If(x, e1, e2) -> If(rmzero env x, e1, e2)
+    | If(c, x, y, e1, e2) -> If(c, rmzero env x, rmzero env y, e1, e2)
+    | FIf(c, x, y, e1, e2) -> FIf(c, rmzero env x, rmzero env y, e1, e2)
     | Save(x, y) -> Save(rmzero env x, rmzero env y)
     | Restore(x) -> Restore(rmzero env x)
     | e -> e
@@ -91,11 +92,14 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
   | Ldw(x, V(y)) when M.mem y env ->
      let e = Ldw(x, C(M.find y env)) in
      e, fv_exp e
+  | Ldw(x, V(y)) when M.mem x env ->
+     let e = Ldw(y, C(M.find x env)) in
+     e, fv_exp e
   | Stw(x, y, V(z)) when M.mem y env && M.mem z env ->
      let e = Stw(x, reg_zero, C((M.find y env) + (M.find z env))) in
      e, fv_exp e
-  | Stw(x, y, V(z)) when M.mem z env ->
-     let e = Stw(x, y, C(M.find z env)) in
+  | Stw(x, y, V(z)) when M.mem y env ->
+     let e = Stw(x, z, C(M.find y env)) in
      e, fv_exp e
   | Lfd(x, V(y)) when M.mem y env ->
      let e = Lfd(x, C(M.find y env)) in
@@ -111,11 +115,16 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
      let c : id_or_imm = C(M.find x env) in
      let e = Cmp(Asm.swapcond cond, y, c) in
      e, fv_exp e
-  | If(x, e1, e2) ->
+  | If(c, x, y, e1, e2) ->
      let e1, fve1 = g env e1 in
      let e2, fve2 = g env e2 in
-     let fv = fv_if x fve1 fve2 in
-     If(x, e1, e2), fv
+     let fv = fv_if x y fve1 fve2 in
+     If(c, x, y, e1, e2), fv
+  | FIf(c, x, y, e1, e2) ->
+     let e1, fve1 = g env e1 in
+     let e2, fve2 = g env e2 in
+     let fv = fv_if x y fve1 fve2 in
+     FIf(c, x, y, e1, e2), fv
   | e -> e, fv_exp e
 
 (* トップレベル関数の 16 bit 即値最適化 *)

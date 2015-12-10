@@ -44,7 +44,8 @@ and exp =
   (* virtual instructions *)
   | Cmp of int * Id.t * id_or_imm
   | FCmp of int * Id.t * Id.t
-  | If of Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
+  | FIf of int * Id.t * Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -73,7 +74,7 @@ val heap_start : int
 val stack_start : int
 val is_reg : Id.t -> bool
   
-val fv_if : Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_if : Id.t -> Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_exp : exp -> Id.t list
 val fv_o : t -> Id.t list

@@ -83,12 +83,11 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.GetExecDiff -> Ans (GetExecDiff)
   | Closure.GetHp -> Ans (GetHp)
   | Closure.SetHp (x) -> Ans (SetHp (x))
-  | Closure.Cmp(c, x, y) ->
+  | Closure.If (c, x, y, e1, e2) ->
      (match M.find x env with
-	    | Type.Bool | Type.Int -> Ans (Cmp (c, x, V (y)))
-	    | Type.Float -> Ans (FCmp (c, x, y))
+	    | Type.Bool | Type.Int -> Ans (If (c, x, y, g env e1, g env e2))
+	    | Type.Float -> Ans (FIf (c, x, y, g env e1, g env e2))
 	    | _ -> failwith "comparition supported only for bool, int, and float")
-  | Closure.If (x, e1, e2) -> Ans (If(x, g env e1, g env e2))
   | Closure.Let ((x, t1), e1, e2) ->
      let e1' = g env e1 in
      let e2' = g (M.add x t1 env) e2 in

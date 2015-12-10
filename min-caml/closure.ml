@@ -31,8 +31,7 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | GetExecDiff
   | GetHp
   | SetHp of Id.t
-  | Cmp of int * Id.t * Id.t
-  | If of Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t
@@ -54,9 +53,9 @@ let log = ref ""
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp | Count | ShowExec | SetCurExec | GetExecDiff -> S.empty
   | Neg(x) | FNeg(x) | FAbs(x) | Sqrt(x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out(x) | SetHp(x) | GetTuple(x, _) -> S.singleton x
-  | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) | Cmp(_, x, y) -> S.of_list [x; y]
+  | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) -> S.of_list [x; y]
   | FAM(x, y, z) -> S.of_list [x; y; z]
-  | If(x, e1, e2) -> S.add x (S.union (fv e1) (fv e2))
+  | If(_, x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
   | Var(x) -> S.singleton x
   | MakeCls((x, t), { entry = l; actual_fv = ys }, e) -> S.remove x (S.union (S.of_list ys) (fv e))
@@ -99,8 +98,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.GetExecDiff -> GetExecDiff
   | KNormal.GetHp(x) -> GetHp
   | KNormal.SetHp(x) -> SetHp(x)
-  | KNormal.Cmp(c, x, y) -> Cmp(c, x, y)
-  | KNormal.If(x, e1, e2) -> If(x, g env known e1, g env known e2)
+  | KNormal.If(c, x, y, e1, e2) -> If(c, x, y, g env known e1, g env known e2)
   | KNormal.Let((x, t), e1, e2) ->
      let e1' = g env known e1 in
      Let((x, t), e1', g (M.add x t env) known e2)
@@ -109,8 +107,8 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      (* 関数定義let rec x y1 ... yn = e1 in e2の場合は、
 	 xに自由変数がない(closureを介さずdirectに呼び出せる)
 	と仮定し、knownに追加してe1をクロージャ変換してみる *)
-     Format.eprintf "function size of %s is %d@." x (KNormal.size e1);
-    Format.eprintf "%!";
+     (*Format.eprintf "function size of %s is %d@." x (KNormal.size e1);
+       Format.eprintf "%!";*)
     let toplevel_backup = !toplevel in
      let env' = M.add x t env in
      let known' = S.add x known in

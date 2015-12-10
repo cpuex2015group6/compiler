@@ -3,8 +3,8 @@ open KNormal
 let argenv = ref M.empty
 
 let rec h fn nfn cargs zs = function
-  | If(x, e1, e2) ->
-     If(x, h fn nfn cargs zs e1, h fn nfn cargs zs e2)
+  | If(c, x, y, e1, e2) ->
+     If(c, x, y, h fn nfn cargs zs e1, h fn nfn cargs zs e2)
   | Let(xt, e1, e2) ->
      Let(xt, h fn nfn cargs zs e1, h fn nfn cargs zs e2)
   | LetRec({ name = xt; args = ys; body = e1 }, e2) ->
@@ -18,11 +18,11 @@ let rec h fn nfn cargs zs = function
      
   
 let rec g env fenv fn = function
-  | If(x, e1, e2) ->
-     If(x, g env fenv fn e1, g env fenv fn e2)
+  | If(c, x, y, e1, e2) ->
+     If(c, x, y, g env fenv fn e1, g env fenv fn e2)
   | Let((x, t), e1, e2) ->
      let e1 = g env fenv fn e1 in
-     let e2 = g (M.add x e1 env) fenv fn e2 in
+     let e2 = g (M.add x (e1, t) env) fenv fn e2 in
      Let((x, t), e1, e2)
   | LetRec({ name = (x, t); args = ys; body = e1 }, e2) ->
      if fn = "" then () else assert false;

@@ -26,8 +26,7 @@ let rec g env = function (* β簡約ルーチン本体 (caml2html: beta_g) *)
   | FAM(x, y, z) -> FAM(find x env, find y env, find z env)
   | FAbs(x) -> FAbs(find x env)
   | Sqrt(x) -> Sqrt(find x env)
-  | Cmp(c, x, y) -> Cmp(c, find x env, find y env)
-  | If(x, e1, e2) -> If(find x env, g env e1, g env e2) (* TODO *)
+  | If(c, x, y, e1, e2) -> If(c, find x env, find y env, g env e1, g env e2) (* TODO *)
   | Let((x, t), e1, e2) -> (* letのβ簡約 (caml2html: beta_let) *)
       (match g env e1 with
       | Var(y) ->

@@ -20,8 +20,7 @@ type t =
   | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
-  | Cmp of int * Id.t * Id.t
-  | If of Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t
@@ -50,7 +49,7 @@ val negcond : int -> int
 val size : t -> int
 val fv : t -> S.t
 val fv_let : Id.t -> S.t -> S.t -> S.t
-val fv_if : Id.t -> S.t -> S.t -> S.t
+val fv_if : Id.t -> Id.t -> S.t -> S.t -> S.t
 val fv_func : Id.t -> (Id.t * Type.t) list -> S.t -> S.t
 val fv_letrec : Id.t -> (Id.t * Type.t) list -> S.t -> S.t -> S.t
 val fv_lettuple : (Id.t * Type.t) list -> Id.t -> S.t -> S.t

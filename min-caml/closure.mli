@@ -31,8 +31,7 @@ type t =
   | GetExecDiff
   | GetHp
   | SetHp of Id.t
-  | Cmp of int * Id.t * Id.t
-  | If of Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t

@@ -29,8 +29,7 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
   | FAM(x, y, z) -> FAM(find x env, find y env, find z env)
   | FAbs(x) -> FAbs(find x env)
   | Sqrt(x) -> Sqrt(find x env)
-  | Cmp(c, x, y) -> Cmp(c, find x env, find y env)
-  | If(z, e1, e2) -> If(find z env, g env e1, g env e2)
+  | If(c, x, y, e1, e2) -> If(c, find x env, find y env, g env e1, g env e2)
   | Let((x, t), e1, e2) -> (* letのα変換 (caml2html: alpha_let) *)
       let x' = Id.genid x in
       let e1' = g env e1 in

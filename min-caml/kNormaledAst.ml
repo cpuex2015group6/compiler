@@ -97,10 +97,8 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "FAbs " ^ e1 ^ "\n")
   | Sqrt(e1) ->
      print_string (indent ^ "Sqrt " ^ e1 ^ "\n")
-  | Cmp(c, e1, e2) ->
-     Printf.printf "%sCmp %d %s %s\n" indent c e1 e2;
-  | If(e1, t1, t2) ->
-     Printf.printf "%sIf %s\n" indent e1;
+  | If(c, e1, e2, t1, t2) ->
+     Printf.printf "%sIf %d %s %s\n" indent c e1 e2;
     print_string (indent ^ "{\n");
     g (indent ^ "  ") t1;
     print_string (indent ^ "} Else {" ^ "\n");
@@ -163,7 +161,7 @@ let rec g indent e = (* AST表示ルーチン *)
   | Get(e1, e2) ->
      print_string (indent ^ "Get " ^ e1 ^ " " ^ e2 ^ "\n")
   | Put(e1, e2, e3) ->
-     print_string (indent ^ "Put " ^ e1 ^ " " ^ e2 ^ e3 ^ "\n")
+     print_string (indent ^ "Put " ^ e1 ^ " " ^ e2 ^ " " ^ e3 ^ "\n")
   | ExtArray(e1) ->
      print_string (indent ^ "ExtArray " ^ e1 ^ "\n")
   | ToFloat(e1) ->

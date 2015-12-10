@@ -1328,8 +1328,8 @@ let rec trace_or_matrix ofs or_network dirvec =
     then (solve_one_or_network 1 head dirvec)
     else 
       (
-	(* range primitive の衝突しなければ交点はない *)
-       let t = solver range_primitive dirvec startp in
+       (* range primitive の衝突しなければ交点はない *)
+	let t = solver range_primitive dirvec startp in
        if t <> 0 then
 	 let tp = solver_dist.(0) in
 	 if fless tp tmin.(0)
@@ -1373,6 +1373,7 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
        if (fless 0.0 t0p) then
 	 if (fless t0p tmin.(0)) then
 	   (
+	     
 	    let t = t0p +. 0.01 in
 	    let q0 = vec.(0) *. t +. startp_fast.(0) in
 	    let q1 = vec.(1) *. t +. startp_fast.(1) in
@@ -1416,17 +1417,17 @@ let rec trace_or_matrix_fast ofs or_network dirvec =
     ()
   else (
     if range_primitive = 99 (* range primitive なし *)
-    then solve_one_or_network_fast 1 head dirvec
+    then (* 4.7 *) solve_one_or_network_fast 1 head dirvec
     else 
       (
 	(* range primitive の衝突しなければ交点はない *)
 	let t = solver_fast2 range_primitive dirvec in
-       if t <> 0 then
-	 let tp = solver_dist.(0) in
-	 if fless tp tmin.(0)
-	 then (solve_one_or_network_fast 1 head dirvec)
-	 else ()
-       else ();
+	if t <> 0 then
+	  let tp = solver_dist.(0) in
+	  if fless tp tmin.(0)
+	  then (* 6.3 *) solve_one_or_network_fast 1 head dirvec
+	  else ()
+	else ();
       );
     trace_or_matrix_fast (ofs + 1) or_network dirvec
    )
@@ -1727,17 +1728,17 @@ in
    が高速に行われる。物体に当たったら、その後の反射は追跡しない *)
 let rec trace_diffuse_ray dirvec energy =
   (* どれかの物体に当たるか調べる *)
-  if judge_intersection_fast dirvec then
+  if (* 12.4 *) judge_intersection_fast dirvec then
     let obj = objects.(intersected_object_id.(0)) in
     get_nvector obj (d_vec dirvec); 
     utexture obj intersection_point;      
-    
+      
     (* その物体が放射する光の強さを求める。直接光源光のみを計算 *)
-    if not (shadow_check_one_or_matrix 0 or_net.(0)) then 
+    if (* 5.4 *) not (shadow_check_one_or_matrix 0 or_net.(0)) then
       let br =  fneg (veciprod nvector light) in
       let bright = (if fispos br then br else 0.0) in
       vecaccum diffuse_ray (energy *. bright *. o_diffuse obj) texture_color
-      else ();
+    else ();
   else ();
 in
 
@@ -1749,6 +1750,7 @@ let rec iter_trace_diffuse_rays dirvec_group nvector org index =
 
     (* 配列の 2n 番目と 2n+1 番目には互いに逆向の方向ベクトルが入っている
        法線ベクトルと同じ向きの物を選んで使う *)
+    (* 18.7 *)
     if fisneg p then
       trace_diffuse_ray dirvec_group.(index + 1) (p /. -150.0)
     else 
@@ -1841,6 +1843,7 @@ let rec do_without_neighbors pixel nref =
     if surface_ids.(nref) >= 0 then (
       let calc_diffuse = p_calc_diffuse pixel in
       if calc_diffuse.(nref) then
+	(* 8.3 *)
 	calc_diffuse_using_1point pixel nref
       else ();
       do_without_neighbors pixel (nref + 1)
@@ -1905,6 +1908,7 @@ let rec try_exploit_neighbors x y prev cur next nref =
 	try_exploit_neighbors x y prev cur next (nref + 1)
       ) else
 	(* 周囲4点を補完に使えないので、これらを使わない方法に切り替える *)
+	(* 7.8 *)
 	do_without_neighbors cur.(x) nref
     else ()
   else ()
@@ -1996,6 +2000,7 @@ let rec pretrace_pixels line x group_id lc0 lc1 lc2 =
     p_set_group_id line.(x) group_id;
     
     (* 間接光の20%を追跡 *)
+    (* 10.9 *)
     pretrace_diffuse_rays line.(x) 0;
 
     pretrace_pixels line (x-1) (add_mod5 group_id 1) lc0 lc1 lc2;
@@ -2026,8 +2031,10 @@ let rec scan_pixel x y prev cur next =
     veccpy rgb (p_rgb cur.(x));
 
     (* 次に、直接光の各衝突点について、間接受光による寄与を加味する *)
+    (* 8.3 *)
     if neighbors_exist x y next then
-      try_exploit_neighbors x y prev cur next 0
+      (* 7.8 *)
+      try_exploit_neighbors x y prev cur next 0;
     else
       do_without_neighbors cur.(x) 0;
 

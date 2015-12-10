@@ -46,7 +46,8 @@ and exp = (* 一つ一つの命令に対応する式 *)
   (* virtual instructions *)
   | Cmp of int * Id.t * id_or_imm
   | FCmp of int * Id.t * Id.t
-  | If of Id.t * t * t
+  | If of int * Id.t * Id.t * t * t
+  | FIf of int * Id.t * Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -95,8 +96,8 @@ let fv_id_or_imm = function V (x) -> [x] | _ -> []
 let rec fv_let x exp e =
   exp @ remove_and_uniq (S.singleton x) e
 
-let rec fv_if x e1 e2 =
-    x :: remove_and_uniq S.empty (e1 @ e2)
+let rec fv_if x y e1 e2 =
+    x :: y :: remove_and_uniq S.empty (e1 @ e2)
 
 let rec fv_exp = function
   | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
@@ -108,8 +109,8 @@ let rec fv_exp = function
   | FAM (x, y, z) ->
      [x; y; z]
   | Stw (x, y, z') | Stfd (x, y, z') -> x :: y :: fv_id_or_imm z'
-  | If (x, e1, e2) ->
-     fv_if x (fv_o e1) (fv_o e2)
+  | If (_, x, y, e1, e2) | FIf (_, x, y, e1, e2) ->
+     fv_if x y (fv_o e1) (fv_o e2)
   | CallCls (x, ys) -> x :: ys
   | CallDir (_, ys) -> ys
 and fv_o = function 
@@ -275,8 +276,16 @@ and j indent = function
      Printf.fprintf stdout "cmp %d, %s, %d\n" c x const;
   | FCmp(c, x, y) ->
      Printf.fprintf stdout "fcmp %d, %s, %s\n" c x y;
-  | If(x, e1, e2) ->
-     Printf.fprintf stdout "if %s\n" x;
+  | If(c, x, y, e1, e2) ->
+     Printf.fprintf stdout "if %d %s %s\n" c x y;
+     let indent = indent ^ "  " in
+     Printf.fprintf stdout "%scont:\n" indent;
+     let indent' = indent ^ "  " in
+     i indent' (Tail, e1);
+     Printf.fprintf stdout "%selse:\n" indent;
+     i indent' (Tail, e2)
+  | FIf(c, x, y, e1, e2) ->
+     Printf.fprintf stdout "fif %d %s %s\n" c x y;
      let indent = indent ^ "  " in
      Printf.fprintf stdout "%scont:\n" indent;
      let indent' = indent ^ "  " in
