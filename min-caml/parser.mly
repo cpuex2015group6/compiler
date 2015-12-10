@@ -49,9 +49,12 @@ let addtyp x = (x, Type.gentyp ())
 %token COMMA
 %token ARRAY_CREATE
 %token ARRAY_CREATE_
-%token TO_FLOAT
-%token TO_INT
-%token TO_ARRAY
+%token I2F
+%token F2I
+%token I2IA
+%token I2FA
+%token A2I
+%token T2I
 %token DOT
 %token LESS_MINUS
 %token SEMICOLON
@@ -180,15 +183,24 @@ exp: /* (* ∞Ï»Ã§Œº∞ (caml2html: parser_exp) *) */
 | ARRAY_CREATE_ simple_exp simple_exp
     %prec prec_app
     { Array($2, $3) }
-| TO_FLOAT simple_exp
+| I2F simple_exp
     %prec prec_app
-    { ToFloat($2) }
-| TO_INT simple_exp
+    { I2F($2) }
+| F2I simple_exp
     %prec prec_app
-    { ToInt($2) }
-| TO_ARRAY simple_exp
+    { F2I($2) }
+| I2IA simple_exp
     %prec prec_app
-    { ToArray($2) }
+    { I2IA($2) }
+| I2FA simple_exp
+    %prec prec_app
+    { I2FA($2) }
+| A2I simple_exp
+    %prec prec_app
+    { A2I($2) }
+| T2I simple_exp
+    %prec prec_app
+    { T2I($2) }
 | FEQUAL simple_exp simple_exp
     %prec prec_app
     { Eq($2, $3) }

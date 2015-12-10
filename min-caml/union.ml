@@ -32,12 +32,12 @@ let pat = [
   | FAbs(x) ->
      check env x (fun e -> match e with
      | FAdd(y, z) -> FAbA(y, z)
-     | ToInt(x) ->
+     | F2I(x) ->
 	check env x (fun e -> match e with
 	| FAdd(y, z) -> FAbA(y, z)
 	| _ -> raise Unmatched) fail
      | _ -> raise Unmatched) fail
-  | _ -> raise Unmatched);
+  | _ -> raise Unmatched)(*;
   (fun env -> function
   | If(c, x, y, e1, e2) as exp ->
      let e1v = get_val e1 in
@@ -46,7 +46,7 @@ let pat = [
      | Int(0), Int(1) ->
 	If(KNormal.negcond c, x, y, e2, e1)
      | _ -> exp)
-  | _ -> raise Unmatched)
+			   | _ -> raise Unmatched)*)
 (* TODO If(Unit,) *)
 (* TODO let bool = If(); If(bool){}{} *)
 ]

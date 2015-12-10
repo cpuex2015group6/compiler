@@ -10,9 +10,10 @@ let rec g env = function (* 命令列の 16 bit 即値最適化 *)
   | Let((x, t), Li(C(i)), e) ->
       let e', fvs = g (M.add x i env) e in
       if List.mem x fvs then Let((x, t), Li(C(i)), e'), fv_let x (fv_exp (Li(C(i)))) fvs else e', fvs
-  | Let((x, t), FLi(C(i)), e) ->
-      let e', fvs = g (M.add x i env) e in
-      if List.mem x fvs then Let((x, t), FLi(C(i)), e'), fv_let x (fv_exp (FLi(C(i)))) fvs else e', fvs
+  | Let((x, t), Mr(y), e) when M.mem y env ->
+     let i = M.find y env in
+     let e', fvs = g (M.add x i env) e in
+     if List.mem x fvs then Let((x, t), Li(C(i)), e'), fv_let x (fv_exp (Li(C(i)))) fvs else e', fvs
   | Let((x, t), exp, e) ->
      let exp', fvs_exp = g' env exp in
      let e', fvs_e = g env e in
@@ -51,11 +52,8 @@ and g' env e =
     | Lfd(x, C(c)) -> Lfd(rmzero env x, C(c))
     | Stfd(x, y, V(z)) -> Stfd(rmzero env x, rmzero env y, V(rmzero env z))
     | Stfd(x, y, C(c)) -> Stfd(rmzero env x, y, C(c))
-    | ToInt(x) -> ToInt(rmzero env x)
-    | ToFloat(x) -> ToFloat(rmzero env x)
-    | ToArray(x) -> ToArray(rmzero env x)
     | Out(x) -> Out(rmzero env x)
-    | SetHp(x) -> SetHp(rmzero env x)
+    | SetHp(V(x)) -> SetHp(V(rmzero env x))
     | Cmp(cond, x, V(y)) -> Cmp(cond, rmzero env x, V(rmzero env y))
     | Cmp(cond, x, C(c)) -> Cmp(cond, rmzero env x, C(c))
     | FCmp(cond, x, y) -> FCmp(cond, rmzero env x, rmzero env y)
@@ -107,6 +105,9 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
   | Stfd(x, y, V(z)) when M.mem z env ->
      let e = Stfd(x, y, C(M.find z env)) in
      e, fv_exp e
+  | SetHp(V(x)) when M.mem x env ->
+     let e = SetHp(C(M.find x env)) in
+     e, fv_exp e
   | Cmp(cond, x, V(y)) when M.mem y env ->
      let c : id_or_imm = C(M.find y env) in
      let e = Cmp(cond, x, c) in
@@ -116,15 +117,31 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
      let e = Cmp(Asm.swapcond cond, y, c) in
      e, fv_exp e
   | If(c, x, y, e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_if x y fve1 fve2 in
-     If(c, x, y, e1, e2), fv
+     (
+       match e1, e2 with
+       | Ans(Li (C(1))), Ans(Li (C(0))) ->
+	  g'' env (Cmp(c, x, V(y)))
+       | Ans(Li (C(0))), Ans(Li (C(1))) ->
+	  g'' env (Cmp(Asm.negcond c, x, V(y)))
+       | _ ->
+	  let e1, fve1 = g env e1 in
+	  let e2, fve2 = g env e2 in
+	  let fv = fv_if x y fve1 fve2 in
+	  If(c, x, y, e1, e2), fv
+     )
   | FIf(c, x, y, e1, e2) ->
-     let e1, fve1 = g env e1 in
-     let e2, fve2 = g env e2 in
-     let fv = fv_if x y fve1 fve2 in
-     FIf(c, x, y, e1, e2), fv
+     (
+       match e1, e2 with
+       | Ans(Li (C(1))), Ans(Li (C(0))) ->
+	  g'' env (FCmp(c, x, y))
+       | Ans(Li (C(0))), Ans(Li (C(1))) ->
+	  g'' env (FCmp(Asm.negcond c, x, y))
+       | _ ->
+	  let e1, fve1 = g env e1 in
+	  let e2, fve2 = g env e2 in
+	  let fv = fv_if x y fve1 fve2 in
+	  FIf(c, x, y, e1, e2), fv
+     )
   | e -> e, fv_exp e
 
 (* トップレベル関数の 16 bit 即値最適化 *)

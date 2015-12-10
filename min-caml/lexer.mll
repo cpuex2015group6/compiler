@@ -101,12 +101,18 @@ rule token = parse
     { ARRAY_CREATE }
 | "create_array"
     { ARRAY_CREATE_ }
-| "Float"
-    { TO_FLOAT }
-| "Int"
-    { TO_INT }
-| "Array"
-    { TO_ARRAY }
+| "i2f"
+    { I2F }
+| "f2i"
+    { F2I }
+| "i2ia"
+    { I2IA }
+| "i2fa"
+    { I2FA }
+| "a2i"
+    { A2I }
+| "t2i"
+    { T2I }
 | "fequal"
     { FEQUAL }
 | "fless"

@@ -40,7 +40,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Float (d) -> 
      let d = Type.conv_float d in
      if d >= 0 && d < 32768 then
-       Ans (FLi (C(d)))
+       Ans (Li (C(d)))
      else
        let l = 
 	 try
@@ -50,7 +50,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	   let l = Id.L (Id.genid "l") in
 	   data := (l, d) :: !data;
 	   l in
-       Ans (FLi (L(l)))
+       Ans (Li (L(l)))
   | Closure.Neg (x) ->
      let y = Id.genid "t" in
      Let((y, Type.Int), Li (C(0)), Ans(Sub(y, V(x))))
@@ -72,9 +72,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.FAM (x, y, z) -> Ans (FAM (x, y, z))
   | Closure.FAbs (x) -> Ans (FAbs (x))
   | Closure.Sqrt (x) -> Ans (Sqrt (x))
-  | Closure.ToFloat (x) -> Ans (ToFloat (x))
-  | Closure.ToInt (x) -> Ans (ToInt (x))
-  | Closure.ToArray (x) -> Ans (ToArray (x))
+  | Closure.I2F (x) | Closure.F2I (x) | Closure.I2IA (x) | Closure.I2FA (x) | Closure.A2I (x) | Closure.T2I (x) -> Ans (Mr (x))
   | Closure.In -> Ans (In)
   | Closure.Out (x) -> Ans (Out (x))
   | Closure.Count -> Ans (Count)
@@ -82,7 +80,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.SetCurExec -> Ans (SetCurExec)
   | Closure.GetExecDiff -> Ans (GetExecDiff)
   | Closure.GetHp -> Ans (GetHp)
-  | Closure.SetHp (x) -> Ans (SetHp (x))
+  | Closure.SetHp (x) -> Ans (SetHp (V(x)))
   | Closure.If (c, x, y, e1, e2) ->
      (match M.find x env with
 	    | Type.Bool | Type.Int -> Ans (If (c, x, y, g env e1, g env e2))

@@ -31,9 +31,12 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | Tuple of t list
   | LetTuple of (Id.t * Type.t) list * t * t
   | Array of t * t
-  | ToFloat of t
-  | ToInt of t
-  | ToArray of t
+  | I2F of t
+  | F2I of t
+  | I2IA of t
+  | I2FA of t
+  | A2I of t
+  | T2I of t
   | Sqrt of t
   | In of t
   | Out of t

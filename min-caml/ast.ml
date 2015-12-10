@@ -206,17 +206,29 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string "Array\n";
      g (indent ^ "  ") e1;
      g (indent ^ "  ") e2
-  | ToFloat(e1) ->
+  | I2F(e1) ->
      print_string indent;
-     print_string "ToFloat\n";
+     print_string "I2F\n";
      g (indent ^ "  ") e1;
-  | ToInt(e1) ->
+  | F2I(e1) ->
      print_string indent;
-     print_string "ToInt\n";
+     print_string "F2I\n";
      g (indent ^ "  ") e1;
-  | ToArray(e1) ->
+  | I2IA(e1) ->
      print_string indent;
-     print_string "ToArray\n";
+     print_string "I2IA\n";
+     g (indent ^ "  ") e1;
+  | I2FA(e1) ->
+     print_string indent;
+     print_string "I2FA\n";
+     g (indent ^ "  ") e1;
+  | A2I(e1) ->
+     print_string indent;
+     print_string "A2I\n";
+     g (indent ^ "  ") e1;
+  | T2I(e1) ->
+     print_string indent;
+     print_string "T2I\n";
      g (indent ^ "  ") e1;
   | In(e1) ->
      print_string indent;

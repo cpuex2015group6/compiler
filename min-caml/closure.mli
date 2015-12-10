@@ -20,9 +20,12 @@ type t =
   | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
-  | ToFloat of Id.t
-  | ToInt of Id.t
-  | ToArray of Id.t
+  | I2F of Id.t
+  | F2I of Id.t
+  | I2IA of Id.t
+  | I2FA of Id.t
+  | A2I of Id.t
+  | T2I of Id.t
   | In
   | Out of Id.t
   | Count

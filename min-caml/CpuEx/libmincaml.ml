@@ -101,11 +101,11 @@
        read_int u);
 
 (let rec abs_float i =
-   Float(Int(i) land 2147483647));
+   i2f(f2i(i) land 2147483647));
 
 (let rec int_of_float f = 
-   let exp = ((Int(f) lsr 23) land 255) - 127 in
-   let fraction = ((Int(f) lor 8388608) land 16777215)
+   let exp = ((f2i(f) lsr 23) land 255) - 127 in
+   let fraction = ((f2i(f) lor 8388608) land 16777215)
    in
    let rval = 
      if (23 - exp) > 0 then
@@ -130,12 +130,12 @@
        (search_top (i lsr 1)) + 1
    in
    if i = 0 then
-     Float(0)
+     i2f(0)
    else
      let sign = if i > 0 then 0 else 1 in
      let i = if i > 0 then i else -i in
      let top = search_top i in
-     Float((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
+     i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
 
 (let rec floor i =
    let rec floor_sub i =
@@ -357,7 +357,7 @@
 
 (let rec create_array_base n i =
    let hp = get_hp () in
-   let hp_a = Array(hp) in
+   let hp_a = i2ia(hp) in
    set_hp (hp + n);
    let rec create_array_sub c =
      if c = 0 then
@@ -369,4 +369,4 @@
    create_array_sub n;
    hp_a);
 
-(let rec create_float_array_base n i = create_array_base n (Int(i)));
+(let rec create_float_array_base n i = i2fa(a2i(create_array_base n (f2i(i)))));

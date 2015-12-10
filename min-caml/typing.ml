@@ -61,8 +61,12 @@ let rec deref_term = function
   | Tuple(es) -> Tuple(List.map deref_term es)
   | LetTuple(xts, e1, e2) -> LetTuple(List.map deref_id_typ xts, deref_term e1, deref_term e2)
   | Array(e1, e2) -> Array(deref_term e1, deref_term e2)
-  | ToFloat(e1) -> ToFloat(deref_term e1)
-  | ToInt(e1) -> ToInt(deref_term e1)
+  | I2F(e1) -> I2F(deref_term e1)
+  | F2I(e1) -> F2I(deref_term e1)
+  | I2IA(e1) -> I2IA(deref_term e1)
+  | I2FA(e1) -> I2FA(deref_term e1)
+  | A2I(e1) -> A2I(deref_term e1)
+  | T2I(e1) -> T2I(deref_term e1)
   | In(e1) -> In(deref_term e1)
   | Out(e1) -> Out(deref_term e1)
   | SetHp(e1) -> SetHp(deref_term e1)
@@ -177,15 +181,24 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
     | Array(e1, e2) -> (* must be a primitive for "polymorphic" typing *)
 	     unify (g env e1) Type.Int;
 	     Type.Array(g env e2)
-    | ToFloat(e1) ->
-	     unify Type.Int (g env e1);
-	     Type.Float
-    | ToInt(e1) ->
-	     unify Type.Float (g env e1);
-	     Type.Int
-    | ToArray(e1) ->
-	     unify Type.Int (g env e1);
-	     Type.Array(Type.Int)
+    | I2F(e1) ->
+       unify Type.Int (g env e1);
+      Type.Float
+    | F2I(e1) ->
+       unify Type.Float (g env e1);
+      Type.Int
+    | I2IA(e1) ->
+       unify Type.Int (g env e1);
+      Type.Array(Type.Int)
+    | I2FA(e1) ->
+       unify Type.Int (g env e1);
+      Type.Array(Type.Float)
+    | A2I(e1) ->
+       unify (Type.Array(Type.Var({ contents = None }))) (g env e1);
+      Type.Int
+    | T2I(e1) ->
+       unify (Type.Tuple([Type.Var({ contents = None })])) (g env e1);
+      Type.Int
     | In(e1) ->
 	     unify Type.Unit (g env e1);
 	     Type.Int

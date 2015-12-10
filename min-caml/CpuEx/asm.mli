@@ -6,7 +6,6 @@ type t =
 and exp = 
   | Nop
   | Li of l_or_imm
-  | FLi of l_or_imm
   | SetL of Id.l
   | Mr of Id.t
   | Add of Id.t * id_or_imm
@@ -29,9 +28,6 @@ and exp =
   | Sqrt of Id.t
   | Lfd of Id.t * id_or_imm
   | Stfd of Id.t * Id.t * id_or_imm
-  | ToInt of Id.t
-  | ToFloat of Id.t
-  | ToArray of Id.t
   | In
   | Out of Id.t
   | Count
@@ -39,7 +35,7 @@ and exp =
   | SetCurExec
   | GetExecDiff
   | GetHp
-  | SetHp of Id.t
+  | SetHp of id_or_imm
   | Comment of string
   (* virtual instructions *)
   | Cmp of int * Id.t * id_or_imm

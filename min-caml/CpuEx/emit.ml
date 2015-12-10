@@ -95,7 +95,7 @@ let restore_lr oc =
   op2i oc "ldwi" reg_lr reg_sp ix
 
 let is_no_effect f g = function
-  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | ToInt _ | ToArray _ | FLi _ | FMr _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FAbA _ | FAM _ | FAbs _ | Sqrt _ | ToFloat _ | Lfd _ -> f ()
+  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FMr _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FAbA _ | FAM _ | FAbs _ | Sqrt _ | Lfd _ -> f ()
   | _ -> g ()
     
 let rec g oc cflag = function (* 命令列のアセンブリ生成 *)
@@ -111,12 +111,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     cflag
   | (NonTail(x), Li(L(Id.L(l)))) -> 
      op2l oc "ldwi" (reg x) (reg reg_zero) l;
-    cflag
-  | (NonTail(x), FLi(C(i))) -> 
-     limm oc (reg x) i;
-    cflag
-  | (NonTail(x), FLi(L(Id.L(l)))) ->
-    op2l oc "ldwi" (reg x) (reg reg_zero) l;
     cflag
   | (NonTail(x), SetL(Id.L(y))) -> 
      llabel oc (reg x) y;
@@ -234,18 +228,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (NonTail(_), Stfd(x, y, C(z))) -> 
      op2i oc "stwi" (reg y) (reg x) z;
      cflag
-  | (NonTail(x), ToFloat(y)) when x = y -> cflag
-  | (NonTail(x), ToFloat(y)) -> 
-     op3 oc "or" (reg x) (reg y) (reg reg_zero);
-    cflag
-  | (NonTail(x), ToInt(y)) when x = y -> cflag
-  | (NonTail(x), ToInt(y)) -> 
-     op3 oc "or" (reg x) (reg y) (reg reg_zero);
-    cflag
-  | (NonTail(x), ToArray(y)) when x = y -> cflag
-  | (NonTail(x), ToArray(y)) -> 
-     op3 oc "or" (reg x) (reg y) (reg reg_zero);
-    cflag
   | (NonTail(x), In) -> 
      op1 oc "in" (reg x) 0;
     cflag
@@ -267,8 +249,11 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), GetHp) -> 
      op3 oc "or" (reg x) (reg reg_hp) (reg reg_zero);
     cflag
-  | (NonTail(x), SetHp(y)) ->
+  | (NonTail(x), SetHp(V(y))) ->
      op3 oc "or" (reg reg_hp) (reg y) (reg reg_zero);
+    cflag
+  | (NonTail(x), SetHp(C(i))) ->
+     limm oc (reg reg_hp) i;
     cflag
   | (NonTail(_), Comment(s)) ->
      print oc (Printf.sprintf "#\t%s\n" s);

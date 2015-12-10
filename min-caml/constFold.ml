@@ -41,7 +41,6 @@ let rec h env fn = function
   | Var(x) when memi x env -> (Int(findi x env), true, 0)
   | Var(x) when memf x env -> (Float(findf x env), true, 0)
   | Var(x) when memt x env -> (Tuple(findt x env), true, 0)
-  | ToArray(x) when memi x env -> (Array(findi x env), true, 0)
   | Neg(x) when memi x env -> (Int(-(findi x env)), true, 0)
   | Add(x, y) when memi x env && memi y env -> (Int(findi x env + findi y env), true, 0) (* 足し算のケース (caml2html: constfold_add) *)
   | Sub(x, y) when memi x env && memi y env -> (Int(findi x env - findi y env), true, 0)
@@ -117,8 +116,10 @@ let rec h env fn = function
      (LetTuple(xts, y, e'), f, r)
   | App(x, yts) as e when x = fn ->
      (e, false, 1)
-  | ToInt(x) when memf x env -> (Int(Type.conv_float(findf x env)), true, 0)
-  | ToFloat(x) when memi x env -> (Float(Type.conv_int(findi x env)), true, 0)
+  | I2F(x) when memi x env -> (Float(Type.conv_int(findi x env)), true, 0)
+  | F2I(x) when memf x env -> (Int(Type.conv_float(findf x env)), true, 0)
+  | I2IA(x) | I2FA(x) when memi x env -> (Array(findi x env), true, 0)
+  | A2I(x) when mema x env -> (let x, _ = finda x env in Array(x), true, 0)
   | e -> (e, true, 0)
 
 let gencys ys env = List.fold_left (fun a y -> a@[expandconst y env]) [] ys
@@ -178,7 +179,6 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | Var(x) when memi x env -> Int(findi x env), false
   | Var(x) when memf x env -> Float(findf x env), false
   | Var(x) when memt x env -> Tuple(findt x env), false
-  | ToArray(x) when memi x env -> Array(findi x env), false
   | Neg(x) when memi x env -> Int(-(findi x env)), false
   | Add(x, y) when memi x env && memi y env -> Int(findi x env + findi y env), false
   | Sub(x, y) when memi x env && memi y env -> Int(findi x env - findi y env), false
@@ -335,8 +335,10 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	 Alpha.g env' e
       else
 	 exp), false
-  | ToInt(x) when memf x env -> Int(Type.conv_float(findf x env)), false
-  | ToFloat(x) when memi x env -> Float(Type.conv_int(findi x env)), false
+  | I2F(x) when memi x env -> Float(Type.conv_int(findi x env)), false
+  | F2I(x) when memf x env -> Int(Type.conv_float(findf x env)), false
+  | I2IA(x) | I2FA(x) when memi x env -> Array(findi x env), false
+  | A2I(x) when mema x env -> let x, _ = finda x env in (Array(x), false)
   | e -> e, false
 
 let rec f e =

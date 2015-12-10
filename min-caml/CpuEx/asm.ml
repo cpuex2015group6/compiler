@@ -8,7 +8,6 @@ type t = (* 命令の列 *)
 and exp = (* 一つ一つの命令に対応する式 *)
   | Nop
   | Li of l_or_imm
-  | FLi of l_or_imm
   | SetL of Id.l
   | Mr of Id.t
   | Add of Id.t * id_or_imm
@@ -31,9 +30,6 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Sqrt of Id.t
   | Lfd of Id.t * id_or_imm
   | Stfd of Id.t * Id.t * id_or_imm
-  | ToInt of Id.t
-  | ToFloat of Id.t
-  | ToArray of Id.t
   | In
   | Out of Id.t
   | Count
@@ -41,7 +37,7 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | SetCurExec
   | GetExecDiff
   | GetHp
-  | SetHp of Id.t
+  | SetHp of id_or_imm
   | Comment of string
   (* virtual instructions *)
   | Cmp of int * Id.t * id_or_imm
@@ -100,8 +96,9 @@ let rec fv_if x y e1 e2 =
     x :: y :: remove_and_uniq S.empty (e1 @ e2)
 
 let rec fv_exp = function
-  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | FLi (_) | SetL (_) | Comment (_) | Restore (_) -> []
-  | Mr (x) | FMr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | ToFloat(x) | ToInt(x) | ToArray(x) | Out (x) | SetHp (x) -> [x]
+  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> []
+  | Mr (x) | FMr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> [x]
+  | SetHp (x) -> fv_id_or_imm x
   | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') |  Lfd (x, y') | Ldw (x, y') | Cmp (_, x, y')-> 
       x :: fv_id_or_imm y'
   | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y) | FCmp(_, x, y) ->
@@ -172,10 +169,6 @@ and j indent = function
      Printf.fprintf stdout "li %d\n" i
   | Li(L(Id.L(l))) ->
      Printf.fprintf stdout "li %s\n" l
-  | FLi(C(i)) ->
-     Printf.fprintf stdout "fli %d\n" i
-  | FLi(L(Id.L(l))) ->
-     Printf.fprintf stdout "fli %s\n" l
   | SetL(Id.L(y)) -> 
      Printf.fprintf stdout "setl %s\n" y
   | Mr(y) ->
@@ -242,12 +235,6 @@ and j indent = function
      Printf.fprintf stdout "stfd %s, %s, %s\n" x y z
   | Stfd(x, y, C(z)) -> 
      Printf.fprintf stdout "stfd %s, %s, %d\n" x y z
-  | ToFloat(y) -> 
-     Printf.fprintf stdout "tofloat %s\n" y
-  | ToInt(y) -> 
-     Printf.fprintf stdout "toint %s\n" y
-  | ToArray(y) -> 
-     Printf.fprintf stdout "toarray %s\n" y
   | In -> 
      Printf.fprintf stdout "in\n"
   | Out(y) -> 
@@ -262,8 +249,10 @@ and j indent = function
      Printf.fprintf stdout "getexecdiff\n"
   | GetHp -> 
      Printf.fprintf stdout "gethp\n"
-  | SetHp(y) -> 
+  | SetHp(V(y)) -> 
      Printf.fprintf stdout "sethp %s\n" y
+  | SetHp(C(i)) -> 
+     Printf.fprintf stdout "sethp %d\n" i
   | Comment(s) ->
      Printf.fprintf stdout "comment %s\n" s
   | Save(x, y) ->

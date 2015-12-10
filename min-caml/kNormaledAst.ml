@@ -164,12 +164,18 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "Put " ^ e1 ^ " " ^ e2 ^ " " ^ e3 ^ "\n")
   | ExtArray(e1) ->
      print_string (indent ^ "ExtArray " ^ e1 ^ "\n")
-  | ToFloat(e1) ->
-     print_string (indent ^ "ToFloat " ^ e1 ^ "\n")
-  | ToInt(e1) ->
-     print_string (indent ^ "ToInt " ^ e1 ^ "\n")
-  | ToArray(e1) ->
-     print_string (indent ^ "ToArray " ^ e1 ^ "\n")
+  | I2F(e1) ->
+     print_string (indent ^ "I2F " ^ e1 ^ "\n")
+  | F2I(e1) ->
+     print_string (indent ^ "F2I " ^ e1 ^ "\n")
+  | I2IA(e1) ->
+     print_string (indent ^ "I2IA " ^ e1 ^ "\n")
+  | I2FA(e1) ->
+     print_string (indent ^ "I2FA " ^ e1 ^ "\n")
+  | A2I(e1) ->
+     print_string (indent ^ "A2I " ^ e1 ^ "\n")
+  | T2I(e1) ->
+     print_string (indent ^ "T2I " ^ e1 ^ "\n")
   | In(e1) ->
      print_string (indent ^ "In " ^ e1 ^ "\n")
   | Out(e1) ->
