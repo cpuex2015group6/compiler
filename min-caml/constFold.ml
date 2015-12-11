@@ -119,7 +119,7 @@ let rec h env fn = function
   | I2F(x) when memi x env -> (Float(Type.conv_int(findi x env)), true, 0)
   | F2I(x) when memf x env -> (Int(Type.conv_float(findf x env)), true, 0)
   | I2IA(x) | I2FA(x) when memi x env -> (Array(findi x env), true, 0)
-  | A2I(x) when mema x env -> (let x, _ = finda x env in Array(x), true, 0)
+  | A2I(x) when mema x env -> (let x, _ = finda x env in Int(x), true, 0)
   | e -> (e, true, 0)
 
 let gencys ys env = List.fold_left (fun a y -> a@[expandconst y env]) [] ys
@@ -338,7 +338,7 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | I2F(x) when memi x env -> Float(Type.conv_int(findi x env)), false
   | F2I(x) when memf x env -> Int(Type.conv_float(findf x env)), false
   | I2IA(x) | I2FA(x) when memi x env -> Array(findi x env), false
-  | A2I(x) when mema x env -> let x, _ = finda x env in (Array(x), false)
+  | A2I(x) when mema x env -> let x, _ = finda x env in (Int(x), false)
   | e -> e, false
 
 let rec f e =
