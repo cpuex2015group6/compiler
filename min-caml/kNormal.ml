@@ -38,7 +38,6 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | I2IA of Id.t
   | I2FA of Id.t
   | A2I of Id.t
-  | T2I of Id.t
   | In of Id.t
   | Out of Id.t
   | Count
@@ -51,6 +50,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
  and fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : t }
 
 let negcond c = c lxor 7
+let swapcond c = (if c land 1 <> 0 then 4 else 0) lor (if c land 2 <> 0 then 2 else 0) lor (if c land 4 <> 0 then 1 else 0)
   
 let rec size = function
   | If(_, _, _, e1, e2)
@@ -77,7 +77,7 @@ let rec fv_lettuple xs y e =
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Unit | Count | ShowExec | SetCurExec | GetExecDiff | Int(_) | Float(_) | Array(_) | ExtArray(_) -> S.empty
-  | Neg(x) | FNeg(x) | Sqrt(x) | I2F(x) | F2I(x) | I2IA(x) | I2FA(x) | A2I(x) | T2I(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) | FAbs(x) | GetTuple(x, _) -> S.singleton x
+  | Neg(x) | FNeg(x) | Sqrt(x) | I2F(x) | F2I(x) | I2IA(x) | I2FA(x) | A2I(x) | In(x) | Out(x) | GetHp(x) | SetHp(x) | FAbs(x) | GetTuple(x, _) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) -> S.of_list [x; y]
   | FAM(x, y, z) -> S.of_list [x; y; z]
   | If(_, x, y, e1, e2) ->
@@ -268,9 +268,6 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) *)
   | Syntax.A2I(e1) ->
      insert_let (g env e1)
 	              (fun x -> A2I(x), Type.Int)
-  | Syntax.T2I(e1) ->
-     insert_let (g env e1)
-	              (fun x -> T2I(x), Type.Int)
   | Syntax.In(e1) ->
      insert_let (g env e1)
 	              (fun x -> In(x), Type.Int)

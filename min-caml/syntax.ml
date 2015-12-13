@@ -36,7 +36,6 @@ type t = (* MinCamlの構文を表現するデータ型 (caml2html: syntax_t) *)
   | I2IA of t
   | I2FA of t
   | A2I of t
-  | T2I of t
   | Sqrt of t
   | In of t
   | Out of t

@@ -226,10 +226,6 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string indent;
      print_string "A2I\n";
      g (indent ^ "  ") e1;
-  | T2I(e1) ->
-     print_string indent;
-     print_string "T2I\n";
-     g (indent ^ "  ") e1;
   | In(e1) ->
      print_string indent;
      print_string "In\n";

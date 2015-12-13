@@ -25,7 +25,6 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | I2IA of Id.t
   | I2FA of Id.t
   | A2I of Id.t
-  | T2I of Id.t
   | In
   | Out of Id.t
   | Count
@@ -55,7 +54,7 @@ let log = ref ""
     
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) | In | GetHp | Count | ShowExec | SetCurExec | GetExecDiff -> S.empty
-  | Neg(x) | FNeg(x) | FAbs(x) | Sqrt(x) | I2F(x) | F2I(x) | I2IA(x) | I2FA(x) | A2I(x) | T2I(x) | Out(x) | SetHp(x) | GetTuple(x, _) -> S.singleton x
+  | Neg(x) | FNeg(x) | FAbs(x) | Sqrt(x) | I2F(x) | F2I(x) | I2IA(x) | I2FA(x) | A2I(x) | Out(x) | SetHp(x) | GetTuple(x, _) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) -> S.of_list [x; y]
   | FAM(x, y, z) -> S.of_list [x; y; z]
   | If(_, x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
@@ -95,7 +94,6 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.I2IA(x) -> I2IA(x)
   | KNormal.I2FA(x) -> I2FA(x)
   | KNormal.A2I(x) -> A2I(x)
-  | KNormal.T2I(x) -> T2I(x)
   | KNormal.In(x) -> In
   | KNormal.Out(x) -> Out(x)
   | KNormal.Count -> Count

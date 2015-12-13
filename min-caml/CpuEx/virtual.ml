@@ -20,7 +20,7 @@ let expand xts ini addi =
 let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Unit -> Ans (Nop)
   | Closure.Int (i) ->
-     if i >= 0 && i < 32768 then
+     if (i >= 0 && i < 32768) || (i = -1) then
        Ans (Li (C(i)))
      else
        let conv_unsinged i =
@@ -72,7 +72,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.FAM (x, y, z) -> Ans (FAM (x, y, z))
   | Closure.FAbs (x) -> Ans (FAbs (x))
   | Closure.Sqrt (x) -> Ans (Sqrt (x))
-  | Closure.I2F (x) | Closure.F2I (x) | Closure.I2IA (x) | Closure.I2FA (x) | Closure.A2I (x) | Closure.T2I (x) -> Ans (Mr (x))
+  | Closure.I2F (x) | Closure.F2I (x) | Closure.I2IA (x) | Closure.I2FA (x) | Closure.A2I (x) -> Ans (Mr (x))
   | Closure.In -> Ans (In)
   | Closure.Out (x) -> Ans (Out (x))
   | Closure.Count -> Ans (Count)

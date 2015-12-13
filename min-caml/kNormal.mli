@@ -36,7 +36,6 @@ type t =
   | I2IA of Id.t
   | I2FA of Id.t
   | A2I of Id.t
-  | T2I of Id.t
   | In of Id.t
   | Out of Id.t
   | Count

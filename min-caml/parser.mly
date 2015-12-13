@@ -54,7 +54,6 @@ let addtyp x = (x, Type.gentyp ())
 %token I2IA
 %token I2FA
 %token A2I
-%token T2I
 %token DOT
 %token LESS_MINUS
 %token SEMICOLON
@@ -198,9 +197,6 @@ exp: /* (* ∞Ï»Ã§Œº∞ (caml2html: parser_exp) *) */
 | A2I simple_exp
     %prec prec_app
     { A2I($2) }
-| T2I simple_exp
-    %prec prec_app
-    { T2I($2) }
 | FEQUAL simple_exp simple_exp
     %prec prec_app
     { Eq($2, $3) }

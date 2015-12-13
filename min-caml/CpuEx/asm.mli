@@ -66,6 +66,7 @@ val reg_tmp : Id.t
 val reg_imm : Id.t
 val reg_lr : Id.t
 val reg_zero : Id.t
+val reg_m1 : Id.t
 val heap_start : int
 val stack_start : int
 val is_reg : Id.t -> bool

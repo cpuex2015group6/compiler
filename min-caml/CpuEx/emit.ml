@@ -408,6 +408,7 @@ let f oc (Prog(data, vars, fundefs, e)) =
   limm (Some oc) (reg reg_hp) heap_start;
   Printf.fprintf oc "   # main program start\n";
   Printf.fprintf oc "_min_caml_start: # main entry point\n";
+  limm (Some oc) (reg reg_m1) 0xFFFFFFFF;
   stackset := S.empty;
   stackmap := [];
   let _ = g (Some oc) false (NonTail("r08"), e) in

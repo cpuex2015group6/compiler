@@ -111,8 +111,6 @@ rule token = parse
     { I2FA }
 | "a2i"
     { A2I }
-| "t2i"
-    { T2I }
 | "fequal"
     { FEQUAL }
 | "fless"

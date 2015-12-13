@@ -72,7 +72,8 @@ let reg_sp = "r03"
 let reg_tmp = "r05"
 let reg_imm = "r06"
 let reg_lr = "r02"
-let reg_zero = "%rFF"
+let reg_zero = "%r1F"
+let reg_m1 = "%r01"
 let heap_start = 256
 let stack_start = ((2*1024*1024)/4)
 

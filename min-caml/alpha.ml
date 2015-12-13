@@ -60,7 +60,6 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
   | I2IA(x) -> I2IA(find x env)
   | I2FA(x) -> I2FA(find x env)
   | A2I(x) -> A2I(find x env)
-  | T2I(x) -> T2I(find x env)
   | In(x) -> In(find x env)
   | Out(x) -> Out(find x env)
   | Count -> Count

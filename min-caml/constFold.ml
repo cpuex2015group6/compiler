@@ -313,11 +313,11 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	       if S.mem fn !ofenv then
 		 exp, false
 	       else
-		 let body', f = opt fn ((KNormal.size e) * 4) body in
+		 (*let body', f = opt fn ((KNormal.size e) * 4) body in
 		 if KNormal.size body' < 2 * KNormal.size e || f then
 		   ffold body'
-		 else
-		   exp, false
+		   else*)
+		 exp, false
        )
      else
        exp, false

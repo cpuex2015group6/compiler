@@ -174,8 +174,6 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string (indent ^ "I2FA " ^ e1 ^ "\n")
   | A2I(e1) ->
      print_string (indent ^ "A2I " ^ e1 ^ "\n")
-  | T2I(e1) ->
-     print_string (indent ^ "T2I " ^ e1 ^ "\n")
   | In(e1) ->
      print_string (indent ^ "In " ^ e1 ^ "\n")
   | Out(e1) ->

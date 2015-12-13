@@ -21,6 +21,18 @@ let rec i venv env = function
 	   let e2, env = i venv (M.add av x env) e2 in
 	   Let((x, t), (Get(a, ix)), e2), env
      )
+  | Let((x, t), (GetTuple(a, ix)), e2) ->
+     let av = Format.sprintf "%s_i%d" a ix in
+     (
+       try
+	 (
+	   let v = M.find av env in
+	   let e2, env = i venv env e2 in
+	   Let((x, t), Var(v), e2), env 
+	 ) with Not_found ->
+	   let e2, env = i venv (M.add av x env) e2 in
+	   Let((x, t), (GetTuple(a, ix)), e2), env
+     )
   | Let((x, t), (Int(imm)), e2) ->
      let e2, env = i (M.add x imm venv) env e2 in
      Let((x, t), (Int(imm)), e2), env

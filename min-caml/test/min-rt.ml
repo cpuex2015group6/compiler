@@ -65,7 +65,7 @@ let rec vecbzero v =
 in
 
 (* コピー *)
-let rec veccpy dest src = 
+let rec veccpy dest src =
   dest.(0) <- src.(0);
   dest.(1) <- src.(1);
   dest.(2) <- src.(2)
@@ -867,6 +867,7 @@ in
 
 (***** solver_rectのdirvecテーブル使用高速版 ******)
 let rec solver_rect_fast m v dconst b0 b1 b2 =
+  (* 2.7 *)
   let d0 = (dconst.(0) -. b0) *. dconst.(1) in
   if  (* YZ平面との衝突判定 *)
     if fless (fabs (d0 *. v.(1) +. b1)) (o_param_b m) then
@@ -984,7 +985,7 @@ let rec solver_fast2 index dirvec =
   let dconsts = d_const dirvec in
   let dconst = dconsts.(index) in
   let m_shape = o_form m in
-  if m_shape = 1 then       
+  if m_shape = 1 then
     solver_rect_fast m (d_vec dirvec) dconst b0 b1 b2
   else if m_shape = 2 then  
     solver_surface_fast2 m dconst sconst b0 b1 b2
@@ -1191,6 +1192,7 @@ let rec shadow_check_and_group iand_ofs and_group =
     false
   else
     let obj = and_group.(iand_ofs) in
+    (* 2.0 *)
     let t0 = solver_fast obj light_dirvec intersection_point in
     let t0p = solver_dist.(0) in
     if (if t0 <> 0 then fless t0p (-0.2) else false) then 
@@ -1200,7 +1202,8 @@ let rec shadow_check_and_group iand_ofs and_group =
       let q0 = light.(0) *. t +. intersection_point.(0) in
       let q1 = light.(1) *. t +. intersection_point.(1) in
       let q2 = light.(2) *. t +. intersection_point.(2) in
-      if check_all_inside 0 and_group q0 q1 q2 then
+      
+      if (* 1.2 *) check_all_inside 0 and_group q0 q1 q2 then
 	true 
       else 
 	shadow_check_and_group (iand_ofs + 1) and_group 
@@ -1222,6 +1225,7 @@ let rec shadow_check_one_or_group ofs or_group =
     false
   else (
     let and_group = and_net.(head) in
+    (* 3.6 *)
     let shadow_p = shadow_check_and_group 0 and_group in
     if shadow_p then
       true
@@ -1246,12 +1250,13 @@ let rec shadow_check_one_or_matrix ofs or_matrix =
         (* or group との交点はない            *)
 	if t <> 0 then
           if fless solver_dist.(0) (-0.1) then
-            if shadow_check_one_or_group 1 head then
+            if (* 1.3 *) shadow_check_one_or_group 1 head then
               true
 	    else false
 	  else false
 	else false
     then
+      (* 2.7 *)
       if (shadow_check_one_or_group 1 head) then 
 	true (* 交点があるので、影に入る事が判明。探索終了 *)
       else 
@@ -1364,12 +1369,13 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
   let iobj = and_group.(iand_ofs) in
   if iobj = -1 then ()
   else (
+    (* 4.1 *)
     let t0 = solver_fast2 iobj dirvec in
     if t0 <> 0 then
       (
         (* 交点がある時は、その交点が他の要素の中に含まれるかどうか調べる。*)
         (* 今までの中で最小の t の値と比べる。*)
-       let t0p = solver_dist.(0) in
+       let t0p = solver_dist. (0) in
        if (fless 0.0 t0p) then
 	 if (fless t0p tmin.(0)) then
 	   (
@@ -1378,7 +1384,7 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
 	    let q0 = vec.(0) *. t +. startp_fast.(0) in
 	    let q1 = vec.(1) *. t +. startp_fast.(1) in
 	    let q2 = vec.(2) *. t +. startp_fast.(2) in
-	    if check_all_inside 0 and_group q0 q1 q2 then 
+	    if (* 0.9 *) check_all_inside 0 and_group q0 q1 q2 then 
 	      (
 		tmin.(0) <- t;
 		vecset intersection_point q0 q1 q2;
@@ -1393,8 +1399,8 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
       )
     else 
        (* 交点がなく、しかもその物体は内側が真ならこれ以上交点はない *)
-       if o_isinvert (objects.(iobj)) then 
-	 solve_each_element_fast (iand_ofs + 1) and_group dirvec
+      if o_isinvert (objects.(iobj)) then
+	solve_each_element_fast (iand_ofs + 1) and_group dirvec
        else ()
    )   
 in
@@ -1404,6 +1410,7 @@ let rec solve_one_or_network_fast ofs or_group dirvec =
   let head = or_group.(ofs) in
   if head <> -1 then (
     let and_group = and_net.(head) in
+    (* 7.7 *)
     solve_each_element_fast 0 and_group dirvec;
     solve_one_or_network_fast (ofs + 1) or_group dirvec
    ) else ()
@@ -1417,7 +1424,7 @@ let rec trace_or_matrix_fast ofs or_network dirvec =
     ()
   else (
     if range_primitive = 99 (* range primitive なし *)
-    then (* 4.7 *) solve_one_or_network_fast 1 head dirvec
+    then (* 3.7 *) solve_one_or_network_fast 1 head dirvec
     else 
       (
 	(* range primitive の衝突しなければ交点はない *)
@@ -1425,7 +1432,7 @@ let rec trace_or_matrix_fast ofs or_network dirvec =
 	if t <> 0 then
 	  let tp = solver_dist.(0) in
 	  if fless tp tmin.(0)
-	  then (* 6.3 *) solve_one_or_network_fast 1 head dirvec
+	  then (* 5.0 *) solve_one_or_network_fast 1 head dirvec
 	  else ()
 	else ();
       );
@@ -1437,6 +1444,7 @@ in
 let rec judge_intersection_fast dirvec =
 ( 
   tmin.(0) <- (1000000000.0);
+  (* 9.8 *)
   trace_or_matrix_fast 0 (or_net.(0)) dirvec;
   let t = tmin.(0) in
 
@@ -1755,9 +1763,8 @@ let rec iter_trace_diffuse_rays dirvec_group nvector org index =
     (* 15.3 *)
     if fisneg p then
       trace_diffuse_ray dirvec_group.(index + 1) (p /. -150.0)
-    else 
+    else
       trace_diffuse_ray dirvec_group.(index) (p /. 150.0);
-	
     iter_trace_diffuse_rays dirvec_group nvector org (index - 2)
    ) else ()
 in
@@ -2053,7 +2060,8 @@ let rec scan_line y prev cur next group_id = (
   if y < image_size.(1) then (
 
     if y < image_size.(1) - 1 then
-      pretrace_line next (y + 1) group_id
+      (* 9.7 *)
+      pretrace_line next (y + 1) group_id;
     else ();
     scan_pixel 0 y prev cur next;
     scan_line (y + 1) cur next prev (add_mod5 group_id 2);

@@ -1,7 +1,7 @@
 open Asm
 
 let rmzero env x =
-  try (if M.find x env = 0 then reg_zero else x) with Not_found -> x
+  try (if M.find x env = 0 then reg_zero else (if M.find x env = -1 then reg_m1 else x)) with Not_found -> x
   
 let rec g env = function (* Ì¿ÎáÎó¤Î 16 bit Â¨ÃÍºÇÅ¬²½ *)
   | Ans(exp) ->

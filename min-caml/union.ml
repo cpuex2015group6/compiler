@@ -39,6 +39,46 @@ let pat = [
      | _ -> raise Unmatched) fail
   | _ -> raise Unmatched);
   (fun env -> function
+  | If(2, x, y, Int(1), Int(0)) ->
+     check env x (fun e -> match e with
+     | If(c', x', y', e1', e2') ->
+	check env y (fun e -> match e with
+	| Int(0) -> If(KNormal.negcond c', x', y', e1', e2')
+	| _ -> raise Unmatched
+	) fail
+     | _ -> raise Unmatched) fail
+  | _ -> raise Unmatched);
+  (fun env -> function
+  | If(2, x, y, Int(1), Int(0)) ->
+     check env y (fun e -> match e with
+     | If(c', x', y', e1', e2') ->
+	check env x (fun e -> match e with
+	| Int(0) -> If(KNormal.negcond c', x', y', e1', e2')
+	| _ -> raise Unmatched
+	) fail
+     | _ -> raise Unmatched) fail
+  | _ -> raise Unmatched);
+  (fun env -> function
+  | If(2, x, y, Int(1), Int(0)) ->
+     check env x (fun e -> match e with
+     | If(c', x', y', e1', e2') ->
+	check env y (fun e -> match e with
+	| Int(1) -> If(c', x', y', e1', e2')
+	| _ -> raise Unmatched
+	) fail
+     | _ -> raise Unmatched) fail
+  | _ -> raise Unmatched);
+  (fun env -> function
+  | If(2, x, y, Int(1), Int(0)) ->
+     check env y (fun e -> match e with
+     | If(c', x', y', e1', e2') ->
+	check env x (fun e -> match e with
+	| Int(1) -> If(c', x', y', e1', e2')
+	| _ -> raise Unmatched
+	) fail
+     | _ -> raise Unmatched) fail
+  | _ -> raise Unmatched);
+  (fun env -> function
   | If(c, x, y, e1, e2) as exp ->
      let e1v = get_val e1 in
      let e2v = get_val e2 in
@@ -47,8 +87,6 @@ let pat = [
 	If(KNormal.negcond c, x, y, e2, e1)
      | _ -> exp)
   | _ -> raise Unmatched)
-(* TODO If(Unit,) *)
-(* TODO let bool = If(); If(bool){}{} *)
 ]
 
 let h env e =

@@ -66,7 +66,6 @@ let rec deref_term = function
   | I2IA(e1) -> I2IA(deref_term e1)
   | I2FA(e1) -> I2FA(deref_term e1)
   | A2I(e1) -> A2I(deref_term e1)
-  | T2I(e1) -> T2I(deref_term e1)
   | In(e1) -> In(deref_term e1)
   | Out(e1) -> Out(deref_term e1)
   | SetHp(e1) -> SetHp(deref_term e1)
@@ -195,9 +194,6 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
       Type.Array(Type.Float)
     | A2I(e1) ->
        unify (Type.Array(Type.Var({ contents = None }))) (g env e1);
-      Type.Int
-    | T2I(e1) ->
-       unify (Type.Tuple([Type.Var({ contents = None })])) (g env e1);
       Type.Int
     | In(e1) ->
 	     unify Type.Unit (g env e1);
