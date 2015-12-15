@@ -93,7 +93,6 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Var (x) ->
      (match M.find x env with
 	    | Type.Unit -> Ans (Nop)
-	    | Type.Float -> Ans (FMr (x))
 	    | _ -> Ans (Mr (x)))
   | Closure.MakeCls ((x, t), {Closure.entry = l; Closure.actual_fv = ys}, e2) ->
      (* closure のアドレスをセットしてからストア *)

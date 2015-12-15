@@ -17,7 +17,6 @@ and exp =
   | Srl of Id.t * id_or_imm
   | Ldw of Id.t * id_or_imm
   | Stw of Id.t * Id.t * id_or_imm
-  | FMr of Id.t
   | FAdd of Id.t * Id.t
   | FSub of Id.t * Id.t
   | FMul of Id.t * Id.t
@@ -26,8 +25,6 @@ and exp =
   | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
-  | Lfd of Id.t * id_or_imm
-  | Stfd of Id.t * Id.t * id_or_imm
   | In
   | Out of Id.t
   | Count
@@ -40,6 +37,8 @@ and exp =
   (* virtual instructions *)
   | Cmp of int * Id.t * id_or_imm
   | FCmp of int * Id.t * Id.t
+  | Cmpa of int * Id.t * id_or_imm * Id.t
+  | FCmpa of int * Id.t * Id.t * Id.t
   | If of int * Id.t * Id.t * t * t
   | FIf of int * Id.t * Id.t * t * t
   (* closure address, integer arguments, and float arguments *)
@@ -76,6 +75,7 @@ val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_exp : exp -> Id.t list
 val fv_o : t -> Id.t list
 val fv : t -> Id.t list
+val effect : exp -> bool
 val concat : t -> Id.t * Type.t -> t -> t
 val concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list
 

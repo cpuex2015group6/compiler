@@ -7,9 +7,6 @@ let rec target' src (dest, t) = function
   | Mr(x) when x = src && is_reg dest ->
       assert (t <> Type.Unit);
       false, [dest]
-  | FMr(x) when x = src && is_reg dest ->
-      assert (t = Type.Float);
-      false, [dest]
   | If(_, _, _, e1, e2)| FIf(_, _, _, e1, e2) ->
       let c1, rs1 = target src (dest, t) e1 in
       let c2, rs2 = target src (dest, t) e2 in
@@ -129,7 +126,6 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | Srl(x, y') -> (Ans(Srl(find x Type.Int regenv, find' y' regenv)), regenv)
   | Ldw(x, y') -> (Ans(Ldw(find x Type.Int regenv, find' y' regenv)), regenv)
   | Stw(x, y, z') -> (Ans(Stw(find x Type.Int regenv, find y Type.Int regenv, find' z' regenv)), regenv)
-  | FMr(x) -> (Ans(FMr(find x Type.Float regenv)), regenv)
   | FAdd(x, y) -> (Ans(FAdd(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FSub(x, y) -> (Ans(FSub(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FMul(x, y) -> (Ans(FMul(find x Type.Float regenv, find y Type.Float regenv)), regenv)
@@ -138,8 +134,6 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | FAM(x, y, z) -> (Ans(FAM(find x Type.Float regenv, find y Type.Float regenv, find z Type.Float regenv)), regenv)
   | FAbs(x) -> (Ans(FAbs(find x Type.Float regenv)), regenv)
   | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)
-  | Lfd(x, y') -> (Ans(Lfd(find x Type.Int regenv, find' y' regenv)), regenv)
-  | Stfd(x, y, z') -> (Ans(Stfd(find x Type.Float regenv, find y Type.Int regenv, find' z' regenv)), regenv)
   | In -> (Ans(In), regenv)
   | Out(x) -> (Ans(Out(find x Type.Int regenv)), regenv)
   | Count -> (Ans(Count), regenv)
@@ -150,6 +144,8 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | SetHp(x') -> (Ans(SetHp(find' x' regenv)), regenv)
   | Cmp(c, x, y') -> (Ans(Cmp(c, find x Type.Int regenv, find' y' regenv)), regenv)
   | FCmp(c, x, y) -> (Ans(FCmp(c, find x Type.Float regenv, find y Type.Float regenv)), regenv)
+  | Cmpa(c, x, y', z) -> (Ans(Cmpa(c, find x Type.Int regenv, find' y' regenv, find z Type.Int regenv)), regenv)
+  | FCmpa(c, x, y, z) -> (Ans(FCmpa(c, find x Type.Float regenv, find y Type.Float regenv, find z Type.Int regenv)), regenv)
   | If(c, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> If(c, find x Type.Int regenv, find y Type.Int regenv, e1', e2')) e1 e2
   | FIf(c, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> FIf(c, find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
   | CallCls(x, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallCls(find x Type.Int regenv, ys)) ys

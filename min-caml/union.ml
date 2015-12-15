@@ -11,39 +11,28 @@ let rec get_val = function
   | If(_, _, _, e1, e2) ->
      (match get_val e1, get_val e2 with
      | Int(x), Int(y) when x = y -> Int(x)
-     | _ -> Unit)
+     | _ -> raise Unmatched)
   | Let(_, e1, e2) -> get_val e2
   | LetRec(_, e2) -> get_val e2
   | LetTuple(_, _, e) -> get_val e
   | e -> e
   
+let rec rm_val = function
+  | If(c, x, y, e1, e2) ->
+     If(c, x, y, rm_val e1, rm_val e2)
+  | Let(xt, e1, e2) -> Let(xt, e1, rm_val e2)
+  | LetRec(f, e) -> LetRec(f, rm_val e)
+  | LetTuple(xts, t, e) -> LetTuple(xts, t, rm_val e)
+  | Int(x) -> Unit
+  | e -> raise Unmatched
   
 let pat = [
-  (*(fun env -> function
-  | FAdd(x, y) ->
-     check env x (fun e -> match e with
-     | FMul(z, w) -> FAM(z, w, y)
-     | _ -> raise Unmatched)
-       (fun _ -> check env y (fun e -> match e with
-       | FMul(z, w) -> FAM(z, w, x)
-       | _ -> raise Unmatched) fail)
-  | _ -> raise Unmatched);*)
-  (fun env -> function
-  | FAbs(x) ->
-     check env x (fun e -> match e with
-     | FAdd(y, z) -> FAbA(y, z)
-     | F2I(x) ->
-	check env x (fun e -> match e with
-	| FAdd(y, z) -> FAbA(y, z)
-	| _ -> raise Unmatched) fail
-     | _ -> raise Unmatched) fail
-  | _ -> raise Unmatched);
   (fun env -> function
   | If(2, x, y, Int(1), Int(0)) ->
      check env x (fun e -> match e with
      | If(c', x', y', e1', e2') ->
 	check env y (fun e -> match e with
-	| Int(0) -> If(KNormal.negcond c', x', y', e1', e2')
+	| Int(0) -> If(negcond c', x', y', e1', e2')
 	| _ -> raise Unmatched
 	) fail
      | _ -> raise Unmatched) fail
@@ -53,7 +42,7 @@ let pat = [
      check env y (fun e -> match e with
      | If(c', x', y', e1', e2') ->
 	check env x (fun e -> match e with
-	| Int(0) -> If(KNormal.negcond c', x', y', e1', e2')
+	| Int(0) -> If(negcond c', x', y', e1', e2')
 	| _ -> raise Unmatched
 	) fail
      | _ -> raise Unmatched) fail
@@ -79,13 +68,34 @@ let pat = [
      | _ -> raise Unmatched) fail
   | _ -> raise Unmatched);
   (fun env -> function
-  | If(c, x, y, e1, e2) as exp ->
+  | If(c, x, y, e1, e2) ->
      let e1v = get_val e1 in
      let e2v = get_val e2 in
      (match e1v, e2v with
      | Int(0), Int(1) ->
-	If(KNormal.negcond c, x, y, e2, e1)
-     | _ -> exp)
+	If(negcond c, x, y, e2, e1)
+     | _ -> raise Unmatched)
+  | _ -> raise Unmatched);
+  (fun env -> function
+  | If(_, _, _, Unit, Unit) ->
+     Unit
+  | _ -> raise Unmatched);
+  (fun env -> function
+  | If(c, x, y, Unit, e2) ->
+     If(negcond c, x, y, e2, Unit)
+  | _ -> raise Unmatched);
+  (fun env -> function
+  | If(c, x, y, e1, e2) ->
+     let e1v = get_val e1 in
+     let e2v = get_val e2 in
+     (match e1, e2, e1v, e2v with
+     | Int(1), Int(0), _, _ ->
+	raise Unmatched
+     | Int(1), _, _, Int(0) ->
+	Let((Id.genid "t", Type.Unit), If(c, x, y, rm_val e1, rm_val e2), If(c, x, y, Int(1), Int(0)))
+     | _, Int(0), Int(1), _ ->
+	Let((Id.genid "t", Type.Unit), If(c, x, y, rm_val e1, rm_val e2), If(c, x, y, Int(1), Int(0)))
+     | _ -> raise Unmatched)
   | _ -> raise Unmatched)
 ]
 

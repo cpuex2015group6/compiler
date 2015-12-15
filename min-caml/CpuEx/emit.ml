@@ -49,8 +49,14 @@ let op3 oc inst r1 r2 r3 =
 let op3c oc inst r1 r2 r3 condition =
   print oc (Printf.sprintf "\t%s\t%s, %s, %s, %d\n" inst r1 r2 r3 condition)
 
+let op3ic oc inst r1 r2 imm r3 condition =
+  print oc (Printf.sprintf "\t%s\t%s, %s, %d, %s, %d\n" inst r1 r2 imm r3 condition)
+
 let op4 oc inst r1 r2 r3 r4 =
   print oc (Printf.sprintf "\t%s\t%s, %s, %s, %s\n" inst r1 r2 r3 r4)
+
+let op4c oc inst r1 r2 r3 r4 condition =
+  print oc (Printf.sprintf "\t%s\t%s, %s, %s, %s, %d\n" inst r1 r2 r3 r4 condition)
 
 (* limmは内部でreg_tmpを破壊するので、 limm reg_tmp, 0 などとしてはいけない *)
 let rec limm oc r1 imm =
@@ -95,7 +101,7 @@ let restore_lr oc =
   op2i oc "ldwi" reg_lr reg_sp ix
 
 let is_no_effect f g = function
-  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FMr _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FAbA _ | FAM _ | FAbs _ | Sqrt _ | Lfd _ -> f ()
+  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAM _ | FAbs _ | Sqrt _ -> f ()
   | _ -> g ()
     
 let rec g oc cflag = function (* 命令列のアセンブリ生成 *)
@@ -187,10 +193,15 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), FCmp(c, y, z)) ->
      op3c oc "fcmpc" (reg x) (reg y) (reg z) c;
      cflag
-  | (NonTail(x), FMr(y)) when x = y -> cflag
-  | (NonTail(x), FMr(y)) ->
-     op3 oc "or" (reg x) (reg y) (reg reg_zero);
-    cflag
+  | (NonTail(x), Cmpa(c, y, V(z), w)) ->
+     op4c oc "cmpca" (reg x) (reg y) (reg z) (reg w) c;
+     cflag
+  | (NonTail(x), Cmpa(c, y, C(z), w)) ->
+     op3ic oc "cmpaic" (reg x) (reg y) z (reg w) c;
+     cflag
+  | (NonTail(x), FCmpa(c, y, z, w)) ->
+     op4c oc "fcmpac" (reg x) (reg y) (reg z) (reg w) c;
+     cflag
   | (NonTail(x), FAdd(y, z)) -> 
      op3 oc "fadd" (reg x) (reg y) (reg z);
     cflag
@@ -216,18 +227,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), Sqrt(y)) -> 
      op3 oc "fsqrt" (reg x) (reg y) (reg reg_zero);
     cflag
-  | (NonTail(x), Lfd(y, V(z))) ->
-    op3 oc "ldw" (reg x) (reg y) (reg z);
-    cflag
-  | (NonTail(x), Lfd(y, C(z))) -> 
-     op2i oc "ldwi" (reg x) (reg y) z;
-     cflag
-  | (NonTail(_), Stfd(x, y, V(z))) ->
-    op3 oc "stw" (reg y) (reg x) (reg z);
-    cflag
-  | (NonTail(_), Stfd(x, y, C(z))) -> 
-     op2i oc "stwi" (reg y) (reg x) z;
-     cflag
   | (NonTail(x), In) -> 
      op1 oc "in" (reg x) 0;
     cflag
@@ -271,7 +270,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     op2i oc "ldwi" (reg x) reg_sp (offset y);
     cflag
   (* 末尾だったら計算結果を第一レジスタにセット *)
-  | (Tail, (Nop | Stw _ | Stfd _ | Out _ | Comment _ | Save _ as exp)) ->
+  | (Tail, (Nop | Stw _ | Out _ | Comment _ | Save _ as exp)) ->
      let cflag = g' oc cflag (NonTail(Id.gentmp Type.Unit), exp) in
      (if cflag then restore_lr oc);
      op3 oc "jrf" reg_tmp (reg reg_zero) reg_lr;
@@ -345,8 +344,7 @@ and g'_tail_if oc cflag c x y p e1 e2 =
      print oc (Printf.sprintf "%s:\n" b_else);
      stackset := stackset_back;
      g oc cflag (Tail, e2)
-and g'_non_tail_if oc cflag dest c x y p e1 e2 = 
-  let b_else = Id.genid ("else") in
+and g'_non_tail_if oc cflag dest c x y p e1 e2 =
   let b_cont = Id.genid ("cont") in
   let stackset' = !stackset in
   let stackmap' = !stackmap in
@@ -354,19 +352,28 @@ and g'_non_tail_if oc cflag dest c x y p e1 e2 =
   let cflag2 = g None cflag (dest, e2) in
   stackset := stackset';
   stackmap := stackmap';
-  op2lc oc (p ^ "jic") x y b_else (Asm.negcond c);
   let stackset_back = !stackset in
-  let _ = g oc cflag (dest, e1) in
-  let stackset1 = !stackset in
-  (if (cflag1 || cflag2) && (not cflag) && (not cflag1) then store_lr oc);
-  op2l oc "jif" reg_tmp (reg reg_zero) b_cont;
-  print oc (Printf.sprintf "%s:\n" b_else);
-  stackset := stackset_back;
-  let _ = g oc cflag (dest, e2) in
-  (if (cflag1 || cflag2) && (not cflag) && (not cflag2) then store_lr oc);
-  print oc (Printf.sprintf "%s:\n" b_cont);
-  let stackset2 = !stackset in
-  stackset := S.inter stackset1 stackset2;
+  if (cflag1 || cflag2) && (not cflag) then store_lr oc;
+  let cflag = true in
+  (match e2 with
+  | Ans(Nop) ->
+     op2lc oc (p ^ "jic") x y b_cont (Asm.negcond c);
+     let _ = g oc cflag (dest, e1) in
+     let stackset1 = !stackset in
+     print oc (Printf.sprintf "%s:\n" b_cont);
+     stackset := S.inter stackset1 stackset_back
+  | _ ->
+     let b_else = Id.genid ("else") in
+     op2lc oc (p ^ "jic") x y b_else (Asm.negcond c);
+     let _ = g oc cflag (dest, e1) in
+     let stackset1 = !stackset in
+     op2l oc "jif" reg_tmp (reg reg_zero) b_cont;
+     print oc (Printf.sprintf "%s:\n" b_else);
+     stackset := stackset_back;
+     let _ = g oc cflag (dest, e2) in
+     print oc (Printf.sprintf "%s:\n" b_cont);
+     let stackset2 = !stackset in
+     stackset := S.inter stackset1 stackset2);
   cflag1 || cflag2
 and g'_args oc x_reg_cl ys = 
   let (i, yrs) = 

@@ -24,7 +24,7 @@ syntax.ml ast.mli ast.ml kNormaledAst.mli kNormaledAst.ml celm.mli celm.ml lexer
 beta.mli beta.ml assoc.mli assoc.ml union.mli union.ml \
 inline.mli inline.ml elim.mli elim.ml hpAlloc.mli hpAlloc.ml constFold.mli constFold.ml elArg.mli elArg.ml \
 opt.mli opt.ml closure.mli closure.ml virtual.mli virtual.ml \
-simm.mli simm.ml regAlloc.mli regAlloc.ml emit.mli emit.ml \
+simm.mli simm.ml aunion.mli aunion.ml aopt.ml aopt.mli regAlloc.mli regAlloc.ml emit.mli emit.ml \
 main.mli main.ml
 
 # ↓テストプログラムが増えたら、これも増やす
