@@ -737,7 +737,7 @@ let rec solver_rect_surface m dirvec b0 b1 b2 i0 i1 i2  =
   let d2 = (d -. b0) /. dirvec.(i0) in
   if fless (fabs (d2 *. dirvec.(i1) +. b1)) abc.(i1) then
     if fless (fabs (d2 *. dirvec.(i2) +. b2)) abc.(i2) then
-      (solver_dist.(0) <- d2; count();true)
+      (solver_dist.(0) <- d2; true)
     else false
   else false
 in

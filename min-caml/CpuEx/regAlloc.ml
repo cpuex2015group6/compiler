@@ -1,29 +1,36 @@
 open Asm
 
+exception DepReg
+
 (* for register coalescing *)
 (* [XXX] Call¤¬¤¢¤Ã¤¿¤é¡¢¤½¤³¤«¤éÀè¤ÏÌµ°ÕÌ£¤È¤¤¤¦¤«µÕ¸ú²Ì¤Ê¤Î¤ÇÄÉ¤ï¤Ê¤¤¡£
          ¤½¤Î¤¿¤á¤Ë¡ÖCall¤¬¤¢¤Ã¤¿¤«¤É¤¦¤«¡×¤òÊÖ¤êÃÍ¤ÎÂè1Í×ÁÇ¤Ë´Þ¤á¤ë¡£ *)
 let rec target' src (dest, t) = function
   | Mr(x) when x = src && is_reg dest ->
       assert (t <> Type.Unit);
-      false, [dest]
+      false, [], [dest]
   | If(_, _, _, e1, e2)| FIf(_, _, _, e1, e2) ->
-      let c1, rs1 = target src (dest, t) e1 in
-      let c2, rs2 = target src (dest, t) e2 in
-      c1 && c2, rs1 @ rs2
+      let c1, rsf1, rs1 = target src (dest, t) e1 in
+      let c2, rsf2, rs2 = target src (dest, t) e2 in
+      c1 && c2, rsf1 @ rsf2, rs1 @ rs2
   | CallCls(x, ys) ->
-      true, (target_args src regs 0 ys @
-             if x = src then [reg_cl] else [])
+     true, [], (target_args src regs 0 ys @
+              if x = src then [reg_cl] else [])
   | CallDir(_, ys) ->
-      true, (target_args src regs 0 ys)
-  | _ -> false, []
+     true, [], (target_args src regs 0 ys)
+  | Cmpa(_, _, _, c) | FCmpa(_, _, _, c) when c = src ->
+     if is_reg dest then
+       false, [dest], []
+     else
+       raise DepReg
+  | _ -> false, [], []
 and target src dest = function (* register targeting (caml2html: regalloc_target) *)
   | Ans(exp) -> target' src dest exp
   | Let(xt, exp, e) ->
-      let c1, rs1 = target' src xt exp in
-      if c1 then true, rs1 else
-      let c2, rs2 = target src dest e in
-      c2, rs1 @ rs2
+      let c1, rsf1, rs1 = target' src xt exp in
+      if c1 then true, rsf1, rs1 else
+      let c2, rsf2, rs2 = target src dest e in
+      c2, rsf1 @ rsf2, rs1 @ rs2
 and target_args src all n = function (* auxiliary function for Call *)
   | [] -> []
   | y :: ys when src = y -> all.(n) :: target_args src all (n + 1) ys
@@ -32,7 +39,7 @@ and target_args src all n = function (* auxiliary function for Call *)
 type alloc_result = (* alloc¤Ë¤ª¤¤¤Æspilling¤¬¤¢¤Ã¤¿¤«¤É¤¦¤«¤òÉ½¤¹¥Ç¡¼¥¿·¿ *)
   | Alloc of Id.t (* allocated register *)
   | Spill of Id.t (* spilled variable *)
-let rec alloc dest cont contfv regenv x t =
+let alloc dest cont contfv regenv x t =
   (* allocate a register or spill a variable *)
   assert (not (M.mem x regenv));
   let all =
@@ -43,20 +50,22 @@ let rec alloc dest cont contfv regenv x t =
     if is_reg x then Alloc(x) else
       let free = contfv in
       try
-	let (_, prefer) = target x dest cont in
-	let live = (* À¸¤­¤Æ¤¤¤ë¥ì¥¸¥¹¥¿ *)
-	  List.fold_left
-            (fun live y ->
-	      if is_reg y then S.add y live else
-		try S.add (M.find y regenv) live
-		with Not_found -> live)
-            (S.singleton reg_cl)
-            free in
-	let r = (* ¤½¤¦¤Ç¤Ê¤¤¥ì¥¸¥¹¥¿¤òÃµ¤¹ *)
+	let (_, forth, prefer) = target x dest cont in
+	let r = try List.hd forth with Failure "hd" ->
+	  let live = (* À¸¤­¤Æ¤¤¤ë¥ì¥¸¥¹¥¿ *)
+	    List.fold_left
+              (fun live y ->
+		if is_reg y then S.add y live else
+		  try let y' = M.find y regenv in if is_reg y' then S.add y' live else live
+		  with Not_found -> live)
+              (S.singleton reg_cl)
+              free in
+	  (* ¤½¤¦¤Ç¤Ê¤¤¥ì¥¸¥¹¥¿¤òÃµ¤¹ *)
 	  List.find
             (fun r -> not (S.mem r live))
-            (prefer @ all) in
-    (* Format.eprintf "allocated %s to %s@." x r; *)
+            (prefer @ all)
+	in
+	(* Format.eprintf "allocated %s to %s@." x r; *)
 	Alloc(r)
       with Not_found ->
 	Format.eprintf "register allocation failed for %s@." x;
@@ -98,17 +107,18 @@ let rec g dest cont contfv regenv = function (* Ì¿ÎáÎó¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2h
      let cont' = concat e dest cont in
      let contfv' = concatfv e dest contfv in
      let (e1', regenv1) = g'_and_restore xt cont' contfv' regenv exp in
-     (match alloc dest cont' contfv' regenv1 x t with
+     let reg = try alloc dest cont' contfv' regenv1 x t with DepReg -> Alloc(x) in
+     (match reg with
       | Spill(y) ->
-	       let r = M.find y regenv1 in
-	       let (e2', regenv2) = g dest cont contfv (add x r (M.remove y regenv1)) e in
-	       let save =
-	         try Save(M.find y regenv, y)
-	         with Not_found -> Nop in	    
-	       (seq(save, concat e1' (r, t) e2'), regenv2)
+	 let r = M.find y regenv1 in
+	 let (e2', regenv2) = g dest cont contfv (add x r (M.remove y regenv1)) e in
+	 let save =
+	   try Save(M.find y regenv, y)
+	   with Not_found -> Nop in	    
+	 (seq(save, concat e1' (r, t) e2'), regenv2)
       | Alloc(r) ->
-	       let (e2', regenv2) = g dest cont contfv (add x r regenv1) e in
-	       (concat e1' (r, t) e2', regenv2))
+	 let (e2', regenv2) = g dest cont contfv (add x r regenv1) e in
+	 (concat e1' (r, t) e2', regenv2))
 and g'_and_restore dest cont contfv regenv exp = (* »ÈÍÑ¤µ¤ì¤ëÊÑ¿ô¤ò¥¹¥¿¥Ã¥¯¤«¤é¥ì¥¸¥¹¥¿¤ØRestore (caml2html: regalloc_unspill) *)
   try g' dest cont contfv regenv exp
   with NoReg(x, t) ->
@@ -150,7 +160,7 @@ and g' dest cont contfv regenv = function (* ³ÆÌ¿Îá¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html
   | FIf(c, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> FIf(c, find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
   | CallCls(x, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallCls(find x Type.Int regenv, ys)) ys
   | CallDir(l, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallDir(l, ys)) ys
-  | Save(x, y) -> assert false
+  | Save(x, y) -> (Ans(Save(x, y)), regenv)
 and g'_if dest cont contfv regenv exp constr e1 e2 = (* if¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_if) *)
   let (e1', regenv1) = g dest cont contfv regenv e1 in
   let (e2', regenv2) = g dest cont contfv regenv e2 in
@@ -182,7 +192,7 @@ and g'_call dest cont contfv regenv exp constr ys = (* ´Ø¿ô¸Æ¤Ó½Ð¤·¤Î¥ì¥¸¥¹¥¿³ä¤
 	    (List.map (fun y -> find y Type.Int regenv) ys)))
      contfv,
    M.empty)
-
+    
 let h { name = Id.L(x); args = ys; body = e; ret = t } = (* ´Ø¿ô¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_h) *)
   let regenv = M.add x reg_cl M.empty in
   let (i, arg_regs, regenv) =
@@ -200,10 +210,13 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* ´Ø¿ô¤Î¥ì¥¸¥¹¥¿³ä¤êÅö
     | Type.Unit -> Id.gentmp Type.Unit
     | _ -> regs.(0) in
   let (e', regenv') = g (a, t) (Ans(Mr(a))) (fv (Ans(Mr(a)))) regenv e in
+  let (e', regenv') = g (a, t) (Ans(Mr(a))) (fv (Ans(Mr(a)))) regenv e' in
   { name = Id.L(x); args = arg_regs; body = e'; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* ¥×¥í¥°¥é¥àÁ´ÂÎ¤Î¥ì¥¸¥¹¥¿³ä¤êÅö¤Æ (caml2html: regalloc_f) *)
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs' = List.map h fundefs in
   let e', regenv' = g (Id.gentmp Type.Unit, Type.Unit) (Ans(Nop)) (fv (Ans(Nop))) M.empty e in
-  Prog(data, vars, fundefs', e')
+  let e', regenv' = g (Id.gentmp Type.Unit, Type.Unit) (Ans(Nop)) (fv (Ans(Nop))) M.empty e' in
+  let p = Prog(data, vars, fundefs', e') in
+  p

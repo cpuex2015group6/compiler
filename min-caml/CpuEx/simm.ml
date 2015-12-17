@@ -125,7 +125,7 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
 
 let rec i e =
   let e' = g M.empty e in
-  let e', _ = j e' in
+  let e' = fst (j e') in
   if e = e' then
     e'
   else
@@ -137,8 +137,4 @@ let h { name = l; args = xs; body = e; ret = t } =
 
 (* プログラム全体の 16 bit 即値最適化 *)
 let f (Prog(data, vars, fundefs, e)) =
-  prerr_endline "folding imm...";
-  let p = Prog(data, vars, List.map h fundefs, i e) in
-  show (List.map h fundefs) (i e);
-  prerr_endline "folding imm end";
-  p
+  Prog(data, vars, List.map h fundefs, i e)

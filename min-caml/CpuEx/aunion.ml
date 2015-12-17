@@ -33,23 +33,27 @@ let pat = [
   | _ -> raise Unmatched);
   (fun env -> function
   | If(c1, x1, y1, Ans(Cmp(c2, x2, y2)), Ans(Li(C(0)))) ->
-     let t = Id.genid "t" in
-     Let((t, Type.Int), Cmp(c1, x1, V(y1)), Ans(Cmpa(c2, x2, y2, t)));
+     let t1 = Id.genid "t" in
+     let t2 = Id.genid "t" in
+     Let((t1, Type.Int), Cmp(c1, x1, V(y1)), Let((t2, Type.Int), Mr(t1), Ans(Cmpa(c2, x2, y2, t2))));
   | _ -> raise Unmatched);
   (fun env -> function
   | If(c1, x1, y1, Ans(FCmp(c2, x2, y2)), Ans(Li(C(0)))) ->
-     let t = Id.genid "t" in
-     Let((t, Type.Int), Cmp(c1, x1, V(y1)), Ans(FCmpa(c2, x2, y2, t)));
+     let t1 = Id.genid "t" in
+     let t2 = Id.genid "t" in
+     Let((t1, Type.Int), Cmp(c1, x1, V(y1)), Let((t2, Type.Int), Mr(t1), Ans(FCmpa(c2, x2, y2, t2))));
   | _ -> raise Unmatched);
   (fun env -> function
   | FIf(c1, x1, y1, Ans(Cmp(c2, x2, y2)), Ans(Li(C(0)))) ->
-     let t = Id.genid "t" in
-     Let((t, Type.Int), FCmp(c1, x1, y1), Ans(Cmpa(c2, x2, y2, t)));
+     let t1 = Id.genid "t" in
+     let t2 = Id.genid "t" in
+     Let((t1, Type.Int), FCmp(c1, x1, y1), Let((t2, Type.Int), Mr(t1), Ans(Cmpa(c2, x2, y2, t2))));
   | _ -> raise Unmatched);
   (fun env -> function
   | FIf(c1, x1, y1, Ans(FCmp(c2, x2, y2)), Ans(Li(C(0)))) ->
-     let t = Id.genid "t" in
-     Let((t, Type.Int), FCmp(c1, x1, y1), Ans(FCmpa(c2, x2, y2, t)));
+     let t1 = Id.genid "t" in
+     let t2 = Id.genid "t" in
+     Let((t1, Type.Int), FCmp(c1, x1, y1), Let((t2, Type.Int), Mr(t1), Ans(FCmpa(c2, x2, y2, t2))));
   | _ -> raise Unmatched);
 ]
 
@@ -67,11 +71,7 @@ let rec g env = function
   | Let((x, t), e1, e2) ->
       let e1 = g' env e1 in
       let e2 = g (M.add x e1 env) e2 in
-      let rec expand = function
-	| Ans(e) -> Let((x, t), e, e2)
-	| Let(xt, exp, e) -> Let(xt, exp, expand e)
-      in
-      expand e1
+      concat e1 (x, t) e2
 and g' env = function
   | If(c, x, y, e1, e2) ->
      let e1 = g env e1 in

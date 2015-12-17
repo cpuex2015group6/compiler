@@ -194,13 +194,16 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      op3c oc "fcmpc" (reg x) (reg y) (reg z) c;
      cflag
   | (NonTail(x), Cmpa(c, y, V(z), w)) ->
-     op4c oc "cmpca" (reg x) (reg y) (reg z) (reg w) c;
+     assert (x = w);
+     op3c oc "cmpca" (reg x) (reg y) (reg z) c;
      cflag
   | (NonTail(x), Cmpa(c, y, C(z), w)) ->
-     op3ic oc "cmpaic" (reg x) (reg y) z (reg w) c;
+     assert (x = w);
+     op2ic oc "cmpaic" (reg x) (reg y) z c;
      cflag
   | (NonTail(x), FCmpa(c, y, z, w)) ->
-     op4c oc "fcmpac" (reg x) (reg y) (reg z) (reg w) c;
+     assert (x = w);
+     op3c oc "fcmpac" (reg x) (reg y) (reg z) c;
      cflag
   | (NonTail(x), FAdd(y, z)) -> 
      op3 oc "fadd" (reg x) (reg y) (reg z);
