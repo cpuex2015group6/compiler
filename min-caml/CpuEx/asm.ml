@@ -24,7 +24,6 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | FMul of Id.t * Id.t
   | FDiv of Id.t * Id.t
   | FAbA of Id.t * Id.t
-  | FAM of Id.t * Id.t * Id.t
   | FAbs of Id.t
   | Sqrt of Id.t
   | In
@@ -43,6 +42,7 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | FCmpa of int * Id.t * Id.t * Id.t
   | If of int * Id.t * Id.t * t * t
   | FIf of int * Id.t * Id.t * t * t
+  | IfThen of Id.t * t
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -95,6 +95,9 @@ let rec fv_let x exp e =
 let rec fv_if x y e1 e2 =
     x :: y :: remove_and_uniq S.empty (e1 @ e2)
 
+let rec fv_ifthen f e =
+  f :: remove_and_uniq S.empty e
+
 let rec fv_exp = function
   | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> []
   | Mr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> [x]
@@ -105,11 +108,13 @@ let rec fv_exp = function
      x :: z :: fv_id_or_imm y'
   | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y) | FCmp(_, x, y) ->
      [x; y]
-  | FCmpa (_, x, y, z) | FAM (x, y, z) ->
+  | FCmpa (_, x, y, z) ->
      [x; y; z]
   | Stw (x, y, z') -> x :: y :: fv_id_or_imm z'
   | If (_, x, y, e1, e2) | FIf (_, x, y, e1, e2) ->
      fv_if x y (fv_o e1) (fv_o e2)
+  | IfThen (f, e) ->
+     fv_ifthen f (fv_o e)
   | CallCls (x, ys) -> x :: ys
   | CallDir (_, ys) -> ys
 and fv_o = function 
@@ -129,13 +134,14 @@ let is_ereg r = is_reg r && (r = reg_zero || r = reg_m1)
      
 let rec effect = function (* 副作用の有無 *)
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) -> is_ereg x || is_ereg y || effect' e1 || effect' e2
+  | IfThen(f, e) -> is_ereg f || effect' e
   | Ldw(_) | Stw(_) | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Comment _ | CallCls _ | CallDir _ | Save _ | Restore _ -> true
   | Nop | Li _ | SetL _ | GetHp -> false
   | Mr(x) | FAbs(x) | Sqrt(x) -> is_ereg x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | Cmp(_, x, y) -> is_ereg x || (match y with | C(_) -> false | V(y) -> is_ereg y)
   | Cmpa(_, x, y, z) -> is_ereg x || (match y with | C(_) -> false | V(y) -> is_ereg y) || is_ereg z
   | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | FCmp(_, x, y) -> is_ereg x || is_ereg y
-  | FCmpa(_, x, y, z) | FAM(x, y, z) -> is_ereg x || is_ereg y || is_ereg z
+  | FCmpa(_, x, y, z) -> is_ereg x || is_ereg y || is_ereg z
 and effect' = function
   | Ans(exp) -> effect exp
   | Let(_, exp, e) -> effect exp || effect' e
@@ -235,8 +241,6 @@ and j indent = function
      Printf.fprintf stdout "fdiv %s, %s\n" y z
   | FAbA(y, z) -> 
      Printf.fprintf stdout "faba %s, %s\n" y z
-  | FAM(y, z, w) -> 
-     Printf.fprintf stdout "fam %s, %s, %s\n" y z w
   | FAbs(y) -> 
      Printf.fprintf stdout "fabs %s\n" y
   | Sqrt(y) -> 
@@ -280,7 +284,7 @@ and j indent = function
   | If(c, x, y, e1, e2) ->
      Printf.fprintf stdout "if %d %s %s\n" c x y;
      let indent = indent ^ "  " in
-     Printf.fprintf stdout "%scont:\n" indent;
+     Printf.fprintf stdout "%sthen:\n" indent;
      let indent' = indent ^ "  " in
      i indent' (Tail, e1);
      Printf.fprintf stdout "%selse:\n" indent;
@@ -288,11 +292,17 @@ and j indent = function
   | FIf(c, x, y, e1, e2) ->
      Printf.fprintf stdout "fif %d %s %s\n" c x y;
      let indent = indent ^ "  " in
-     Printf.fprintf stdout "%scont:\n" indent;
+     Printf.fprintf stdout "%sthen:\n" indent;
      let indent' = indent ^ "  " in
      i indent' (Tail, e1);
      Printf.fprintf stdout "%selse:\n" indent;
      i indent' (Tail, e2)
+  | IfThen(f, e) ->
+     Printf.fprintf stdout "ifthen %s\n" f;
+     let indent = indent ^ "  " in
+     Printf.fprintf stdout "%sthen:\n" indent;
+     let indent' = indent ^ "  " in
+     i indent' (Tail, e);
   | CallCls(x, ys) ->
      Printf.fprintf stdout "callcls %s, " x;
      Printf.fprintf stdout "ys:";

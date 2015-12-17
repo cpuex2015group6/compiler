@@ -2,39 +2,6 @@ open Asm
 
 let rmzero env x =
   try (if M.find x env = 0 then reg_zero else (if M.find x env = -1 then reg_m1 else x)) with Not_found -> x
-
-let rec j = function
-  | Ans(exp) ->
-     let e', fvs = j' exp in
-     Ans(e'), fvs
-  | Let((x, t), (Li(C(i)) as exp), e) ->
-     let exp, fvs_exp = j' exp in
-     let e, fvs_e = j e in
-     if List.mem x fvs_e then
-       Let((x, t), exp, e), fv_let x fvs_exp fvs_e
-     else
-       e, fvs_e
-  | Let((x, t), exp, e) when not (effect exp) && not (is_reg x) ->
-     let exp, fvs_exp = j' exp in
-     let e, fvs_e = j e in
-     if List.mem x fvs_e then
-       Let((x, t), exp, e), fv_let x fvs_exp fvs_e
-     else
-       e, fvs_e
-  | Let((x, t), exp, e) ->
-     let exp, fvs_exp = j' exp in
-     let e, fvs_e = j e in
-     Let((x, t), exp, e), fv_let x fvs_exp fvs_e
-and j' = function
-  | If(c, x, y, e1, e2) ->
-     let e1, fve1 = j e1 in
-     let e2, fve2 = j e2 in
-     If(c, x, y, e1, e2), fv_if x y fve1 fve2
-  | FIf(c, x, y, e1, e2) ->
-     let e1, fve1 = j e1 in
-     let e2, fve2 = j e2 in
-     FIf(c, x, y, e1, e2), fv_if x y fve1 fve2
-  | e -> e, fv_exp e  
     
 let rec g env = function (* 命令列の 16 bit 即値最適化 *)
   | Ans(exp) -> Ans(g' env exp)
@@ -69,7 +36,6 @@ and g' env e =
     | FMul(x, y) -> FMul(rmzero env x, rmzero env y)
     | FDiv(x, y) -> FDiv(rmzero env x, rmzero env y)
     | FAbA(x, y) -> FAbA(rmzero env x, rmzero env y)
-    | FAM(x, y, z) -> FAM(rmzero env x, rmzero env y, rmzero env z)
     | FAbs(x) -> FAbs(rmzero env x)
     | Sqrt(x) -> Sqrt(rmzero env x)
     | Out(x) -> Out(rmzero env x)
@@ -82,6 +48,7 @@ and g' env e =
     | FCmpa(cond, x, y, z) -> FCmpa(cond, rmzero env x, rmzero env y, rmzero env z)
     | If(c, x, y, e1, e2) -> If(c, rmzero env x, rmzero env y, e1, e2)
     | FIf(c, x, y, e1, e2) -> FIf(c, rmzero env x, rmzero env y, e1, e2)
+    | IfThen(f, e) -> IfThen(rmzero env f, e)
     | Save(x, y) -> Save(rmzero env x, rmzero env y)
     | Restore(x) -> Restore(rmzero env x)
     | e -> e
@@ -121,11 +88,13 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
      let e1 = g env e1 in
      let e2 = g env e2 in
      FIf(c, x, y, e1, e2)
+  | IfThen(f, e) ->
+     let e = g env e in
+     IfThen(f, e)
   | e -> e
 
 let rec i e =
   let e' = g M.empty e in
-  let e' = fst (j e') in
   if e = e' then
     e'
   else

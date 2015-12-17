@@ -13,6 +13,7 @@ let rec target' src (dest, t) = function
       let c1, rsf1, rs1 = target src (dest, t) e1 in
       let c2, rsf2, rs2 = target src (dest, t) e2 in
       c1 && c2, rsf1 @ rsf2, rs1 @ rs2
+  | IfThen(_, e) -> target src (dest, t) e
   | CallCls(x, ys) ->
      true, [], (target_args src regs 0 ys @
               if x = src then [reg_cl] else [])
@@ -125,7 +126,7 @@ and g'_and_restore dest cont contfv regenv exp = (* 使用される変数をスタックから
     ((* Format.eprintf "restoring %s@." x;*)
      g dest cont contfv regenv (Let((x, t), Restore(x), Ans(exp))))
 and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html: regalloc_gprime) *)
-  | Nop | Li _ | SetL _ | Comment _ | Restore _ as exp -> (Ans(exp), regenv)
+  | Nop | Li _ | SetL _ | Comment _ | Save _ | Restore _ as exp -> (Ans(exp), regenv)
   | Mr(x) -> (Ans(Mr(find x Type.Int regenv)), regenv)
   | Add(x, y') -> (Ans(Add(find x Type.Int regenv, find' y' regenv)), regenv)
   | Sub(x, y') -> (Ans(Sub(find x Type.Int regenv, find' y' regenv)), regenv)
@@ -141,7 +142,6 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | FMul(x, y) -> (Ans(FMul(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FDiv(x, y) -> (Ans(FDiv(find x Type.Float regenv, find y Type.Float regenv)), regenv)
   | FAbA(x, y) -> (Ans(FAbA(find x Type.Float regenv, find y Type.Float regenv)), regenv)
-  | FAM(x, y, z) -> (Ans(FAM(find x Type.Float regenv, find y Type.Float regenv, find z Type.Float regenv)), regenv)
   | FAbs(x) -> (Ans(FAbs(find x Type.Float regenv)), regenv)
   | Sqrt(x) -> (Ans(Sqrt(find x Type.Float regenv)), regenv)
   | In -> (Ans(In), regenv)
@@ -158,9 +158,9 @@ and g' dest cont contfv regenv = function (* 各命令のレジスタ割り当て (caml2html
   | FCmpa(c, x, y, z) -> (Ans(FCmpa(c, find x Type.Float regenv, find y Type.Float regenv, find z Type.Int regenv)), regenv)
   | If(c, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> If(c, find x Type.Int regenv, find y Type.Int regenv, e1', e2')) e1 e2
   | FIf(c, x, y, e1, e2) as exp -> g'_if dest cont contfv regenv exp (fun e1' e2' -> FIf(c, find x Type.Float regenv, find y Type.Float regenv, e1', e2')) e1 e2
+  | IfThen(f, e) as exp -> g'_ifthen dest cont contfv regenv exp (fun e' -> IfThen(find f Type.Int regenv, e')) e
   | CallCls(x, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallCls(find x Type.Int regenv, ys)) ys
   | CallDir(l, ys) as exp -> g'_call dest cont contfv regenv exp (fun ys -> CallDir(l, ys)) ys
-  | Save(x, y) -> (Ans(Save(x, y)), regenv)
 and g'_if dest cont contfv regenv exp constr e1 e2 = (* ifのレジスタ割り当て (caml2html: regalloc_if) *)
   let (e1', regenv1) = g dest cont contfv regenv e1 in
   let (e2', regenv2) = g dest cont contfv regenv e2 in
@@ -181,6 +181,25 @@ and g'_if dest cont contfv regenv exp constr e1 e2 = (* ifのレジスタ割り当て (ca
        if x = fst dest || not (M.mem x regenv) || M.mem x regenv' then e else
        seq(Save(M.find x regenv, x), e)) (* そうでない変数は分岐直前にセーブ *)
      (Ans(constr e1' e2'))
+     contfv,
+   regenv')
+and g'_ifthen dest cont contfv regenv exp constr e = (* ifthenのレジスタ割り当て (caml2html: regalloc_if) *)
+  let (e', regenv1) = g dest cont contfv regenv e in
+  let regenv' = (* 両方に共通のレジスタ変数だけ利用 *)
+    List.fold_left
+      (fun regenv' x ->
+        try
+	  if is_reg x then regenv' else
+            let r1 = M.find x regenv1 in
+	    M.add x r1 regenv'
+        with Not_found -> regenv')
+      M.empty
+      contfv in
+  (List.fold_left
+     (fun e x ->
+       if x = fst dest || not (M.mem x regenv) || M.mem x regenv' then e else
+       seq(Save(M.find x regenv, x), e)) (* そうでない変数は分岐直前にセーブ *)
+     (Ans(constr e'))
      contfv,
    regenv')
 and g'_call dest cont contfv regenv exp constr ys = (* 関数呼び出しのレジスタ割り当て (caml2html: regalloc_call) *)

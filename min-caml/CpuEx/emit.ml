@@ -101,7 +101,7 @@ let restore_lr oc =
   op2i oc "ldwi" reg_lr reg_sp ix
 
 let is_no_effect f g = function
-  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAM _ | FAbs _ | Sqrt _ -> f ()
+  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
   | _ -> g ()
     
 let rec g oc cflag = function (* 命令列のアセンブリ生成 *)
@@ -221,9 +221,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (NonTail(x), FAbA(y, z)) -> 
      op3 oc "faba" (reg x) (reg y) (reg z);
     cflag
-  | (NonTail(x), FAM(y, z, w)) ->
-    op4 oc "fam" (reg x) (reg y) (reg z) (reg w);
-    cflag
   | (NonTail(x), FAbs(y)) -> 
      op3 oc "fabs" (reg x) (reg y) (reg reg_zero);
     cflag
@@ -290,10 +287,14 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      g'_tail_if oc cflag c (reg x) (reg y) "" e1 e2
   | (Tail, FIf(c, x, y, e1, e2)) ->
      g'_tail_if oc cflag c (reg x) (reg y) "f" e1 e2
+  | (Tail, IfThen(f, e)) ->
+     g'_tail_ifthen oc cflag (reg f) e
   | (NonTail(z), If(c, x, y, e1, e2)) ->
      g'_non_tail_if oc cflag (NonTail(z)) c (reg x) (reg y) "" e1 e2
   | (NonTail(z), FIf(c, x, y, e1, e2)) ->
      g'_non_tail_if oc cflag (NonTail(z)) c (reg x) (reg y) "f" e1 e2
+  | (NonTail(z), IfThen(f, e)) ->
+     g'_non_tail_ifthen oc cflag (NonTail(z)) (reg f) e
   (* 関数呼び出しの仮想命令の実装 *)
   | (Tail, CallCls(x, ys)) -> (* 末尾呼び出し *)
      g'_args oc [(x, reg_cl)] ys;
@@ -338,7 +339,7 @@ and g'_tail_if oc cflag c x y p e1 e2 =
   match e2 with
   | Ans(Nop) when not cflag ->
      op3c oc (p ^ "jrc") x y reg_lr (Asm.negcond c);
-     g oc cflag (Tail, e1)
+    g oc cflag (Tail, e1)
   | _ ->
      let b_else = Id.genid ("else") in
      op2lc oc (p ^ "jic") x y b_else (Asm.negcond c);
@@ -347,6 +348,9 @@ and g'_tail_if oc cflag c x y p e1 e2 =
      print oc (Printf.sprintf "%s:\n" b_else);
      stackset := stackset_back;
      g oc cflag (Tail, e2)
+and g'_tail_ifthen oc cflag f e =
+  op3 oc "jrf" reg_tmp f reg_lr;
+  g oc cflag (Tail, e)
 and g'_non_tail_if oc cflag dest c x y p e1 e2 =
   let b_cont = Id.genid ("cont") in
   let stackset' = !stackset in
@@ -378,6 +382,22 @@ and g'_non_tail_if oc cflag dest c x y p e1 e2 =
      let stackset2 = !stackset in
      stackset := S.inter stackset1 stackset2);
   cflag1 || cflag2
+and g'_non_tail_ifthen oc cflag dest f e =
+  let b_cont = Id.genid ("cont") in
+  let stackset' = !stackset in
+  let stackmap' = !stackmap in
+  let cflag1 = g None cflag (dest, e) in
+  stackset := stackset';
+  stackmap := stackmap';
+  let stackset_back = !stackset in
+  if cflag1 && (not cflag) then store_lr oc;
+  let cflag = true in
+  op3 oc "jif" reg_tmp f b_cont;
+  let _ = g oc cflag (dest, e) in
+  let stackset1 = !stackset in
+  print oc (Printf.sprintf "%s:\n" b_cont);
+  stackset := S.inter stackset1 stackset_back;
+  cflag1
 and g'_args oc x_reg_cl ys = 
   let (i, yrs) = 
     List.fold_left

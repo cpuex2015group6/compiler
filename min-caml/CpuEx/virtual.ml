@@ -69,7 +69,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.FMul (x, y) -> Ans (FMul (x, y))
   | Closure.FDiv (x, y) -> Ans (FDiv (x, y))
   | Closure.FAbA (x, y) -> Ans (FAbA (x, y))
-  | Closure.FAM (x, y, z) -> Ans (FAM (x, y, z))
+  | Closure.FAM (x, y, z) -> assert false
   | Closure.FAbs (x) -> Ans (FAbs (x))
   | Closure.Sqrt (x) -> Ans (Sqrt (x))
   | Closure.I2F (x) | Closure.F2I (x) | Closure.I2IA (x) | Closure.I2FA (x) | Closure.A2I (x) -> Ans (Mr (x))
