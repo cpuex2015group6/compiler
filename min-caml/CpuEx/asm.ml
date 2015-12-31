@@ -10,6 +10,7 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Li of l_or_imm
   | SetL of Id.l
   | Mr of Id.t
+  | Union of Id.t * Id.t
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
   | Xor of Id.t * id_or_imm
@@ -35,15 +36,14 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | GetHp
   | SetHp of id_or_imm
   | Comment of string
-  (* virtual instructions *)
   | Cmp of int * Id.t * id_or_imm
   | FCmp of int * Id.t * Id.t
   | Cmpa of int * Id.t * id_or_imm * Id.t
   | FCmpa of int * Id.t * Id.t * Id.t
+  (* virtual instructions *)
   | If of int * Id.t * Id.t * t * t
   | FIf of int * Id.t * Id.t * t * t
   | IfThen of Id.t * t
-  (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
   | Save of Id.t * Id.t (* レジスタ変数の値をスタック変数へ保存 *)
@@ -106,7 +106,7 @@ let rec fv_exp = function
      x :: fv_id_or_imm y'
   | Cmpa (_, x, y', z) ->
      x :: z :: fv_id_or_imm y'
-  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y) | FCmp(_, x, y) ->
+  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y) | FCmp(_, x, y) | Union (x, y) ->
      [x; y]
   | FCmpa (_, x, y, z) ->
      [x; y; z]
@@ -124,45 +124,103 @@ and fv_o = function
 
 (* fv : t -> Id.t list *)
 let fv e = remove_and_uniq S.empty (fv_o e)
-				
+
+ 
+(* free variables in the order of use (for spilling) *)
+(* fvs_id_or_imm : id_or_imm -> S.t *)
+let fvs_id_or_imm = function V (x) -> S.singleton x | _ -> S.empty
+
+let rec fvs_let x exp e =
+  S.union exp (S.remove x e)
+
+let rec fvs_if x y e1 e2 =
+  S.add x (S.add y (S.union e1 e2))
+
+let rec fvs_ifthen f e =
+  S.add f e
+
+let rec fvs_exp = function
+  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> S.empty
+  | Mr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> S.singleton x
+  | SetHp (x) -> fvs_id_or_imm x
+  | Add (x, y') | Sub (x, y') | Xor (x, y') | Or (x, y') | And (x, y') | Sll (x, y') | Srl (x, y') | Ldw (x, y') | Cmp (_, x, y') -> 
+     S.add x (fvs_id_or_imm y')
+  | Cmpa (_, x, y', z) ->
+     S.add x (S.add z (fvs_id_or_imm y'))
+  | FAdd (x, y) | FSub (x, y) | FMul (x, y) | FDiv (x, y) | FAbA (x, y) | FCmp(_, x, y) | Union (x, y) ->
+     S.add x (S.singleton y)
+  | FCmpa (_, x, y, z) ->
+     S.add x (S.add y (S.singleton z))
+  | Stw (x, y, z') -> S.add x (S.add y (fvs_id_or_imm z'))
+  | If (_, x, y, e1, e2) | FIf (_, x, y, e1, e2) ->
+     fvs_if x y (fvs e1) (fvs e2)
+  | IfThen (f, e) ->
+     fvs_ifthen f (fvs e)
+  | CallCls (x, ys) -> S.add x (S.of_list ys)
+  | CallDir (_, ys) -> S.of_list ys
+(* fvs : t -> S.t *)
+and fvs = function 
+  | Ans (exp) -> fvs_exp exp
+  | Let ((x, t), exp, e) ->
+     fvs_let x (fvs_exp exp) (fvs e)
+
+(* concatfvs : t -> Id.t * Type.t -> S.t -> S.t *)
+(* Let(xt, e1, e2) した時のfree variablesのSet *)
+let rec concatfvs e1 ((x, t) as xt) e2 = match e1 with
+  | Ans(exp) ->
+     S.union (S.remove x (fvs_exp exp)) e2
+  | Let((y, t), exp, e1') ->
+     S.union (S.remove y (fvs_exp exp)) (concatfvs e1' xt e2)
+
+(* lconcatfvs : t -> Id.t * Type.t -> S.t -> S.t *)
+let rec lconcatfvs e1 ((x, t) as xt) e2 = match e1 with
+  | Ans(CallCls _ as exp) | Ans(CallDir _ as exp) ->
+     S.remove x (fvs_exp exp)
+  | Ans(exp) ->
+     S.union (S.remove x (fvs_exp exp)) e2
+  | Let((y, t), (CallCls _ as exp), _) | Let((y, t), (CallDir _ as exp), _) ->
+     S.remove y (fvs_exp exp)
+  | Let((y, t), exp, e1') ->
+     S.union (S.remove y (fvs_exp exp)) (lconcatfvs e1' xt e2)
+
 (* concat : t -> Id.t * Type.t -> t -> t *)
 let rec concat e1 xt e2 = match e1 with
   | Ans (exp) -> Let (xt, exp, e2)
   | Let (yt, exp, e1') -> Let (yt, exp, concat e1' xt e2)
 
 let is_ereg r = is_reg r && (r = reg_zero || r = reg_m1)
-     
+
 let rec effect = function (* 副作用の有無 *)
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) -> is_ereg x || is_ereg y || effect' e1 || effect' e2
   | IfThen(f, e) -> is_ereg f || effect' e
-  | Ldw(_) | Stw(_) | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Comment _ | CallCls _ | CallDir _ | Save _ | Restore _ -> true
-  | Nop | Li _ | SetL _ | GetHp -> false
+  | Stw _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Comment _ | CallCls _ | CallDir _ | Save _ | Restore _ -> true
+  | Ldw _ | Nop | Li _ | SetL _ | GetHp -> false
   | Mr(x) | FAbs(x) | Sqrt(x) -> is_ereg x
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | Cmp(_, x, y) -> is_ereg x || (match y with | C(_) -> false | V(y) -> is_ereg y)
   | Cmpa(_, x, y, z) -> is_ereg x || (match y with | C(_) -> false | V(y) -> is_ereg y) || is_ereg z
-  | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | FCmp(_, x, y) -> is_ereg x || is_ereg y
+  | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | FCmp(_, x, y) | Union (x, y)-> is_ereg x || is_ereg y
   | FCmpa(_, x, y, z) -> is_ereg x || is_ereg y || is_ereg z
 and effect' = function
   | Ans(exp) -> effect exp
   | Let(_, exp, e) -> effect exp || effect' e
      
 type vars =
-  | Pair of Id.t list * Id.t * vars
+  | Pair of Id.t list * vars
   | List of Id.t list
 let rec concatfv_sub e1 (x, t) e2 = match e1 with
-  | Let ((y, t'), exp, e1') -> Pair((fv_exp exp), y, (concatfv_sub e1' (x, t) e2))
-  | Ans (exp) -> Pair ((fv_exp exp), x, (List e2))
+  | Let ((y, t'), exp, e1') -> Pair(List.fold_left (fun l v -> if y = v then l else l@[v]) [] (fv_exp exp), (concatfv_sub e1' (x, t) e2))
+  | Ans (exp) -> Pair (List.fold_left (fun l v -> if x = v then l else l@[v]) [] (fv_exp exp), (List e2))
 
 let rec remove_and_uniq_fv xs ys =
   match ys with
   | List(xss) ->
      remove_and_uniq xs xss
-  | Pair([], r, ys') ->
-     remove_and_uniq_fv (S.add r xs) ys'
-  | Pair(x :: xss, r, ys) when S.mem x xs ->
-     remove_and_uniq_fv xs (Pair(xss, r, ys))
-  | Pair(x :: xss, r, ys) ->
-     x :: remove_and_uniq_fv (S.add x xs) (Pair(xss, r, ys))
+  | Pair([], ys') ->
+     remove_and_uniq_fv xs ys'
+  | Pair(x :: xss, ys) when S.mem x xs ->
+     remove_and_uniq_fv xs (Pair(xss, ys))
+  | Pair(x :: xss, ys) ->
+     x :: remove_and_uniq_fv (S.add x xs) (Pair(xss, ys))
      
 (* concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list *)
 let rec concatfv e1 xt e2 =
@@ -195,6 +253,8 @@ and j indent = function
      Printf.fprintf stdout "setl %s\n" y
   | Mr(y) ->
      Printf.fprintf stdout "mr %s\n" y
+  | Union(y, z) ->
+     Printf.fprintf stdout "union %s, %s\n" y z
   | Add(y, V(z)) -> 
      Printf.fprintf stdout "add %s, %s\n" y z
   | Add(y, C(z)) -> 
@@ -266,7 +326,7 @@ and j indent = function
   | Comment(s) ->
      Printf.fprintf stdout "comment %s\n" s
   | Save(x, y) ->
-     Printf.fprintf stdout "save %s,%s\n" y x
+     Printf.fprintf stdout "save %s, %s\n" y x
   | Restore(y) ->
      Printf.fprintf stdout "restore %s\n" y
   | Cmp(c, x, V(y)) ->

@@ -8,6 +8,7 @@ and exp =
   | Li of l_or_imm
   | SetL of Id.l
   | Mr of Id.t
+  | Union of Id.t * Id.t
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
   | Xor of Id.t * id_or_imm
@@ -76,6 +77,13 @@ val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_exp : exp -> Id.t list
 val fv_o : t -> Id.t list
 val fv : t -> Id.t list
+val fvs_if : Id.t -> Id.t -> S.t -> S.t -> S.t
+val fvs_ifthen : Id.t -> S.t -> S.t
+val fvs_let : Id.t -> S.t -> S.t -> S.t
+val fvs_exp : exp -> S.t
+val fvs : t -> S.t
+val concatfvs : t -> Id.t * Type.t -> S.t -> S.t
+val lconcatfvs : t -> Id.t * Type.t -> S.t -> S.t
 val effect : exp -> bool
 val concat : t -> Id.t * Type.t -> t -> t
 val concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list

@@ -32,31 +32,27 @@ let pat = [
   | FIf(c, x, y, Ans(Li(C(0))), Ans(Li(C(1)))) -> Ans(FCmp(Asm.negcond c, x, y))
   | _ -> raise Unmatched);
   (fun env -> function
-  | If(c1, x1, y1, Ans(Cmp(c2, x2, y2)), Ans(Li(C(0)))) ->
+  | IfThen(f, Ans(Cmp(c, x, y))) ->
      let t1 = Id.genid "t" in
-     let t2 = Id.genid "t" in
-     Let((t1, Type.Int), Cmp(c1, x1, V(y1)), Let((t2, Type.Int), Mr(t1), Ans(Cmpa(c2, x2, y2, t2))));
+     Let((t1, Type.Int), Mr(f), Ans(Cmpa(c, x, y, t1)));
   | _ -> raise Unmatched);
   (fun env -> function
-  | If(c1, x1, y1, Ans(FCmp(c2, x2, y2)), Ans(Li(C(0)))) ->
+  | IfThen(f, Ans(FCmp(c, x, y))) ->
      let t1 = Id.genid "t" in
-     let t2 = Id.genid "t" in
-     Let((t1, Type.Int), Cmp(c1, x1, V(y1)), Let((t2, Type.Int), Mr(t1), Ans(FCmpa(c2, x2, y2, t2))));
+     Let((t1, Type.Int), Mr(f), Ans(FCmpa(c, x, y, t1)));
   | _ -> raise Unmatched);
   (fun env -> function
-  | FIf(c1, x1, y1, Ans(Cmp(c2, x2, y2)), Ans(Li(C(0)))) ->
+  | If(c1, x1, y1, e, Ans(Li(C(0)))) ->
      let t1 = Id.genid "t" in
-     let t2 = Id.genid "t" in
-     Let((t1, Type.Int), FCmp(c1, x1, y1), Let((t2, Type.Int), Mr(t1), Ans(Cmpa(c2, x2, y2, t2))));
+     Let((t1, Type.Int), Cmp(c1, x1, V(y1)), Ans(IfThen(t1, e)));
   | _ -> raise Unmatched);
   (fun env -> function
-  | FIf(c1, x1, y1, Ans(FCmp(c2, x2, y2)), Ans(Li(C(0)))) ->
+  | FIf(c1, x1, y1, e, Ans(Li(C(0)))) ->
      let t1 = Id.genid "t" in
-     let t2 = Id.genid "t" in
-     Let((t1, Type.Int), FCmp(c1, x1, y1), Let((t2, Type.Int), Mr(t1), Ans(FCmpa(c2, x2, y2, t2))));
-  | _ -> raise Unmatched);
+     Let((t1, Type.Int), FCmp(c1, x1, y1), Ans(IfThen(t1, e)));
+    | _ -> raise Unmatched);
 ]
-
+(* cmp x, y, 0; cmp z, x, 0 -> cmp z, y, 0 -> xの依存性*)
 let h env e = 
   match List.fold_left (fun a p ->
     match a with
@@ -81,6 +77,9 @@ and g' env = function
      let e1 = g env e1 in
      let e2 = g env e2 in
      h env (FIf(c, x, y, e1, e2))
+  | IfThen(f, e) ->
+     let e = g env e in
+     h env (IfThen(f, e))
   | e -> h env e
 
 let rec j e =

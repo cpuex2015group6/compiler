@@ -35,6 +35,7 @@ let rec g env = function
 and g' env = function
   | Nop | Li(_) | SetL(_) | Comment(_) | Save(_) | Restore(_) as e -> genfv e
   | Mr(x) -> genfv (Mr(replace env x))
+  | Union _ -> assert false
   | Add(x, y') -> genfv (Add(replace env x, replace' env y'))
   | Sub(x, y') -> genfv (Sub(replace env x, replace' env y'))
   | Xor(x, y') -> genfv (Xor(replace env x, replace' env y'))

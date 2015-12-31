@@ -13,6 +13,7 @@ let rec g env = function (* Ì¿ÎáÎó¤Î 16 bit Â¨ÃÍºÇÅ¬²½ *)
 and g' env e =
   let e = match e with
     | Mr(x) -> Mr(rmzero env x)
+    | Union _ -> assert false
     | Add(x, V(y)) -> Add(rmzero env x, V(rmzero env y))
     | Add(x, C(c)) -> Add(rmzero env x, C(c))
     | Sub(x, V(y)) -> Sub(rmzero env x, V(rmzero env y))

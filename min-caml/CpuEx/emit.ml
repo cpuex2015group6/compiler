@@ -101,7 +101,7 @@ let restore_lr oc =
   op2i oc "ldwi" reg_lr reg_sp ix
 
 let is_no_effect f g = function
-  | Li _ | SetL _ | Mr _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
+  | Li _ | SetL _ | Mr _ | Union _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
   | _ -> g ()
     
 let rec g oc cflag = function (* 命令列のアセンブリ生成 *)
@@ -123,6 +123,10 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     cflag
   | (NonTail(x), Mr(y)) when x = y -> cflag
   | (NonTail(x), Mr(y)) ->
+     op3 oc "or" (reg x) (reg y) (reg reg_zero);
+    cflag
+  | (NonTail(x), Union(y, z)) ->
+     assert (y = z);
      op3 oc "or" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), Add(y, V(z))) -> 
@@ -222,7 +226,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      op3 oc "faba" (reg x) (reg y) (reg z);
     cflag
   | (NonTail(x), FAbs(y)) -> 
-     op3 oc "fabs" (reg x) (reg y) (reg reg_zero);
+     op3 oc "faba" (reg x) (reg y) (reg reg_zero);
     cflag
   | (NonTail(x), Sqrt(y)) -> 
      op3 oc "fsqrt" (reg x) (reg y) (reg reg_zero);
@@ -288,12 +292,14 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (Tail, FIf(c, x, y, e1, e2)) ->
      g'_tail_if oc cflag c (reg x) (reg y) "f" e1 e2
   | (Tail, IfThen(f, e)) ->
+     assert (f = regs.(0));
      g'_tail_ifthen oc cflag (reg f) e
   | (NonTail(z), If(c, x, y, e1, e2)) ->
      g'_non_tail_if oc cflag (NonTail(z)) c (reg x) (reg y) "" e1 e2
   | (NonTail(z), FIf(c, x, y, e1, e2)) ->
      g'_non_tail_if oc cflag (NonTail(z)) c (reg x) (reg y) "f" e1 e2
   | (NonTail(z), IfThen(f, e)) ->
+     assert (f = z);
      g'_non_tail_ifthen oc cflag (NonTail(z)) (reg f) e
   (* 関数呼び出しの仮想命令の実装 *)
   | (Tail, CallCls(x, ys)) -> (* 末尾呼び出し *)
@@ -399,13 +405,14 @@ and g'_non_tail_ifthen oc cflag dest f e =
   stackset := S.inter stackset1 stackset_back;
   cflag1
 and g'_args oc x_reg_cl ys = 
-  let (i, yrs) = 
+(*  let (i, yrs) = 
     List.fold_left
       (fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs))
       (0, x_reg_cl) ys in
   List.iter
     (fun (y, r) -> op3 oc "or" (reg r) (reg y) (reg reg_zero))
-    (shuffle reg_sw yrs)
+    (shuffle reg_sw yrs)*)
+  ()
 
 let h oc { name = Id.L(x); args = _; body = e; ret = _ } =
   Printf.fprintf oc "%s:\n" x;
@@ -441,6 +448,6 @@ let f oc (Prog(data, vars, fundefs, e)) =
   limm (Some oc) (reg reg_m1) 0xFFFFFFFF;
   stackset := S.empty;
   stackmap := [];
-  let _ = g (Some oc) false (NonTail("r08"), e) in
+  let _ = g (Some oc) false (NonTail(regs.(0)), e) in
   op1 (Some oc) "hlt" (reg reg_zero) 0;
   Printf.fprintf oc "   # main program end\n";
