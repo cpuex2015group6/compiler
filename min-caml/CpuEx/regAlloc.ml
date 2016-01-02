@@ -462,7 +462,7 @@ let j (regmap, pregmap, graph) =
       let target, target' = List.hd targets in
       let target = if M.mem target vrmap || is_reg target then target' else target in
       let rec allocate_sub regmap graph vrmap list =
-	let reg = try List.hd list with Failure "hd" -> showmap "" ([],[],[]) vrmap; raise RegAlloc_starvation in
+	let reg = try List.hd list with Failure "hd" -> raise RegAlloc_starvation in
 	(try
 	   let vrmap = M.add target reg vrmap in
 	   let regmap, vrmap = map regmap vrmap in
@@ -496,10 +496,7 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
     | _ -> regs.(0) in
   let e, _ = i [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) M.empty (specify_ret [(regs.(0), Type.Unit)] e) in
   let map, _ = g [(a, t)] S.empty (fvs (Ans(Nop))) e in
-  show [{ name = Id.L(x); args = arg_regs; body = e; ret = t }] (Ans(Nop));
-  showmap x map M.empty;
   let vrmap = j map in
-  showmap x ([],[],[]) vrmap;
   let e = apply vrmap e in
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
@@ -509,7 +506,6 @@ let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml
   let fundefs = List.map h fundefs in
   let e, _ = i [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) M.empty (specify_ret [(regs.(0), Type.Unit)] e) in
   let map, _ = g [(regs.(0), Type.Unit)] S.empty (fvs (Ans(Nop))) e in
-  showmap "" map M.empty;
   let map = j map in
   let e = apply map e in
   show fundefs e;

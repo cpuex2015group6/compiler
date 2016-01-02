@@ -127,7 +127,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     cflag
   | (NonTail(xs), Tuple(ys)) ->
      assert (List.length xs = List.length ys);
-    List.iter2 (fun x y -> op3 oc "or" (reg x) (reg y) (reg reg_zero)) xs ys;
+    List.iter2 (fun x y -> if x <> y then op3 oc "or" (reg x) (reg y) (reg reg_zero)) xs ys;
     cflag
   | (NonTail([x]), Add(y, V(z))) -> 
      op3 oc "add" (reg x) (reg y) (reg z);
