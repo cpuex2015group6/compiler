@@ -2,13 +2,13 @@ type id_or_imm = V of Id.t | C of int
 type l_or_imm = L of Id.l | C of int
 type t = 
   | Ans of exp
-  | Let of (Id.t * Type.t) * exp * t
+  | Let of (Id.t * Type.t) list * exp * t
 and exp = 
   | Nop
   | Li of l_or_imm
   | SetL of Id.l
   | Mr of Id.t
-  | Union of Id.t * Id.t
+  | Tuple of Id.t list
   | Add of Id.t * id_or_imm
   | Sub of Id.t * id_or_imm
   | Xor of Id.t * id_or_imm
@@ -41,7 +41,7 @@ and exp =
   | FCmpa of int * Id.t * Id.t * Id.t
   | If of int * Id.t * Id.t * t * t
   | FIf of int * Id.t * Id.t * t * t
-  | IfThen of Id.t * t
+  | IfThen of Id.t * t * Id.t list
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
@@ -71,24 +71,28 @@ val heap_start : int
 val stack_start : int
 val is_reg : Id.t -> bool
   
+val rm_t : (Id.t * Type.t) list -> Id.t list
+val rm_x : (Id.t * Type.t) list -> Type.t list
+val unify_xt : Id.t list ->  Type.t list -> (Id.t * Type.t) list
 val fv_if : Id.t -> Id.t -> Id.t list -> Id.t list -> Id.t list
-val fv_ifthen : Id.t -> Id.t list -> Id.t list
-val fv_let : Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_ifthen : Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_let : Id.t list -> Id.t list -> Id.t list -> Id.t list
 val fv_exp : exp -> Id.t list
 val fv_o : t -> Id.t list
 val fv : t -> Id.t list
+val rm_t_s : (Id.t * Type.t) list -> S.t
 val fvs_if : Id.t -> Id.t -> S.t -> S.t -> S.t
-val fvs_ifthen : Id.t -> S.t -> S.t
-val fvs_let : Id.t -> S.t -> S.t -> S.t
+val fvs_ifthen : Id.t -> S.t  -> Id.t list -> S.t
+val fvs_let : Id.t list -> S.t -> S.t -> S.t
 val fvs_exp : exp -> S.t
 val fvs : t -> S.t
-val concatfvs : t -> Id.t * Type.t -> S.t -> S.t
-val lconcatfvs : t -> Id.t * Type.t -> S.t -> S.t
+val concatfvs : t -> (Id.t * Type.t) list -> S.t -> S.t
+val lconcatfvs : t -> (Id.t * Type.t) list -> S.t -> S.t
 val effect : exp -> bool
-val concat : t -> Id.t * Type.t -> t -> t
-val concatfv : t -> Id.t * Type.t -> Id.t list -> Id.t list
+val concat : t -> (Id.t * Type.t) list -> t -> t
+val concatfv : t -> (Id.t * Type.t) list -> Id.t list -> Id.t list
 
 val align : int -> int
 
-type dest = Tail | NonTail of Id.t
+type dest = Tail | NonTail of Id.t list
 val show : fundef list -> t -> unit

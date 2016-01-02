@@ -53,7 +53,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
        Ans (Li (L(l)))
   | Closure.Neg (x) ->
      let y = Id.genid "t" in
-     Let((y, Type.Int), Li (C(0)), Ans(Sub(y, V(x))))
+     Let([(y, Type.Int)], Li (C(0)), Ans(Sub(y, V(x))))
   | Closure.Add (x, y) -> Ans (Add (x, V (y)))
   | Closure.Sub (x, y) -> Ans (Sub (x, V (y)))
   | Closure.Xor (x, y) -> Ans (Xor (x, V (y)))
@@ -63,7 +63,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Srl (x, y) -> Ans (Srl (x, V (y)))
   | Closure.FNeg (x) ->
      let y = Id.genid "t" in
-     Let((y, Type.Float), Li (C(0)), Ans(FSub(y, x)))
+     Let([(y, Type.Float)], Li (C(0)), Ans(FSub(y, x)))
   | Closure.FAdd (x, y) -> Ans (FAdd (x, y))
   | Closure.FSub (x, y) -> Ans (FSub (x, y))
   | Closure.FMul (x, y) -> Ans (FMul (x, y))
@@ -89,7 +89,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.Let ((x, t1), e1, e2) ->
      let e1' = g env e1 in
      let e2' = g (M.add x t1 env) e2 in
-	   concat e1' (x, t1) e2'
+     concat e1' [(x, t1)] e2'
   | Closure.Var (x) ->
      (match M.find x env with
 	    | Type.Unit -> Ans (Nop)
@@ -98,15 +98,15 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
      (* closure のアドレスをセットしてからストア *)
      let e2' = g (M.add x t env) e2 in
      let (offset, store_fv) = 
-	     expand
-	       (List.map (fun y -> (y, M.find y env)) ys)
-	       (1, e2')
-	       (fun y _ offset store_fv -> seq (Stw (y, x, C (offset)), store_fv)) in
-	   Let ((x, t), Mr (reg_hp), 
-	        Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), 
-	             let z = Id.genid "l" in  
-	             Let ((z, Type.Int), SetL(l), 
-		                seq (Stw (z, x, C (0)), store_fv))))
+       expand
+	 (List.map (fun y -> (y, M.find y env)) ys)
+	 (1, e2')
+	 (fun y _ offset store_fv -> seq (Stw (y, x, C (offset)), store_fv)) in
+     Let ([(x, t)], Mr (reg_hp), 
+	  Let ([(reg_hp, Type.Int)], Add (reg_hp, C (align offset)), 
+	       let z = Id.genid "l" in  
+	       Let ([(z, Type.Int)], SetL(l), 
+		    seq (Stw (z, x, C (0)), store_fv))))
   | Closure.AppCls (x, ys) ->
      Ans (CallCls (x, ys))
   | Closure.AppDir (Id.L(x), ys) ->
@@ -118,8 +118,8 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	       (List.map (fun x -> (x, M.find x env)) xs)
 	       (0, Ans (Mr (y)))
 	       (fun x _ offset store -> seq (Stw (x, y, C (offset)), store))  in
-     Let ((y, Type.Tuple (List.map (fun x -> M.find x env) xs)), Mr (reg_hp),
-	  Let ((reg_hp, Type.Int), Add (reg_hp, C (align offset)), store))
+     Let ([(y, Type.Tuple (List.map (fun x -> M.find x env) xs))], Mr (reg_hp),
+	  Let ([(reg_hp, Type.Int)], Add (reg_hp, C (align offset)), store))
   | Closure.GetTuple (x, i) ->
      (match M.find x env with
      | Type.Tuple(_) ->
@@ -146,7 +146,7 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts;
     expand
       zts
       (1, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) e)
-      (fun z t offset load -> Let ((z, t), Ldw (reg_cl, C (offset)), load)) in
+      (fun z t offset load -> Let ([(z, t)], Ldw (reg_cl, C (offset)), load)) in
     match t with
       | Type.Fun (_, t2) ->
 	       { name = Id.L(x); args = List.fold_left (fun ys (y, _) -> ys@[y]) [] yts; body = load; ret = t2 }

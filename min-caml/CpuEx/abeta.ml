@@ -14,28 +14,34 @@ let rec g env = function
   | Ans(exp) ->
      let e', fvs = g' env exp in
      Ans(e'), fvs
-  | Let((x, t), (Li(C(i)) as exp), e) ->
-     let e, fvs_e = g env e in
-     let exp, fvs_exp = g' env exp in
-     if List.mem x fvs_e then
-       Let((x, t), exp, e), fv_let x fvs_exp fvs_e
-     else
-       e, fvs_e
-  | Let((x, t), exp, e) ->
-     let e, fvs_e = g env e in
-     let exp, fvs_exp = g' env exp in
-     if List.mem x fvs_e || effect exp || is_reg x then
-       match exp with
-       | Mr(x') when not (List.mem x' fvs_e)->
-	  g (M.add x x' env) e
-       | _ ->
-	  Let((x, t), exp, e), fv_let x fvs_exp fvs_e
-     else
-       e, fvs_e
+  | Let(xts, (Li(C(i)) as exp), e) ->
+     (match xts with
+     | [(x, t)] ->
+	let e, fvs_e = g env e in
+	let exp, fvs_exp = g' env exp in
+	if List.mem x fvs_e then
+	  Let(xts, exp, e), fv_let (rm_t xts) fvs_exp fvs_e
+	else
+	  e, fvs_e
+     | _ -> assert false)
+  | Let(xts, exp, e) ->
+     (match xts with
+     | [(x, t)] ->
+	let e, fvs_e = g env e in
+	let exp, fvs_exp = g' env exp in
+	if List.mem x fvs_e || effect exp || is_reg x then
+	  match exp with
+	  | Mr(x') when not (List.mem x' fvs_e)->
+	     g (M.add x x' env) e
+	  | _ ->
+	     Let(xts, exp, e), fv_let (rm_t xts) fvs_exp fvs_e
+	else
+	  e, fvs_e
+     | _ -> assert false)
 and g' env = function
   | Nop | Li(_) | SetL(_) | Comment(_) | Save(_) | Restore(_) as e -> genfv e
   | Mr(x) -> genfv (Mr(replace env x))
-  | Union _ -> assert false
+  | Tuple _ -> assert false
   | Add(x, y') -> genfv (Add(replace env x, replace' env y'))
   | Sub(x, y') -> genfv (Sub(replace env x, replace' env y'))
   | Xor(x, y') -> genfv (Xor(replace env x, replace' env y'))
@@ -76,10 +82,11 @@ and g' env = function
      let x = replace env x in
      let y = replace env y in
      FIf(c, x, y, e1, e2), fv_if x y fve1 fve2
-  | IfThen(f, e) ->
+  | IfThen(f, e, t) ->
+     assert (List.length t = 0); 
      let e, fve = g env e in
      let f = replace env f in
-     IfThen(f, e), fv_ifthen f fve
+     IfThen(f, e, t), fv_ifthen f fve t
   | CallCls(x, ys) -> genfv (CallCls(x, List.map (fun y -> replace env y) ys))
   | CallDir(x, ys) -> genfv (CallDir(x, List.map (fun y -> replace env y) ys))
   

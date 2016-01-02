@@ -5,15 +5,22 @@ let rmzero env x =
     
 let rec g env = function (* 命令列の 16 bit 即値最適化 *)
   | Ans(exp) -> Ans(g' env exp)
-  | Let((x, t), Li(C(i)), e) -> Let((x, t), Li(C(i)), g (M.add x i env) e)
-  | Let((x, t), Mr(y), e) when M.mem y env ->
-     let i = M.find y env in
-     Let((x, t), Li(C(i)), g (M.add x i env) e)
-  | Let((x, t), exp, e) -> Let((x, t), g' env exp, g env e)
+  | Let(xts, Li(C(i)), e) ->
+     (match xts with
+     | [(x, t)] ->
+	Let(xts, Li(C(i)), g (M.add x i env) e)
+     | _ -> assert false)
+  | Let(xts, Mr(y), e) when M.mem y env ->
+     (match xts with
+     | [(x, t)] ->
+	let i = M.find y env in
+	Let(xts, Li(C(i)), g (M.add x i env) e)
+     | _ -> assert false)
+  | Let(xts, exp, e) -> Let(xts, g' env exp, g env e)
 and g' env e =
   let e = match e with
     | Mr(x) -> Mr(rmzero env x)
-    | Union _ -> assert false
+    | Tuple _ -> assert false
     | Add(x, V(y)) -> Add(rmzero env x, V(rmzero env y))
     | Add(x, C(c)) -> Add(rmzero env x, C(c))
     | Sub(x, V(y)) -> Sub(rmzero env x, V(rmzero env y))
@@ -49,7 +56,7 @@ and g' env e =
     | FCmpa(cond, x, y, z) -> FCmpa(cond, rmzero env x, rmzero env y, rmzero env z)
     | If(c, x, y, e1, e2) -> If(c, rmzero env x, rmzero env y, e1, e2)
     | FIf(c, x, y, e1, e2) -> FIf(c, rmzero env x, rmzero env y, e1, e2)
-    | IfThen(f, e) -> IfThen(rmzero env f, e)
+    | IfThen(f, e, t) -> assert (List.length t = 0); IfThen(rmzero env f, e, t)
     | Save(x, y) -> Save(rmzero env x, rmzero env y)
     | Restore(x) -> Restore(rmzero env x)
     | e -> e
@@ -89,9 +96,10 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
      let e1 = g env e1 in
      let e2 = g env e2 in
      FIf(c, x, y, e1, e2)
-  | IfThen(f, e) ->
+  | IfThen(f, e, t) ->
+     assert (List.length t = 0); 
      let e = g env e in
-     IfThen(f, e)
+     IfThen(f, e, t)
   | e -> e
 
 let rec i e =
