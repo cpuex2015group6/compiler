@@ -21,25 +21,52 @@ let rm_reg_s s = S.fold (fun v s -> if is_reg v then s else S.add v s) s S.empty
 let pair v = List.fold_left (fun graph x -> (x, v)::graph)
 let assert_single dest = assert (List.length dest = 1)
 
+let make_graph graph live contfv dest = function
+  | Tuple(xs) ->
+     assert (List.length dest = List.length xs);
+    let dest = rm_t dest in
+    let rec make_graph_sub dest xs live contfv graph =
+      if List.length dest = 0 then
+	graph, contfv
+      else
+	let contdest = List.tl dest in
+	let dest = List.hd dest in
+	let graph, contfv = make_graph_sub contdest (List.tl xs) (if is_reg dest then live else S.add dest live) contfv graph in
+	let x = List.hd xs in
+	(S.fold (fun v graph -> if S.mem v contfv then (dest, v)::graph else graph) live graph), S.add x contfv
+    in
+    let graph, _ = make_graph_sub dest xs live contfv graph in
+    graph
+  | _ ->
+     let dest = rm_t dest in
+    let rec make_graph_sub dest live graph =
+      if List.length dest = 0 then
+	graph
+      else
+	let contdest = List.tl dest in
+	let dest = List.hd dest in
+	let graph = make_graph_sub contdest (if is_reg dest then live else S.add dest live) graph in
+	S.fold (fun v graph -> if S.mem v contfv then (dest, v)::graph else graph) live graph
+    in
+    make_graph_sub dest live graph
+  
+  
 (* 各種マップ生成 *)
 let rec g dest live contfv = function
   | Ans exp ->
-     let map, fv = g' dest live S.empty exp in
-     map, S.union (rm_reg_s fv) contfv
+     let (regmap, pregmap, graph), fv = g' dest live S.empty exp in
+     let graph = make_graph graph live contfv dest exp in
+     (regmap, pregmap, graph), S.union (rm_reg_s fv) contfv
   | Let(xts, exp, e) ->
-     let (regmap', pregmap', graph') as map, contfv = g dest (S.union (rm_reg_s (rm_t_s xts)) live) contfv e in
+     let live' = match exp with
+       | CallCls _ | CallDir _ -> S.empty
+       | _ -> live
+     in
+     let (regmap', pregmap', graph') as map, contfv = g dest (S.union (rm_reg_s (rm_t_s xts)) live') contfv e in
      let (regmap, pregmap, graph), fv = (g' xts live contfv exp) in
      let regmap, pregmap, graph = regmap @ regmap', pregmap @ pregmap', graph @ graph' in
-     let xs = rm_t xts in
-     let rrxs = rm_reg xs in
-     let graph, _ = List.fold_left (fun (graph, l) dv ->
-       let tl = List.tl l in
-       List.fold_left (fun graph v ->
-	 (dv, v)::graph
-       ) graph tl, tl
-     ) (graph, rrxs) rrxs in
-     let graph = S.fold (fun v graph -> if S.mem v contfv then pair v graph xs else graph) live graph in
-     (regmap, pregmap, graph), fvs_let xs (rm_reg_s fv) contfv
+     let graph = make_graph graph live contfv xts exp in
+     (regmap, pregmap, graph), fvs_let (rm_t xts) (rm_reg_s fv) contfv
 and g' dest live contfv exp =
   match exp with
   | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Save _ | Restore _ ->
@@ -50,7 +77,7 @@ and g' dest live contfv exp =
   | Tuple(xs) ->
      assert (List.length dest = List.length xs);
     ([], List.fold_left2 (fun graph dv x -> (dv, x)::graph) [] (rm_t dest) xs, []), fvs_exp exp
-  | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], []), fvs_exp exp
+  | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], []), S.empty
   | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], []), fvs_exp exp
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) ->
      let (regmap1, pregmap1, graph1), contfv1 = g dest live contfv e1 in
@@ -143,31 +170,38 @@ let rec add_return_with_restore ts x rx = function
   | Let(yts, exp, e) ->
      Let(yts, exp, add_return_with_restore ts x rx e)
 
-let cl_vars contfv lcontfv regenv exp =
-  M.fold (fun r r' (exp, regenv) ->
+let cl_vars contfv lcontfv regenv =
+  M.fold (fun r r' (sl, regenv) ->
     if not (S.mem r contfv) then
       (* 使用しない変数はregenvから削除 *)
-      exp, regenv
+      sl, regenv
     else if not (S.mem r lcontfv) then
       (* Callまでに使用しない変数は退避 *)
-      seq(Save(r', r), exp), regenv
+      (r', r)::sl, regenv
     else
-      exp, (M.add r r' regenv)
-  ) regenv (exp, M.empty)
+      sl, (M.add r r' regenv)
+  ) regenv ([], M.empty)
      
 (* Callによるレジスタ再割当てコードの生成 *)
 let rec i dest contfv lcontfv regenv = function
   | Ans exp ->
-     (* Mrでtmp varを入れた方が良いかもしれない *)
-     let exp, regenv = i' dest regenv contfv lcontfv exp in
-     cl_vars contfv lcontfv regenv exp
+     let contfv'' = concatfvs (Ans(exp)) dest contfv in
+     let lcontfv'' = lconcatfvs (Ans(exp)) dest lcontfv in
+     let sl, regenv = cl_vars contfv'' lcontfv'' regenv in
+     let e, regenv = i' dest regenv contfv lcontfv exp in
+     let e, regenv = List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) e sl, regenv in
+     let sl, regenv = cl_vars contfv lcontfv regenv in
+     let tmp = List.fold_left (fun tmp t -> tmp@[(Id.gentmp t, t)]) [] (rm_x dest) in
+     concat e tmp (List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) (Ans(Tuple(rm_t tmp))) sl), regenv
   | Let(xts, exp, e) ->
      let contfv' = concatfvs e dest contfv in
      let lcontfv' = lconcatfvs e dest lcontfv in
+     let contfv'' = concatfvs (Ans(exp)) xts contfv' in
+     let lcontfv'' = lconcatfvs (Ans(exp)) xts lcontfv' in
+     let sl, regenv = cl_vars contfv'' lcontfv'' regenv in
      let exp, regenv = i' xts regenv contfv' lcontfv' exp in
-     let exp, regenv = cl_vars contfv' lcontfv' regenv exp in
      let e, regenv = i dest contfv lcontfv (List.fold_left (fun regenv x -> M.add x x regenv) regenv (rm_t xts)) e in
-     (concat exp xts e), regenv
+     List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) (concat exp xts e) sl, regenv
 and i' dest regenv contfv lcontfv exp =
   try i'' dest regenv contfv lcontfv exp with RegNot_found r ->
     let id = Id.genid r in
@@ -501,13 +535,11 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
-  (*  show fundefs e;*)
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs = List.map h fundefs in
   let e, _ = i [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) M.empty (specify_ret [(regs.(0), Type.Unit)] e) in
   let map, _ = g [(regs.(0), Type.Unit)] S.empty (fvs (Ans(Nop))) e in
   let map = j map in
   let e = apply map e in
-  show fundefs e;
   let p = Prog(data, vars, fundefs, e) in
   p

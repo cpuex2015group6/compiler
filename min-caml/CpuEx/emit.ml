@@ -425,6 +425,7 @@ let h oc { name = Id.L(x); args = _; body = e; ret = _ } =
   ()
        
 let f oc (Prog(data, vars, fundefs, e)) =
+  show fundefs e;
   Format.eprintf "generating assembly...@.";
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_init\n";

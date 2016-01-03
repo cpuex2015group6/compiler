@@ -7,3 +7,13 @@ let rec f e =
       iter1 e'
   in
   iter1 e
+
+let rec g e =
+  let rec iter1 e =
+    let e' = (Aunion2.f e) in
+    if e = e' then
+      e
+    else
+      iter1 e'
+  in
+  iter1 e

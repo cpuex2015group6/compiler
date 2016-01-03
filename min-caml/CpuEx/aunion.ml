@@ -12,6 +12,16 @@ let rec check env x f c = try (
 ) with | Unmatched | Not_found -> c ()
 let fail = (fun _ -> raise Unmatched)
 
+let rec check_ans f  = function
+  | Ans(exp) -> check_ans_exp f exp
+  | Let(_, _, e) -> check_ans f e
+and check_ans_exp f = function
+  | If(_, _, _, e1, e2) | FIf(_, _, _, e1, e2) -> check_ans f e1 && check_ans f e2
+  | IfThen(_, e, _) -> check_ans f e && check_ans_exp f (Li(C(0)))
+  | exp -> f exp
+    
+      
+  
 let pat = [
   (fun env -> function
   | FAbs(x) ->
@@ -44,17 +54,17 @@ let pat = [
      Let([(t1, Type.Int)], Mr(f), Ans(FCmpa(c, x, y, t1)));
   | _ -> raise Unmatched);
   (fun env -> function
-  | If(c1, x1, y1, e, Ans(Li(C(0)))) ->
+  | If(c, x, y, e, Ans(Li(C(0)))) ->
      let t1 = Id.genid "t" in
-     Let([(t1, Type.Int)], Cmp(c1, x1, V(y1)), Ans(IfThen(t1, e, [])));
+     Let([(t1, Type.Int)], Cmp(c, x, V(y)), Ans(IfThen(t1, e, [])));
   | _ -> raise Unmatched);
   (fun env -> function
-  | FIf(c1, x1, y1, e, Ans(Li(C(0)))) ->
+  | FIf(c, x, y, e, Ans(Li(C(0)))) ->
      let t1 = Id.genid "t" in
-     Let([(t1, Type.Int)], FCmp(c1, x1, y1), Ans(IfThen(t1, e, [])));
+     Let([(t1, Type.Int)], FCmp(c, x, y), Ans(IfThen(t1, e, [])));
     | _ -> raise Unmatched);
 ]
-(* cmp x, y, 0; cmp z, x, 0 -> cmp z, y, 0 -> xの依存性*)
+
 let h env e = 
   match List.fold_left (fun a p ->
     match a with
