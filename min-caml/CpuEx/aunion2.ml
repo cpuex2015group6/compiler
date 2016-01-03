@@ -101,7 +101,16 @@ let h dest e =
   
 let rec g dest = function
   | Ans(exp) -> g' dest exp
-  | Let(dest', exp, Ans(Nop)) when (try List.fold_left2 (fun f dest dest' -> f && (dest = dest')) true dest (rm_t dest') with Invalid_argument _ -> false) -> g' dest exp
+  | Let(dest', exp, Ans(Nop))
+      when (
+	try
+	      List.fold_left2 (
+		fun f dest dest' -> f && (dest = dest')
+	      ) true dest (rm_t dest')
+	with
+	  Invalid_argument _ -> false
+      ) ->
+     g' dest exp
   | Let(xts, exp, e) ->
      let exp = g' (rm_t xts) exp in
      let e = g dest e in
