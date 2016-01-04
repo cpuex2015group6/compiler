@@ -91,7 +91,7 @@ and g' dest live contfv exp =
      let (regmap, pregmap, graph), contfv' = g dest live contfv e in
      let regmap = List.fold_left2 (
        fun regmap dv x -> (dv, x)::regmap
-     ) ((dv, f)::regmap) (rm_t tdest) t in
+     ) regmap (rm_t tdest) t in
      (regmap, pregmap, graph), fvs_ifthen f contfv' t
        
 exception RegNot_found of Id.t
@@ -535,6 +535,7 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
+  show fundefs e;
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs = List.map h fundefs in
   let e, _ = i [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) M.empty (specify_ret [(regs.(0), Type.Unit)] e) in

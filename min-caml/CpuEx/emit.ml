@@ -264,13 +264,11 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   (* 退避の仮想命令の実装 *)
   | (NonTail(_), Save(x, y)) when not (S.mem y !stackset) ->
      save y;
-    (*print oc (Printf.sprintf "save %s,%d\n" y (offset y));*)
     op2i oc "stwi" reg_sp (reg x) (offset y);
     cflag
   | (NonTail(_), Save(x, y)) -> assert (S.mem y !stackset); cflag
   (* 復帰の仮想命令の実装 *)
   | (NonTail([x]), Restore(y)) ->
-    (*print oc (Printf.sprintf "restore %s,%d\n" y (offset y));*)
     op2i oc "ldwi" (reg x) reg_sp (offset y);
     cflag
   (* 末尾だったら計算結果を第一レジスタにセット *)
@@ -292,7 +290,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
   | (Tail, FIf(c, x, y, e1, e2)) ->
      g'_tail_if oc cflag c (reg x) (reg y) "f" e1 e2
   | (Tail, IfThen(f, e, t)) ->
-     assert (f = regs.(0));
      g'_tail_ifthen oc cflag (reg f) e
   | (NonTail(z), If(c, x, y, e1, e2)) ->
      g'_non_tail_if oc cflag (NonTail(z)) c (reg x) (reg y) "" e1 e2
@@ -302,9 +299,8 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      let tmp = List.rev z in
      let x = List.hd tmp in
      let tdest = List.rev (List.tl tmp) in
-     assert (f = x);
      List.iter2 (fun x dv -> assert (x = dv)) t tdest;
-     g'_non_tail_ifthen oc cflag (NonTail(z)) (reg f) e
+     g'_non_tail_ifthen oc cflag x (NonTail(z)) (reg f) e
   (* 関数呼び出しの仮想命令の実装 *)
   | (Tail, CallCls(x, ys)) -> (* 末尾呼び出し *)
      g'_args oc [(x, reg_cl)] ys;
@@ -323,7 +319,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     let ss = stacksize () in
     op2i oc "addi" reg_sp reg_sp ss;
     op3 oc "ldw"reg_tmp (reg reg_cl) (reg reg_zero);
-    op3 oc "jrf" reg_lr (reg reg_zero) reg_tmp;
+    op3 oc "cr" reg_lr (reg reg_zero) reg_tmp;
     op2i oc "subi" reg_sp reg_sp ss;
     assert (a = regs.(0));
     true
@@ -332,7 +328,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     (if not cflag then store_lr oc);
     let ss = stacksize () in
     op2i oc "addi" reg_sp reg_sp ss;
-    op2l oc "jif" reg_lr (reg reg_zero) x;
+    op2l oc "ci" reg_lr (reg reg_zero) x;
     op2i oc "subi" reg_sp reg_sp ss;
     assert (a = regs.(0));
     true
@@ -358,7 +354,7 @@ and g'_tail_if oc cflag c x y p e1 e2 =
      stackset := stackset_back;
      g oc cflag (Tail, e2)
 and g'_tail_ifthen oc cflag f e =
-  op3 oc "jrf" reg_tmp f reg_lr;
+  op3 oc "jrf" (reg regs.(0)) f reg_lr;
   g oc cflag (Tail, e)
 and g'_non_tail_if oc cflag dest c x y p e1 e2 =
   let b_cont = Id.genid ("cont") in
@@ -391,7 +387,7 @@ and g'_non_tail_if oc cflag dest c x y p e1 e2 =
      let stackset2 = !stackset in
      stackset := S.inter stackset1 stackset2);
   cflag1 || cflag2
-and g'_non_tail_ifthen oc cflag dest f e =
+and g'_non_tail_ifthen oc cflag destx dest f e =
   let b_cont = Id.genid ("cont") in
   let stackset' = !stackset in
   let stackmap' = !stackmap in
@@ -401,7 +397,7 @@ and g'_non_tail_ifthen oc cflag dest f e =
   let stackset_back = !stackset in
   if cflag1 && (not cflag) then store_lr oc;
   let cflag = true in
-  op3 oc "jif" reg_tmp f b_cont;
+  op2l oc "jif" (reg destx) f b_cont;
   let _ = g oc cflag (dest, e) in
   let stackset1 = !stackset in
   print oc (Printf.sprintf "%s:\n" b_cont);
