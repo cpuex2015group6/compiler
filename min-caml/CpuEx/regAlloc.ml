@@ -85,7 +85,6 @@ and g' dest live contfv exp =
      (regmap1@regmap2, pregmap1@pregmap2, graph1@graph2), fvs_if x y contfv1 contfv2
   | IfThen(f, e, t) ->
      let tmp = List.rev dest in
-     let dv, _ = List.hd tmp in
      let tdest = List.rev (List.tl tmp) in
      assert (List.length tdest = List.length t);
      let (regmap, pregmap, graph), contfv' = g dest live contfv e in
@@ -101,7 +100,6 @@ let replace' regenv = function
   | V(x) -> V(replace regenv x)
   | c -> c
 let mem r regenv = if is_reg r then true else M.mem r regenv
-
 
 let rec replace_e regenv = function
   | Ans (exp) -> Ans(replace_exp regenv exp)
@@ -181,7 +179,16 @@ let cl_vars contfv lcontfv regenv =
     else
       sl, (M.add r r' regenv)
   ) regenv ([], M.empty)
-     
+
+type tfv =
+  | AnsFv of S.t
+  | LetFv of expfv * tfv
+and expfv =
+  | GenFv of S.t
+  | IfFv of S.t * tfv * tfv
+  | FIfFv of S.t * tfv * tfv
+  | IfThenFv of S.t * tfv
+    
 (* Callによるレジスタ再割当てコードの生成 *)
 let rec i dest contfv lcontfv regenv = function
   | Ans exp ->
@@ -535,7 +542,6 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
-  show fundefs e;
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs = List.map h fundefs in
   let e, _ = i [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) M.empty (specify_ret [(regs.(0), Type.Unit)] e) in
