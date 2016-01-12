@@ -174,7 +174,7 @@ and fvs = function
   | Ans (exp) -> fvs_exp exp
   | Let (xts, exp, e) ->
      fvs_let (rm_t xts) (fvs_exp exp) (fvs e)
-
+       
 (* concatfvs : t -> (Id.t * Type.t) list -> S.t -> S.t *)
 (* Let(xt, e1, e2) した時のfree variablesのSet *)
 let rec concatfvs e1 xts e2 = match e1 with
@@ -192,6 +192,10 @@ let rec lconcatfvs e1 xts e2 = match e1 with
      fvs_let (rm_t xts) (fvs_exp exp) e2
   | Let(yts, exp, e1') ->
      fvs_let (rm_t yts) (fvs_exp exp) (lconcatfvs e1' xts e2)
+
+(* concatfvs' : t -> (Id.t * Type.t) list -> S.t -> S.t -> S.t *)
+(* concatfvsとlconcatfvsを同時に呼び出す *)
+let rec concatfvs' e1 xts e2 le2 = (concatfvs e1 xts e2), (lconcatfvs e1 xts le2)
 
 (* concat : t -> (Id.t * Type.t) list -> t -> t *)
 let rec concat e1 xts e2 = match e1 with

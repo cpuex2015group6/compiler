@@ -88,6 +88,7 @@ val fvs_exp : exp -> S.t
 val fvs : t -> S.t
 val concatfvs : t -> (Id.t * Type.t) list -> S.t -> S.t
 val lconcatfvs : t -> (Id.t * Type.t) list -> S.t -> S.t
+val concatfvs' : t -> (Id.t * Type.t) list -> S.t -> S.t -> S.t * S.t
 val effect : exp -> bool
 val concat : t -> (Id.t * Type.t) list -> t -> t
 val concatfv : t -> (Id.t * Type.t) list -> Id.t list -> Id.t list
