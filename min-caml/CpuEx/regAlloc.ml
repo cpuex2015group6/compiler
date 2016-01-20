@@ -7,7 +7,7 @@ let showmap f (regmap, pregmap, graph) vrmap =
   Printf.fprintf stdout ">>pregmap:\n";
   List.iter (fun (x, y) -> Printf.fprintf stdout "%s %s\n" x y) pregmap;
   Printf.fprintf stdout ">>graph:\n";
-  List.iter (fun (x, y) -> Printf.fprintf stdout "%s %s\n" x y) graph;
+  M.iter (fun v s -> S.iter (fun v' -> Printf.fprintf stdout "%s %s\n" v v') s) graph;
   Printf.fprintf stdout ">>vrmap:\n";
   M.iter (fun v r -> Printf.fprintf stdout "%s -> %s\n" v r) vrmap
   
@@ -21,34 +21,62 @@ let rm_reg_s s = S.fold (fun v s -> if is_reg v then s else S.add v s) s S.empty
 let pair v = List.fold_left (fun graph x -> (x, v)::graph)
 let assert_single dest = assert (List.length dest = 1)
 
+let add_graph x y graph =
+  let graph =
+    if is_reg x then graph
+    else
+      try
+        let s = M.find x graph in
+        M.add x (S.add y s) graph
+      with Not_found ->
+        M.add x (S.singleton y) graph
+  in
+  if is_reg y then graph
+  else
+    try
+      let s = M.find y graph in
+      M.add y (S.add x s) graph
+    with Not_found ->
+      M.add y (S.singleton x) graph
+
+let union_graph g1 g2 =
+  let s1 = M.keys g1 in
+  let s2 = M.keys g2 in
+  S.fold (fun k graph ->
+    let s1 = try M.find k g1 with Not_found -> S.empty in
+    let s2 = try M.find k g2 with Not_found -> S.empty in
+    M.add k (S.union s1 s2) graph
+  ) (S.union s1 s2) M.empty
+    
+(* 複数の返り値を適切に代入できるよう、相互依存関係を作成 *)
 let make_graph graph live contfv dest = function
   | Tuple(xs) ->
      assert (List.length dest = List.length xs);
     let dest = rm_t dest in
     let rec make_graph_sub dest xs live contfv graph =
       if List.length dest = 0 then
-	graph, contfv
+	      graph, contfv
       else
-	let contdest = List.tl dest in
-	let dest = List.hd dest in
-	let graph, contfv = make_graph_sub contdest (List.tl xs) (if is_reg dest then live else S.add dest live) contfv graph in
-	let x = List.hd xs in
-	(S.fold (fun v graph -> if S.mem v contfv then (dest, v)::graph else graph) live graph), S.add x contfv
+	      let contdest = List.tl dest in
+	      let dest = List.hd dest in
+	      let graph, contfv = make_graph_sub contdest (List.tl xs) (if is_reg dest then live else S.add dest live) contfv graph in
+	      let x = List.hd xs in
+	      (S.fold (fun v graph -> if S.mem v contfv then add_graph dest v graph else graph) live graph), S.add x contfv
     in
     let graph, _ = make_graph_sub dest xs live contfv graph in
     graph
   | _ ->
      let dest = rm_t dest in
-    let rec make_graph_sub dest live graph =
+     let rec make_graph_sub dest live graph =
       if List.length dest = 0 then
-	graph
+	      graph
       else
-	let contdest = List.tl dest in
-	let dest = List.hd dest in
-	let graph = make_graph_sub contdest (if is_reg dest then live else S.add dest live) graph in
-	S.fold (fun v graph -> if S.mem v contfv then (dest, v)::graph else graph) live graph
-    in
-    make_graph_sub dest live graph
+	      let contdest = List.tl dest in
+	      let dest = List.hd dest in
+	      let graph = make_graph_sub contdest (if is_reg dest then live else S.add dest live) graph in
+	      S.fold (fun v graph -> if S.mem v contfv then add_graph dest v graph else graph) live graph
+     in
+     make_graph_sub dest live graph
   
   
 (* 各種マップ生成 *)
@@ -64,25 +92,28 @@ let rec g dest live contfv = function
      in
      let (regmap', pregmap', graph') as map, contfv = g dest (S.union (rm_reg_s (rm_t_s xts)) live') contfv e in
      let (regmap, pregmap, graph), fv = (g' xts live contfv exp) in
-     let regmap, pregmap, graph = regmap @ regmap', pregmap @ pregmap', graph @ graph' in
+     let regmap, pregmap, graph = regmap @ regmap', pregmap @ pregmap', union_graph graph graph' in
      let graph = make_graph graph live contfv xts exp in
      (regmap, pregmap, graph), fvs_let (rm_t xts) (rm_reg_s fv) contfv
 and g' dest live contfv exp =
   match exp with
-  | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Save _ | Restore _ ->
-     ([], [], []), fvs_exp exp
+  | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Continue _ | Save _ | Restore _ ->
+     ([], [], M.empty), fvs_exp exp
   | Mr(x) ->
      assert_single dest;
-    ([], pair x [] (rm_t dest), []), fvs_exp exp
+    ([], pair x [] (rm_t dest), M.empty), fvs_exp exp
   | Tuple(xs) ->
      assert (List.length dest = List.length xs);
-    ([], List.fold_left2 (fun graph dv x -> (dv, x)::graph) [] (rm_t dest) xs, []), fvs_exp exp
-  | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], []), S.empty
-  | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], []), fvs_exp exp
+    ([], List.fold_left2 (fun graph dv x -> (dv, x)::graph) [] (rm_t dest) xs, M.empty), fvs_exp exp
+  | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], M.empty), S.empty
+  | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], M.empty), fvs_exp exp
+  | While(_, ys, e) ->
+     let (regmap, pregmap, graph), contfv' = g dest live contfv e in
+     (regmap, pregmap, graph), fvs_while ys contfv'
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) ->
      let (regmap1, pregmap1, graph1), contfv1 = g dest live contfv e1 in
      let (regmap2, pregmap2, graph2), contfv2 = g dest live contfv e2 in
-     (regmap1@regmap2, pregmap1@pregmap2, graph1@graph2), fvs_if x y contfv1 contfv2
+     (regmap1@regmap2, pregmap1@pregmap2, union_graph graph1 graph2), fvs_if x y contfv1 contfv2
   | IfThen(f, e, t) ->
      let tmp = List.rev dest in
      let tdest = List.rev (List.tl tmp) in
@@ -132,6 +163,8 @@ and replace_exp regenv = function
   | FCmpa(c, x, y, z) -> FCmpa(c, replace regenv x, replace regenv y, replace regenv z)
   | CallCls(l, ys) -> CallCls(l, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)
   | CallDir(f, ys) -> CallDir(f, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)
+  | While(x, ys, e) -> While(x, List.fold_left (fun l y -> l@[replace regenv y]) [] ys, replace_e regenv e)
+  | Continue(x, ys) -> Continue(x, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)
   | If(c, x, y, e1, e2) -> If(c, replace regenv x, replace regenv y, replace_e regenv e1, replace_e regenv e2)
   | FIf(c, x, y, e1, e2) -> FIf(c, replace regenv x, replace regenv y, replace_e regenv e1, replace_e regenv e2)
   | IfThen(f, e1, t) -> IfThen(replace regenv f, replace_e regenv e1, List.fold_left (fun l y -> l@[replace regenv y]) [] t)
@@ -187,6 +220,7 @@ and expfv =
   | GenFv
   | IfFv of tfv * tfv
   | IfThenFv of tfv
+  | WhileFv of tfv
 
 let rec makefv dest contfv lcontfv = function
   | Ans(exp) ->
@@ -337,7 +371,9 @@ and i'' dest contfv lcontfv regenv ((_, exp) as exp') =
 	    Type.Int::dts
      ) keys ([], e1, t, M.empty, tvs, dts) in
      (List.fold_left (fun e (xts, exp) -> Let(xts, exp, e))
-	(Let((unify_xt tvs dts), IfThen(replace regenv f, e1, List.fold_left (fun l y -> l@[replace regenv y]) [] t), Ans(Tuple(tvs')))) ins), regenv'
+	      (Let((unify_xt tvs dts), IfThen(replace regenv f, e1, List.fold_left (fun l y -> l@[replace regenv y]) [] t), Ans(Tuple(tvs')))) ins), regenv'
+  | WhileFv(efv), While(x, ys, e) ->
+     assert false
   | GenFv, CallCls(l, ys) ->
      i''_call regenv contfv ys (CallCls(l, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)), M.empty
   | GenFv, CallDir(f, ys) ->
@@ -347,6 +383,7 @@ and i'' dest contfv lcontfv regenv ((_, exp) as exp') =
        match exp with
        | CallCls _ | CallDir _ -> assert false
        | If _ | FIf _ | IfThen _ -> assert false
+       | While _ -> assert false
        | _ -> regenv
      )
   | _ -> assert false
@@ -393,38 +430,38 @@ let j (regmap, pregmap, graph) =
   let map regmap vrmap =
     let rec map_sub regmap vrmap =
       let f, regmap, vrmap = List.fold_left (fun (f, regmap, vrmap) (x, y) ->
-	match M.mem x vrmap, M.mem y vrmap with
-	| true, true ->
-	   if M.find x vrmap <> M.find y vrmap then raise RegAlloc_conflict;
-	  f, regmap, vrmap
-	| true, false -> false, regmap, M.add y (M.find x vrmap) vrmap
-	| false, true -> false, regmap, M.add x (M.find y vrmap) vrmap
-	| false, false -> f, (x, y)::regmap, vrmap
+	      match M.mem x vrmap, M.mem y vrmap with
+	      | true, true ->
+	         if M.find x vrmap <> M.find y vrmap then raise RegAlloc_conflict;
+	        f, regmap, vrmap
+	      | true, false -> false, regmap, M.add y (M.find x vrmap) vrmap
+	      | false, true -> false, regmap, M.add x (M.find y vrmap) vrmap
+	      | false, false -> f, (x, y)::regmap, vrmap
       ) (true, [], vrmap) regmap
       in
       if f then
-	(regmap, vrmap)
+	      (regmap, vrmap)
       else
-	map_sub regmap vrmap
+	      map_sub regmap vrmap
     in
     map_sub regmap vrmap
   in
   (* 再優先割り当てマップをベースにして、他の強制割り当てが解決できる場合は解決しておく *)
   let regmap, vrmap = map regmap vrmap in
-  (* 干渉グラフに抵触していないか調べる *)
-  let check vrmap graph = List.fold_left (fun graph (x, y) ->
-    try
-      let x, y = match is_reg x, is_reg y with
-      | true, true -> assert false
-      | true, false -> x, M.find y vrmap
-      | false, true -> M.find x vrmap, y
-      | false, false -> M.find x vrmap, M.find y vrmap in
-      if x = y then
-	raise RegAlloc_conflict
-      else
-	graph
-    with Not_found -> (x, y)::graph
-  ) [] graph
+  (* xが干渉グラフに抵触していないか調べる *)
+  let check x vrmap graph =
+    assert (M.mem x vrmap);
+    let _ =
+      try
+        let x' = M.find x vrmap in
+        S.iter (fun y ->
+          try
+            if x' = (if is_reg y then y else M.find y vrmap) then
+              raise RegAlloc_conflict
+          with Not_found -> ()
+        ) (M.find x graph)
+      with Not_found -> () in
+    graph
   in
   (* 優先割り当てマップの中からレジスタに割り当てられる変数を割り当てる *)
   let regmap, pregmap, graph, vrmap = List.fold_left (fun (regmap, pregmap, graph, vrmap) (x, y) ->
@@ -432,54 +469,74 @@ let j (regmap, pregmap, graph) =
     | true, true -> assert false
     | true, false ->
        if M.mem y vrmap then
-	 regmap, pregmap, graph, vrmap
+	       regmap, pregmap, graph, vrmap
        else
-	 let vrmap' = M.add y x vrmap in
-	 (try
-	    let regmap, vrmap = map regmap vrmap' in
-	    let graph = check vrmap graph in
-	    regmap, pregmap, graph, vrmap
-	  with RegAlloc_conflict ->
-	    regmap, pregmap, graph, vrmap)
+	       let vrmap' = M.add y x vrmap in
+	       (try
+	          let regmap, vrmap = map regmap vrmap' in
+	          let graph = check y vrmap graph in
+	          regmap, pregmap, graph, vrmap
+	        with RegAlloc_conflict ->
+	          regmap, pregmap, graph, vrmap)
     | false, true ->
        if M.mem x vrmap then
-	 regmap, pregmap, graph, vrmap
+	       regmap, pregmap, graph, vrmap
        else
-	 let vrmap' = M.add x y vrmap in
-	 (try
-	    let regmap, vrmap = map regmap vrmap' in
-	    let graph = check vrmap graph in
-	    regmap, pregmap, graph, vrmap
-	  with RegAlloc_conflict ->
-	    regmap, pregmap, graph, vrmap)
+	       let vrmap' = M.add x y vrmap in
+	       (try
+	          let regmap, vrmap = map regmap vrmap' in
+	          let graph = check x vrmap graph in
+	          regmap, pregmap, graph, vrmap
+	        with RegAlloc_conflict ->
+	          regmap, pregmap, graph, vrmap)
     | false, false -> regmap, (x, y)::pregmap, graph, vrmap
   ) (regmap, [], graph, vrmap) pregmap in
   (* 現在の変数レジスタマッピングをベースに、優先割り当てマップよりレジスタに割り当てられる変数は割り当てる *)
   let map' regmap pregmap graph vrmap =
     let rec map_sub regmap pregmap graph vrmap =
-      let f, regmap, pregmap, graph, vrmap =
-	      List.fold_left (fun (f, regmap, pregmap, graph, vrmap) (x, y) ->
+      let plist, pregmap =
+	      List.fold_left (fun (l, pregmap) (x, y) ->
 	        match M.mem x vrmap, M.mem y vrmap with
-	        | true, true -> f, regmap, pregmap, graph, vrmap
-	        | true, false ->
-	           let vrmap' = M.add y (M.find x vrmap) vrmap in
-	           (try
-		            let regmap, vrmap = map regmap vrmap' in
-		            let graph = check vrmap graph in
-		            false, regmap, pregmap, graph, vrmap
-	            with RegAlloc_conflict ->
-		            f, regmap, pregmap, graph, vrmap)
-	        | false, true ->
-	           let vrmap' = M.add x (M.find y vrmap) vrmap in
-	           (try
-		            let regmap, vrmap = map regmap vrmap' in
-		            let graph = check vrmap graph in
-		            false, regmap, pregmap, graph, vrmap
-	            with RegAlloc_conflict ->
-		            f, regmap, pregmap, graph, vrmap)
-	        | false, false -> f, regmap, (x, y)::pregmap, graph, vrmap
-	      ) (true, regmap, [], graph, vrmap) pregmap
+	        | true, true -> l, pregmap
+	        | true, false -> (y, x)::l, pregmap
+	        | false, true -> (x, y)::l, pregmap
+	        | false, false -> l, (x, y)::pregmap
+	      ) ([], []) pregmap
       in
+      (* 優先割り当てを実際に試す。ダメなら再試行 *)
+      let rec try_map regmap graph vrmap plist =
+        if List.length plist = 0 then
+          true, regmap, graph, vrmap
+        else
+      	  (try
+             let vrmap =
+               List.fold_left (fun vrmap (x, y) ->
+                 M.add x (M.find y vrmap) vrmap
+               ) vrmap plist
+             in
+		         let regmap, vrmap = map regmap vrmap in
+             let graph =
+               List.fold_left (fun graph (x, _) ->
+                 check x vrmap graph
+               ) graph plist
+             in
+		         false, regmap, graph, vrmap
+	         with RegAlloc_conflict ->
+             if List.length plist = 1 then
+               true, regmap, graph, vrmap
+             else
+               let _, plist1, plist2 = List.fold_left (fun (x, plist1, plist2) ele ->
+                 if x = 0 then
+                   0, plist1, ele::plist2
+                 else
+                   (x - 1), ele::plist1, plist2
+               ) (((List.length plist) / 2), [], []) plist
+               in
+               let f1, regmap, graph, vrmap = try_map regmap graph vrmap plist1 in
+               let f2, regmap, graph, vrmap = try_map regmap graph vrmap plist2 in
+		           f1 && f2, regmap, graph, vrmap)
+      in
+      let f, regmap, graph, vrmap = try_map regmap graph vrmap plist in
       if f then
 	      (regmap, pregmap, graph, vrmap)
       else
@@ -493,17 +550,14 @@ let j (regmap, pregmap, graph) =
   (* ある変数に対して割り当てられるレジスタを抽出する *)
   let reg_list v vrmap graph =
     assert (not (M.mem v vrmap));
-    let invalid = List.fold_left (fun invalid (x, y) ->
-      match v = x, v = y with
-      | true, true -> assert false
-      | true, false ->
-	 (try S.add (if is_reg y then y else M.find y vrmap) invalid
-	  with Not_found -> invalid)
-      | false, true ->
-	 (try S.add (if is_reg x then x else M.find x vrmap) invalid
-	  with Not_found -> invalid)
-      | false, false -> invalid
-    ) S.empty graph in
+    let invalid =
+      try
+        S.fold (fun x invalid ->
+          try S.add (if is_reg x then x else M.find x vrmap) invalid
+          with Not_found -> invalid
+        ) (M.find v graph) S.empty
+      with Not_found -> S.empty
+    in
     List.fold_left (fun regs r ->
       if S.mem r invalid then
 	      regs
@@ -512,27 +566,47 @@ let j (regmap, pregmap, graph) =
     ) [] (Array.to_list regs)
   in
   (* 決定できるレジスタは全て割り当てたので、後は制限を満たすように適当に割り当てていく *)
-  let rec allocate regmap pregmap graph vrmap =
-    let targets = regmap@pregmap@graph in
-    if List.length targets = 0 then
-      [], [], [], vrmap
-    else
-      let target, target' = List.hd targets in
-      let target = if M.mem target vrmap || is_reg target then target' else target in
-      let rec allocate_sub regmap graph vrmap list =
-	      let reg = try List.hd list with Failure "hd" -> raise RegAlloc_starvation in
-	      (try
-	         let vrmap = M.add target reg vrmap in
-	         let regmap, vrmap = map regmap vrmap in
-	         let graph = check vrmap graph in
-	         regmap, graph, vrmap
-	       with RegAlloc_conflict -> allocate_sub regmap graph vrmap (List.tl list))
-      in
-      let regmap, graph, vrmap = allocate_sub regmap graph vrmap (reg_list target vrmap graph) in
-      let regmap, pregmap, graph, vrmap = map' regmap pregmap graph vrmap in
-      allocate regmap pregmap graph vrmap
+  let rec allocate f regmap pregmap graph vrmap =
+    let rec allocate' f targets regmap pregmap graph vrmap =
+      if List.length targets = 0 then
+        vrmap
+      else
+        let target = List.hd targets in
+        let targets = List.tl targets in
+        if M.mem target vrmap then
+          allocate' f targets regmap pregmap graph vrmap
+        else
+          let _ = assert (not (is_reg target)) in
+          let rec allocate_sub regmap graph vrmap list =
+	          let reg = try List.hd list with Failure "hd" -> raise RegAlloc_starvation in
+	          (try
+	             let vrmap = M.add target reg vrmap in
+	             let regmap, vrmap = map regmap vrmap in
+               let graph = if f then check target vrmap graph else graph in
+	             regmap, graph, vrmap
+	           with RegAlloc_conflict -> allocate_sub regmap graph vrmap (List.tl list))
+          in
+          let regmap, graph, vrmap = allocate_sub regmap graph vrmap (reg_list target vrmap graph) in
+          let regmap, pregmap, graph, vrmap = map' regmap pregmap graph vrmap in
+          allocate' f targets regmap pregmap graph vrmap
+    in
+    let get_targets l = S.elements (List.fold_left (fun s (x, y) ->
+      let s = if is_reg x then s else S.add x s in
+      if is_reg y then s else S.add y s
+    ) S.empty l) in
+    let vrmap = allocate' f (get_targets regmap) regmap pregmap graph vrmap in
+    let vrmap = allocate' f (get_targets pregmap) regmap pregmap graph vrmap in
+    let vrmap = allocate' f (S.elements (M.keys graph)) regmap pregmap graph vrmap in
+    vrmap
   in
-  let _, _, _, vrmap = allocate regmap pregmap graph vrmap in
+  let vrmap = allocate false regmap pregmap graph vrmap in
+  let vrmap =
+    try
+      let _ = M.iter (fun k _ -> check k vrmap graph;()) graph  in
+      vrmap
+    with RegAlloc_conflict ->
+      allocate true regmap pregmap graph vrmap
+  in
   vrmap
 
 let rec apply regmap e = try replace_e regmap e with RegNot_found r -> apply (M.add r regs.(0) regmap) e

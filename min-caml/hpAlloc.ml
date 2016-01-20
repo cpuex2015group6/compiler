@@ -5,7 +5,7 @@ let hp = ref (Some 0)
 let rec h fenv = function
   | If(_, _, _, e1, e2) -> h fenv e1 && h fenv e2
   | Let(_, e1, e2) -> h fenv e1 && h fenv e2
-  | LetRec(_, e) -> assert false; h fenv e
+  | LetRec(_, e) -> assert false
   | LetTuple(_, _, e) -> h fenv e
   | SetHp(_) -> false
   | App(x, _) -> (try M.find x fenv with Not_found ->false)

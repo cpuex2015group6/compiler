@@ -89,6 +89,10 @@ and g' env = function
      IfThen(f, e, t), fv_ifthen f fve t
   | CallCls(x, ys) -> genfv (CallCls(x, List.map (fun y -> replace env y) ys))
   | CallDir(x, ys) -> genfv (CallDir(x, List.map (fun y -> replace env y) ys))
+  | While(x, ys, e) ->
+     let e, fve = g env e in
+     While(x, List.map (fun y -> replace env y) ys, e), fv_while ys fve
+  | Continue(x, ys) -> genfv (Continue(x, List.map (fun y -> replace env y) ys))
   
 let i { name = l; args = xs; body = e; ret = t } =
   { name = l; args = xs; body = fst (g M.empty e); ret = t }

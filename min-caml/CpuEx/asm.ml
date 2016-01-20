@@ -46,6 +46,8 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | IfThen of Id.t * t * Id.t list
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
+  | While of Id.l * Id.t list * t
+  | Continue of Id.l * Id.t list
   | Save of Id.t * Id.t (* レジスタ変数の値をスタック変数へ保存 *)
   | Restore of Id.t (* スタック変数から値を復元 *)
 type fundef =
@@ -96,15 +98,15 @@ let rec remove_and_uniq xs = function
 (* fv_id_or_imm : id_or_imm -> Id.t list *)
 let fv_id_or_imm = function V (x) -> [x] | _ -> []
 
-let rec fv_let xs exp e =
-  exp @ remove_and_uniq (S.of_list xs) e
-
 let rec fv_if x y e1 e2 =
     x :: y :: remove_and_uniq S.empty (e1 @ e2)
-
 let rec fv_ifthen f e t =
   f :: remove_and_uniq S.empty (e @ t)
+let rec fv_while ys e =
+  remove_and_uniq S.empty (ys @ e)
 
+let rec fv_let xs exp e =
+  exp @ remove_and_uniq (S.of_list xs) e
 let rec fv_exp = function
   | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> []
   | Mr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> [x]
@@ -125,6 +127,9 @@ let rec fv_exp = function
      fv_ifthen f (fv_o e) t
   | CallCls (x, ys) -> x :: ys
   | CallDir (_, ys) -> ys
+  | While(_, ys, e) ->
+     fv_while ys (fv_o e)
+  | Continue(_, xs) -> xs
 and fv_o = function 
   | Ans (exp) -> fv_exp exp
   | Let (xts, exp, e) ->
@@ -140,15 +145,15 @@ let rm_t_s = List.fold_left (fun s (x, _) -> S.add x s) S.empty
 (* fvs_id_or_imm : id_or_imm -> S.t *)
 let fvs_id_or_imm = function V (x) -> S.singleton x | _ -> S.empty
 
-let rec fvs_let xs exp e =
-  S.union exp (List.fold_left (fun s x -> S.remove x s) e xs)
-
 let rec fvs_if x y e1 e2 =
   S.add x (S.add y (S.union e1 e2))
-
 let rec fvs_ifthen f e t =
   S.add f (S.union e (S.of_list t))
+let rec fvs_while ys e =
+  (S.union (S.of_list ys) e)
 
+let rec fvs_let xs exp e =
+  S.union exp (List.fold_left (fun s x -> S.remove x s) e xs)
 let rec fvs_exp = function
   | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> S.empty
   | Mr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> S.singleton x
@@ -169,6 +174,8 @@ let rec fvs_exp = function
      fvs_ifthen f (fvs e) t
   | CallCls (x, ys) -> S.add x (S.of_list ys)
   | CallDir (_, ys) -> S.of_list ys
+  | While(_, ys, e) -> fvs_while ys (fvs e)
+  | Continue (_, xs) -> S.of_list xs
 (* fvs : t -> S.t *)
 and fvs = function 
   | Ans (exp) -> fvs_exp exp
@@ -207,7 +214,8 @@ let is_ereg r = is_reg r && (r = reg_zero || r = reg_m1)
 let rec effect = function (* 副作用の有無 *)
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) -> is_ereg x || is_ereg y || effect' e1 || effect' e2
   | IfThen(f, e, t) -> is_ereg f || effect' e || effect (Tuple(t))
-  | Stw _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Comment _ | CallCls _ | CallDir _ | Save _ | Restore _ -> true
+  | While(_, _, e) -> effect' e
+  | Stw _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Comment _ | CallCls _ | CallDir _ | Continue _ | Save _ | Restore _ -> true
   | Ldw _ | Nop | Li _ | SetL _ | GetHp -> false
   | Mr(x) | FAbs(x) | Sqrt(x) -> is_ereg x
   | Tuple(xs) -> List.fold_left (fun f x -> f || is_ereg x) false xs
@@ -381,6 +389,19 @@ and j indent = function
      Printf.fprintf stdout "ys:";
      List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
      Printf.fprintf stdout "\n"
+  | While(Id.L(x), ys, e) -> 
+     Printf.fprintf stdout "while %s, " x;
+     Printf.fprintf stdout "ys:";
+     List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
+     Printf.fprintf stdout "\n";
+     Printf.fprintf stdout "%sthen:\n" indent;
+     let indent' = indent ^ "  " in
+     i indent' (Tail, e);
+  | Continue(Id.L(x), ys) ->
+     Printf.fprintf stdout "continue %s, " x;
+     Printf.fprintf stdout "ys:";
+     List.iter (fun y -> Printf.fprintf stdout "%s, " y) ys;
+     Printf.fprintf stdout "\n"     
 
 let show fundefs e =
   print_endline ">>>>>>>>>>>>>>>>asm>>>>>>>>>>>>>>>>>";

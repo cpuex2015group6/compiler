@@ -45,6 +45,8 @@ and exp =
   (* closure address, integer arguments, and float arguments *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
+  | While of Id.l * Id.t list * t
+  | Continue of Id.l * Id.t list
   | Save of Id.t * Id.t (* レジスタ変数の値をスタック変数へ保存 *)
   | Restore of Id.t (* スタック変数から値を復元 *)
 type fundef =
@@ -76,6 +78,7 @@ val rm_x : (Id.t * Type.t) list -> Type.t list
 val unify_xt : Id.t list ->  Type.t list -> (Id.t * Type.t) list
 val fv_if : Id.t -> Id.t -> Id.t list -> Id.t list -> Id.t list
 val fv_ifthen : Id.t -> Id.t list -> Id.t list -> Id.t list
+val fv_while : Id.t list -> Id.t list -> Id.t list
 val fv_let : Id.t list -> Id.t list -> Id.t list -> Id.t list
 val fv_exp : exp -> Id.t list
 val fv_o : t -> Id.t list
@@ -83,6 +86,7 @@ val fv : t -> Id.t list
 val rm_t_s : (Id.t * Type.t) list -> S.t
 val fvs_if : Id.t -> Id.t -> S.t -> S.t -> S.t
 val fvs_ifthen : Id.t -> S.t  -> Id.t list -> S.t
+  val fvs_while : Id.t list -> S.t -> S.t
 val fvs_let : Id.t list -> S.t -> S.t -> S.t
 val fvs_exp : exp -> S.t
 val fvs : t -> S.t

@@ -301,6 +301,12 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      let tdest = List.rev (List.tl tmp) in
      List.iter2 (fun x dv -> assert (x = dv)) t tdest;
      g'_non_tail_ifthen oc cflag x (NonTail(z)) (reg f) e
+  | (_ as t, While(Id.L(x), ys, e)) ->
+     print oc (Printf.sprintf "%s:\n" x);
+     g oc cflag (t, e)
+  | (_, Continue(Id.L(x), ys)) ->
+     op2l oc "jif" reg_tmp (reg reg_zero) x;
+    cflag
   (* 関数呼び出しの仮想命令の実装 *)
   | (Tail, CallCls(x, ys)) -> (* 末尾呼び出し *)
      g'_args oc [(x, reg_cl)] ys;
