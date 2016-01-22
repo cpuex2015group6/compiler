@@ -27,11 +27,13 @@ let rec g env = function (* β簡約ルーチン本体 (caml2html: beta_g) *)
   | FAbs(x) -> FAbs(find x env)
   | Sqrt(x) -> Sqrt(find x env)
   | If(c, x, y, e1, e2) -> If(c, find x env, find y env, g env e1, g env e2) (* TODO *)
+  | While(x, ys, zs, e) -> While(find x env, ys, List.map (fun z -> find z env) zs, g env e)
+  | Continue(x, yts, zs) -> Continue(find x env, yts, List.map (fun z -> find z env) zs)
   | Let((x, t), e1, e2) -> (* letのβ簡約 (caml2html: beta_let) *)
       (match g env e1 with
       | Var(y) ->
-	(*	 log := !log ^ Format.sprintf "beta-reducing %s = %s@." x y;*)
-	g (M.add x y env) e2
+	       (*	 log := !log ^ Format.sprintf "beta-reducing %s = %s@." x y;*)
+	       g (M.add x y env) e2
       | e1' ->
 	       let e2' = g env e2 in
 	       Let((x, t), e1', e2'))

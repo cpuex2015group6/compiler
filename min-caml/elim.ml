@@ -2,8 +2,8 @@ open KNormal
 
 let rec effect = function (* 副作用の有無 (caml2html: elim_effect) *)
   | Let(_, e1, e2) | If(_, _, _, e1, e2) -> effect e1 || effect e2
-  | LetRec(_, e) | LetTuple(_, _, e) -> effect e
-  | App _ | Put _ | ExtFunApp _ | In _ | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _-> true
+  | While(_, _, _, e) | LetRec(_, e) | LetTuple(_, _, e) -> effect e
+  | App _ | Put _ | ExtFunApp _ | In _ | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Continue _ -> true
   | _ -> false
 
 let log = ref ""
@@ -13,6 +13,9 @@ let rec g = function (* 不要定義削除ルーチン本体 (caml2html: elim_f) *)
      let e1, fve1 = g e1 in
      let e2, fve2 = g e2 in
      (If(c, x, y, e1, e2), (fv_if x y fve1 fve2))
+  | While(x, ys, zs, e) ->
+     let e, fve = g e in
+     While(x, ys, zs, e), fv_while ys zs fve
   | Let((x, t), e1, e2) -> (* letの場合 (caml2html: elim_let) *)
      let e1', fve1 = g e1 in
      let e2', fve2 = g e2 in

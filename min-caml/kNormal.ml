@@ -23,6 +23,8 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | FAbs of Id.t
   | Sqrt of Id.t
   | If of int * Id.t * Id.t * t * t (* 比較 + 分岐 (caml2html: knormal_branch) *)
+  | While of Id.t * (Id.t * Type.t) list * Id.t list * t
+  | Continue of Id.t * (Id.t * Type.t) list  * Id.t list 
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t
@@ -53,7 +55,8 @@ let negcond c = c lxor 7
 let swapcond c = (if c land 1 <> 0 then 4 else 0) lor (if c land 2 <> 0 then 2 else 0) lor (if c land 4 <> 0 then 1 else 0)
   
 let rec size = function
-  | If(_, _, _, e1, e2)
+  | If(_, _, _, e1, e2) -> 1 + size e1 + size e2
+  | While(_, _, _, e) -> 1 + size e
   | Let(_, e1, e2) | LetRec({ body = e1 }, e2) -> 1 + size e1 + size e2
   | LetTuple(_, _, e) -> 1 + size e
   | _ -> 1
@@ -72,6 +75,9 @@ let rec fv_letrec x yts e1 e2 =
   let zs = fv_func x yts e1 in
   (S.union zs (S.diff e2 (S.singleton x)))
 
+let rec fv_while yts zs e =
+  S.union (S.of_list zs) (S.diff e (S.of_list (List.map fst yts)))
+    
 let rec fv_lettuple xs y e =
   S.add y (S.diff e (S.of_list (List.map fst xs)))
 
@@ -86,7 +92,10 @@ let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Var(x) -> S.singleton x
   | LetRec({ name = (x, _); args = yts; body = e1 }, e2) ->
      fv_letrec x yts (fv e1) (fv e2)
+  | While(x, yts, zs, e) ->
+     fv_while yts zs (fv e)
   | App(x, ys) -> S.of_list (x :: ys)
+  | Continue(_, _, zs) -> S.of_list zs
   | Tuple(xs) | ExtFunApp(_, xs) -> S.of_list xs
   | Put(x, y, z) -> S.of_list [x; y; z]
   | LetTuple(xs, y, e) -> fv_lettuple xs y (fv e)

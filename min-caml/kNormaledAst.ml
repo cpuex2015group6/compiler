@@ -104,6 +104,33 @@ let rec g indent e = (* AST表示ルーチン *)
     print_string (indent ^ "} Else {" ^ "\n");
     g (indent ^ "  ") t2;
     print_string (indent ^ "}\n")
+  | While(x, yts, zs, e) ->
+     Printf.printf "%sWhile %s\n" indent x;
+    print_string (indent ^ "  vars:");
+    let rec print_list = function
+      | [] -> ()
+      | e::l -> print_string (e ^ " "); print_list l;
+    in
+    print_list (List.map fst yts);
+    print_string "\n";
+    print_string (indent ^ "  init:");
+    print_list zs;
+    print_string "\n";
+    print_string (indent ^ "{\n");
+    g (indent ^ "  ") e;
+    print_string (indent ^ "}\n")
+  | Continue(x, yts, zs) ->
+     Printf.printf "%sContinue %s\n" indent x;
+    let rec print_list = function
+      | [] -> ()
+      | e::l -> print_string (e ^ " "); print_list l;
+    in
+    print_string (indent ^ "  vars:");
+    print_list (List.map fst yts);
+    print_string "\n";
+    print_string (indent ^ "  zs:");
+    print_list zs;
+    print_string "\n";
   | Let((e, t), t1, t2) ->
      print_string (indent ^ "Let " ^ e ^ " ");
      print_type t;
@@ -122,7 +149,7 @@ let rec g indent e = (* AST表示ルーチン *)
        | [] -> ()
        | e::l -> print_string (e ^ " ") ; print_list l;
      in
-     print_list (List.map (fun (x, t) -> x) yts);
+     print_list (List.map fst yts);
      print_string "\n";
      print_string (indent ^ "{\n");
      g (indent ^ "  ") e1;

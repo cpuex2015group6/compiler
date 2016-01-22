@@ -4,6 +4,7 @@ let toplevel : fundef list option ref  = ref (Some [])
   
 let rec g env = function
   | If(c, x, y, e1, e2) -> If(c, x, y, (g env e1), (g env e2))
+  | While(_) | Continue(_) -> assert false
   | Let(xt, e1, e2) -> Let(xt, e1, (g env e2))
   | LetRec({ name = (x, t); args = yts; body = e1}, e2) when !toplevel <> None->
      let env = S.add x env in

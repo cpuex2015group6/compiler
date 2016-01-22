@@ -86,6 +86,11 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	    | Type.Bool | Type.Int -> Ans (If (c, x, y, g env e1, g env e2))
 	    | Type.Float -> Ans (FIf (c, x, y, g env e1, g env e2))
 	    | _ -> failwith "comparition supported only for bool, int, and float")
+  | Closure.While(x, yts, zs, e) ->
+     let env = List.fold_left (fun env (y, t) -> M.add y t env) env yts in
+     let e = g env e in
+     Ans(While(x, yts, zs, e))
+  | Closure.Continue(x, yts, zs) -> Ans(Continue(x, yts, zs))
   | Closure.Let ((x, t1), e1, e2) ->
      let e1' = g env e1 in
      let e2' = g (M.add x t1 env) e2 in

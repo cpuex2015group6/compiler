@@ -12,6 +12,10 @@ let rec get_val = function
      (match get_val e1, get_val e2 with
      | Int(x), Int(y) when x = y -> Int(x)
      | _ -> raise Unmatched)
+  | While(_, _, _, e) ->
+     (match get_val e with
+     | Int(_) as e -> e
+     | _ -> raise Unmatched)
   | Let(_, e1, e2) -> get_val e2
   | LetRec(_, e2) -> get_val e2
   | LetTuple(_, _, e) -> get_val e
@@ -20,6 +24,8 @@ let rec get_val = function
 let rec rm_val = function
   | If(c, x, y, e1, e2) ->
      If(c, x, y, rm_val e1, rm_val e2)
+  | While(x, ys, zs, e) ->
+     While(x, ys, zs, rm_val e)
   | Let(xt, e1, e2) -> Let(xt, e1, rm_val e2)
   | LetRec(f, e) -> LetRec(f, rm_val e)
   | LetTuple(xts, t, e) -> LetTuple(xts, t, rm_val e)
@@ -112,6 +118,9 @@ let rec g env = function
      let e1 = g env e1 in
      let e2 = g env e2 in
      h env (If(c, x, y, e1, e2))
+  | While(x, ys, zs, e) ->
+     let e = g env e in
+     h env (While(x, ys, zs, e))
   | Let((x, t), e1, e2) ->
      let e1 = g env e1 in
      let e2 = g (M.add x e1 env) e2 in

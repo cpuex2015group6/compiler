@@ -30,6 +30,13 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
   | FAbs(x) -> FAbs(find x env)
   | Sqrt(x) -> Sqrt(find x env)
   | If(c, x, y, e1, e2) -> If(c, find x env, find y env, g env e1, g env e2)
+  | While(x, yts, zs, e) ->
+     let x' = Id.genid x in
+     let env = M.add x x' env in
+     let yts' = List.map (fun (y, t) -> (Id.genid y, t)) yts in
+     let env' = List.fold_left2 (fun env (y, _) (y', _) -> M.add y y' env) env yts yts' in
+     While(find x env, yts', List.map (fun z -> find z env) zs, g env' e)
+  | Continue(x, yts, zs) -> Continue(find x env, List.map (fun (y, t) -> (find y env, t)) yts, List.map (fun z -> find z env) zs)
   | Let((x, t), e1, e2) -> (* letのα変換 (caml2html: alpha_let) *)
       let x' = Id.genid x in
       let e1' = g env e1 in

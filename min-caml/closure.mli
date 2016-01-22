@@ -34,6 +34,8 @@ type t =
   | GetHp
   | SetHp of Id.t
   | If of int * Id.t * Id.t * t * t
+  | While of Id.l * (Id.t * Type.t) list * Id.t list * t
+  | Continue of Id.l * (Id.t * Type.t) list  * Id.t list
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t

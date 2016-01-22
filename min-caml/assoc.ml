@@ -4,6 +4,7 @@ open KNormal
 
 let rec f = function (* ネストしたletの簡約とtupleの展開 (caml2html: assoc_f) *)
   | If(c, x, y, e1, e2) -> If(c, x, y, f e1, f e2)
+  | While(x, yts, zs, e) -> While(x, yts, zs, f e)
   | Let(xt, e1, e2) -> (* letの場合 (caml2html: assoc_let) *)
      let rec insert = function
 	     | Let(yt, e3, e4) -> Let(yt, e3, insert e4)

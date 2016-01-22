@@ -34,6 +34,8 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | GetHp
   | SetHp of Id.t
   | If of int * Id.t * Id.t * t * t
+  | While of Id.l * (Id.t * Type.t) list * Id.t list * t
+  | Continue of Id.l * (Id.t * Type.t) list  * Id.t list
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | MakeCls of (Id.t * Type.t) * closure * t
@@ -58,6 +60,8 @@ let rec fv = function
   | Add(x, y) | Sub(x, y) | Xor(x, y) | Or(x, y) | And(x, y) | Sll(x, y) | Srl(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | FAbA(x, y) | Get(x, y) -> S.of_list [x; y]
   | FAM(x, y, z) -> S.of_list [x; y; z]
   | If(_, x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
+  | While(_, yts, zs, e) -> List.fold_left (fun s (y, _) -> S.remove y s) (S.union (S.of_list zs) (fv e)) yts
+  | Continue(_, _, zs) -> S.of_list zs
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
   | Var(x) -> S.singleton x
   | MakeCls((x, t), { entry = l; actual_fv = ys }, e) -> S.remove x (S.union (S.of_list ys) (fv e))
@@ -103,6 +107,10 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
   | KNormal.GetHp(x) -> GetHp
   | KNormal.SetHp(x) -> SetHp(x)
   | KNormal.If(c, x, y, e1, e2) -> If(c, x, y, g env known e1, g env known e2)
+  | KNormal.While(x, yts, zs, e) ->
+     While(Id.L(x), yts, zs, g env known e)
+  | KNormal.Continue(x, yts, zs) ->
+     Continue(Id.L(x), yts, zs)
   | KNormal.Let((x, t), e1, e2) ->
      let e1' = g env known e1 in
      Let((x, t), e1', g (M.add x t env) known e2)

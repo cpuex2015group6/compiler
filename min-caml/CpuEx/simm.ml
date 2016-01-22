@@ -100,6 +100,9 @@ and g'' env = function (* 各命令の 16 bit 即値最適化 *)
      assert (List.length t = 0); 
      let e = g env e in
      IfThen(f, e, t)
+  | While(x, yts, zs, e) ->
+     let e = g env e in
+     While(x, yts, zs, e)
   | e -> e
 
 let rec i e =

@@ -9,6 +9,7 @@ let rec g env fenv venv = function
   | Let((x, t), e1, e2) ->
      let e1 = g env fenv venv e1 in
      Let((x, t), e1, (g env fenv (M.add x t venv) e2))
+  | While(_) | Continue(_) -> assert false
   | LetRec({ name = (x, t); args = yts; body = e1}, e2) ->
      let fenv = S.add x fenv in
      let venv = List.fold_left (fun venv (x, t) -> M.add x t venv) venv yts  in

@@ -4,6 +4,7 @@ let hp = ref (Some 0)
 
 let rec h fenv = function
   | If(_, _, _, e1, e2) -> h fenv e1 && h fenv e2
+  | While(_, _, _, e) -> h fenv e
   | Let(_, e1, e2) -> h fenv e1 && h fenv e2
   | LetRec(_, e) -> assert false
   | LetTuple(_, _, e) -> h fenv e
@@ -14,6 +15,8 @@ let rec h fenv = function
   
 let rec g env fenv = function
   | If(c, x, y, e1, e2) -> If(c, x, y, g env fenv e1, g env fenv e2)
+  | While(x, ys, zs, e) ->
+     While(x, ys, zs, g env fenv e)
   | Add(x, y) when M.mem x env && M.mem y env -> Int(M.find x env + M.find y env)
   | Let((x, t), e1, e2) as exp ->
      if !hp = None then
@@ -21,9 +24,9 @@ let rec g env fenv = function
      else
        let e1' = g env fenv e1 in
        let env =
-	 (match e1' with
-	 | Int(i) -> (M.add x i env)
-	 | _ -> env)
+	       (match e1' with
+	       | Int(i) -> (M.add x i env)
+	       | _ -> env)
        in
        let e2' = g env fenv e2 in
        Let((x, t), e1', e2')

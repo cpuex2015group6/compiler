@@ -62,10 +62,10 @@ let rec h env fn = function
      let x = findi x env in
      let y = findi y env in
      let i = 
-     if c land 1 <> 0 && x < y then 1 else
-       if c land 2 <> 0 && x = y then 1 else
-	 if c land 4 <> 0 && x > y then 1 else
-	   0
+       if c land 1 <> 0 && x < y then 1 else
+         if c land 2 <> 0 && x = y then 1 else
+	         if c land 4 <> 0 && x > y then 1 else
+	           0
      in
      let e1', f1, r1 = h env fn e1 in
      let e2', f2, r2 = h env fn e2 in
@@ -75,10 +75,10 @@ let rec h env fn = function
      let x = findf x env in
      let y = findf y env in
      let i = 
-     if c land 1 <> 0 && x < y then 1 else
-       if c land 2 <> 0 && x = y then 1 else
-	 if c land 4 <> 0 && x > y then 1 else
-	   0
+       if c land 1 <> 0 && x < y then 1 else
+         if c land 2 <> 0 && x = y then 1 else
+	         if c land 4 <> 0 && x > y then 1 else
+	           0
      in
      let e1', f1, r1 = h env fn e1 in
      let e2', f2, r2 = h env fn e2 in
@@ -89,6 +89,9 @@ let rec h env fn = function
      let e2', f2, r2 = h env fn e2 in
      let f = f1 && f2 in
      (If(c, x, y, e1', e2'), f, r1 + r2)
+  | While(x, yts, zs, e) ->
+     let e, f, r = h env fn e in
+     (While(x, yts, zs, e)), f, r
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1', f1, r1 = h env fn e1 in
      let env =
@@ -101,20 +104,22 @@ let rec h env fn = function
      (Let((x, t), e1', e2'), f, r1 + r2)
   | LetRec({ name = (x, t); args = ys; body = e1 }, e2) ->
      assert false;
-     let e1', f1, r1 = h env fn e1 in
-     let e2', f2, r2 = h env fn e2 in
-     let f = f1 && f2 in
-     (LetRec({ name = (x, t); args = ys; body = e1' }, e2'), f, r2)
+     (*
+       let e1', f1, r1 = h env fn e1 in
+       let e2', f2, r2 = h env fn e2 in
+       let f = f1 && f2 in
+       (LetRec({ name = (x, t); args = ys; body = e1' }, e2'), f, r2)
+     *)
   | LetTuple(xts, y, e) when memt y env ->
      h env fn (List.fold_left2
-		 (fun e' xt z -> Let(xt, Var(z), e'))
-		 e
-		 xts
-		 (findt y env))
+		             (fun e' xt z -> Let(xt, Var(z), e'))
+		             e
+		             xts
+		             (findt y env))
   | LetTuple(xts, y, e) ->
      let e', f, r = h env fn e in
      (LetTuple(xts, y, e'), f, r)
-  | App(x, yts) as e when x = fn ->
+  | App(x, _) | Continue(x, _, _) as e when x = fn ->
      (e, false, 1)
   | I2F(x) when memi x env -> (Float(Type.conv_int(findi x env)), true, 0)
   | F2I(x) when memf x env -> (Int(Type.conv_float(findf x env)), true, 0)
@@ -122,7 +127,7 @@ let rec h env fn = function
   | A2I(x) when mema x env -> (let x, _ = finda x env in Int(x), true, 0)
   | e -> (e, true, 0)
 
-let gencys ys env = List.fold_left (fun a y -> a@[expandconst y env]) [] ys
+let gencys ys env = List.map (fun y -> expandconst y env) ys
 
 let listconst cys zs =
   List.fold_left2
@@ -202,26 +207,29 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      let x = findi x env in
      let y = findi y env in
      let i = 
-     if c land 1 <> 0 && x < y then 1 else
-       if c land 2 <> 0 && x = y then 1 else
-	 if c land 4 <> 0 && x > y then 1 else
-	   0
+       if c land 1 <> 0 && x < y then 1 else
+         if c land 2 <> 0 && x = y then 1 else
+	         if c land 4 <> 0 && x > y then 1 else
+	           0
      in
      if i <> 0 then g env fenv fn e1 else g env fenv fn e2
   | If(c, x, y, e1, e2) when memf x env && memf y env ->
      let x = findf x env in
      let y = findf y env in
      let i = 
-     if c land 1 <> 0 && x < y then 1 else
+       if c land 1 <> 0 && x < y then 1 else
        if c land 2 <> 0 && x = y then 1 else
-	 if c land 4 <> 0 && x > y then 1 else
-	   0
+	       if c land 4 <> 0 && x > y then 1 else
+	         0
      in
      if i <> 0 then g env fenv fn e1 else g env fenv fn e2
   | If(c, x, y, e1, e2) ->
      let e1, f1 = g env fenv fn e1 in
      let e2, f2 = g env fenv fn e2 in
      If(c, x, y, e1, e2), f1 || f2
+  | While(x, yts, zs, e) ->
+     let e, f = g env fenv fn e in
+     While(x, yts, zs, e), f
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1, f1 = g env fenv fn e1 in
      let env =
@@ -237,9 +245,9 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      let e2, f2 = g env fenv fn e2 in
      let e2 =
        M.fold
-	 (fun _ (fn, func) e -> if x = fn then LetRec(func, e) else e)
-	 !exenv
-	 e2
+	       (fun _ (fn, func) e -> if x = fn then LetRec(func, e) else e)
+	       !exenv
+	       e2
      in
      LetRec({ name = (x, t); args = ys; body = e1 }, e2), f1 || f2
   | LetTuple(xts, y, e) when memt y env ->
@@ -268,22 +276,22 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      let ffold body = 
        let fn = genfn x lc in
        let f = if M.mem fn fenv then
-	   false
-	 else
-	   generate x fn t lc zs body in
+	         false
+	       else
+	         generate x fn t lc zs body in
        App(fn, genarg cys), f
      in
      let opt fn limit e =
        let rec opt_sub e =
-	 let e', f = g env fenv x (Assoc.f (Beta.f e)) in
-	 if e = e' || KNormal.size e > limit then
-	   (
-	     (if e <> e' then ofenv := S.add fn !ofenv;);
-	     e, f
-	   )
-	 else
-	   let e', f' = opt_sub e' in
-	   e', f || f'
+	       let e', f = g env fenv x (Assoc.f (Beta.f e)) in
+	       if e = e' || KNormal.size e > limit then
+	         (
+	           if e <> e' then ofenv := S.add fn !ofenv;
+	           e, f
+	         )
+	       else
+	         let e', f' = opt_sub e' in
+	         e', f || f'
        in
        let e', f = opt_sub e in
        let e = Elim.f e' in
@@ -291,33 +299,36 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      in
      if lc <> M.empty then
        (
-	 let fn = genfn x lc in
-	 let body = (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc e) in
-	 if M.mem fn fenv || M.mem fn !exenv then
-	   ffold body
-	 else
-	   if not (Inline.is_rec x body) then
-	     if S.mem fn !ofenv then
-	       exp, false
-	     else
-	       let body', f = opt fn ((KNormal.size e) * 2) body in
-	       if KNormal.size body' < (KNormal.size e) / 2 || f then
-		 ffold body'
+	       let fn = genfn x lc in
+	       let body = (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc e) in
+	       if M.mem fn fenv || M.mem fn !exenv then
+	         ffold body
 	       else
-		 exp, false
-	   else
-	     let body, sflag, r = h M.empty x (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc body) in
-	     if not sflag || r > 1 then
+	         if not (Inline.is_rec x body) then
+	           if S.mem fn !ofenv then
+	             exp, false
+	           else
+	             let body', f = opt fn ((KNormal.size e) * 2) body in
+	             if KNormal.size body' < (KNormal.size e) / 2 || f then
+		             ffold body'
+	             else
+		             exp, false
+	         else
+             exp, false
+	     (*
+         let body, sflag, r = h M.empty x (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc body) in
+	       if not sflag || r > 1 then
 	       exp, false
-	     else
+	       else
 	       if S.mem fn !ofenv then
-		 exp, false
+		     exp, false
 	       else
-		 (*let body', f = opt fn ((KNormal.size e) * 4) body in
-		 if KNormal.size body' < 2 * KNormal.size e || f then
-		   ffold body'
-		   else*)
-		 exp, false
+		     let body', f = opt fn ((KNormal.size e) * 4) body in
+		     if KNormal.size body' < 2 * KNormal.size e || f then
+		     ffold body'
+		     else
+		     exp, false
+       *)
        )
      else
        exp, false
@@ -326,15 +337,15 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      let cys = gencys ys env in
      let lc = listconst cys zs in
      (if lc <> M.empty then
-	 let env' =
-	   List.fold_left2
-  	     (fun env' (z, t) y -> M.add z y env')
-	     M.empty
-	     zs
-	     ys in
-	 Alpha.g env' e
+	       let env' =
+	         List.fold_left2
+  	         (fun env' (z, t) y -> M.add z y env')
+	           M.empty
+	           zs
+	           ys in
+	       Alpha.g env' e
       else
-	 exp), false
+	       exp), false
   | I2F(x) when memi x env -> Float(Type.conv_int(findi x env)), false
   | F2I(x) when memf x env -> Int(Type.conv_float(findf x env)), false
   | I2IA(x) | I2FA(x) when memi x env -> Array(findi x env), false

@@ -17,26 +17,26 @@ let rec g env = function
   | Let(xts, (Li(C(i)) as exp), e) ->
      (match xts with
      | [(x, t)] ->
-	let e, fvs_e = g env e in
-	let exp, fvs_exp = g' env exp in
-	if List.mem x fvs_e then
-	  Let(xts, exp, e), fv_let (rm_t xts) fvs_exp fvs_e
-	else
-	  e, fvs_e
+	      let e, fvs_e = g env e in
+	      let exp, fvs_exp = g' env exp in
+	      if List.mem x fvs_e then
+	        Let(xts, exp, e), fv_let (rm_t xts) fvs_exp fvs_e
+	      else
+	        e, fvs_e
      | _ -> assert false)
   | Let(xts, exp, e) ->
      (match xts with
      | [(x, t)] ->
-	let e, fvs_e = g env e in
-	let exp, fvs_exp = g' env exp in
-	if List.mem x fvs_e || effect exp || is_reg x then
-	  match exp with
-	  | Mr(x') when not (List.mem x' fvs_e)->
-	     g (M.add x x' env) e
-	  | _ ->
-	     Let(xts, exp, e), fv_let (rm_t xts) fvs_exp fvs_e
-	else
-	  e, fvs_e
+	      let e, fvs_e = g env e in
+	      let exp, fvs_exp = g' env exp in
+	      if List.mem x fvs_e || effect exp || is_reg x then
+	        match exp with
+	        | Mr(x') when not (List.mem x' fvs_e)->
+	           g (M.add x x' env) e
+	        | _ ->
+	           Let(xts, exp, e), fv_let (rm_t xts) fvs_exp fvs_e
+	      else
+	        e, fvs_e
      | _ -> assert false)
 and g' env = function
   | Nop | Li(_) | SetL(_) | Comment(_) | Save(_) | Restore(_) as e -> genfv e
@@ -89,10 +89,10 @@ and g' env = function
      IfThen(f, e, t), fv_ifthen f fve t
   | CallCls(x, ys) -> genfv (CallCls(x, List.map (fun y -> replace env y) ys))
   | CallDir(x, ys) -> genfv (CallDir(x, List.map (fun y -> replace env y) ys))
-  | While(x, ys, e) ->
+  | While(x, yts, zs, e) ->
      let e, fve = g env e in
-     While(x, List.map (fun y -> replace env y) ys, e), fv_while ys fve
-  | Continue(x, ys) -> genfv (Continue(x, List.map (fun y -> replace env y) ys))
+     While(x, yts, zs, e), fv_while yts zs fve
+  | Continue(x, yts, zs) -> genfv (Continue(x, yts, List.map (fun z -> replace env z) zs))
   
 let i { name = l; args = xs; body = e; ret = t } =
   { name = l; args = xs; body = fst (g M.empty e); ret = t }

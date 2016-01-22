@@ -9,6 +9,7 @@ let rec check_ans f  = function
   | Let(_, _, e) -> check_ans f e
 and check_ans_exp f = function
   | If(_, _, _, e1, e2) | FIf(_, _, _, e1, e2) -> check_ans f e1 && check_ans f e2
+  | While(_, _, _, e) -> check_ans f e
   | IfThen(_, e, _) -> check_ans f e && check_ans_exp f (Li(C(0)))
   | exp -> f exp
     
@@ -18,6 +19,7 @@ let rec replace_ans exp = function
 and replace_ans_exp exp = function
   | If(c, x, y, e1, e2) -> If(c, x, y, replace_ans exp e1, replace_ans exp e2)
   | FIf(c, x, y, e1, e2) -> FIf(c, x, y, replace_ans exp e1, replace_ans exp e2)
+  | While(x, yts, zs, e) -> While(x, yts, zs, replace_ans exp e)
   | IfThen(f, e, t) -> IfThen(f, replace_ans exp e, t)
   | _ -> exp
 
@@ -131,6 +133,9 @@ and g' dest = function
   | IfThen(f, e, t) ->
      let e = g dest e in
      h dest (IfThen(f, e, t))
+  | While(x, yts, zs, e) ->
+     let e = g dest e in
+     h dest (While(x, yts, zs, e))
   | e -> h dest e
 
 let rec j e =

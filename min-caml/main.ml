@@ -7,18 +7,18 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルへ出力する (caml2htm
   Emit.f outchan
     (Aopt.g
        (RegAlloc.f
-	  (Aopt.f
-	     (Virtual.f
-		(Closure.f
-		   ((*KNormaledAst.f *)
-		     (Opt.f 100
-			(LnFn.f
-			   (RmCl.f
-			      (Celm.f
- 				 (Alpha.f
-				    (KNormal.f
-				       (Typing.f
-					  (Parser.exp Lexer.token l))))))))))))))
+	        (Aopt.f
+	           (Virtual.f
+		            (Closure.f
+		               (KNormaledAst.f 
+		                 (Opt.f 100
+			                  (LnFn.f
+			                     (RmCl.f
+			                        (Celm.f
+ 				                         (Alpha.f
+				                            (KNormal.f
+				                               (Typing.f
+					                                (Parser.exp Lexer.token l))))))))))))))
     
 let string s = lexbuf stdout (Lexing.from_string s) (* 文字列をコンパイルして標準出力に表示する (caml2html: main_string) *)
 

@@ -97,7 +97,7 @@ let rec g dest live contfv = function
      (regmap, pregmap, graph), fvs_let (rm_t xts) (rm_reg_s fv) contfv
 and g' dest live contfv exp =
   match exp with
-  | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Continue _ | Save _ | Restore _ ->
+  | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Save _ | Restore _ ->
      ([], [], M.empty), fvs_exp exp
   | Mr(x) ->
      assert_single dest;
@@ -107,9 +107,11 @@ and g' dest live contfv exp =
     ([], List.fold_left2 (fun graph dv x -> (dv, x)::graph) [] (rm_t dest) xs, M.empty), fvs_exp exp
   | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], M.empty), S.empty
   | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], M.empty), fvs_exp exp
-  | While(_, ys, e) ->
+  | While(_, yts, zs, e) ->
      let (regmap, pregmap, graph), contfv' = g dest live contfv e in
-     (regmap, pregmap, graph), fvs_while ys contfv'
+     ((List.map2 (fun (y, _) z -> (y, z)) yts zs) @ regmap, pregmap, graph), fvs_while yts zs contfv'
+  | Continue(_, yts, zs) ->
+     (List.map2 (fun (y, _) z -> (y, z)) yts zs, [], M.empty), fvs_exp exp
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) ->
      let (regmap1, pregmap1, graph1), contfv1 = g dest live contfv e1 in
      let (regmap2, pregmap2, graph2), contfv2 = g dest live contfv e2 in
@@ -134,7 +136,7 @@ let mem r regenv = if is_reg r then true else M.mem r regenv
 
 let rec replace_e regenv = function
   | Ans (exp) -> Ans(replace_exp regenv exp)
-  | Let(xts, exp, e) -> Let(List.fold_left (fun xts (x, t) -> xts@[(replace regenv x, t)]) [] xts, replace_exp regenv exp, replace_e regenv e)
+  | Let(xts, exp, e) -> Let(List.map (fun (x, t) -> (replace regenv x, t)) xts, replace_exp regenv exp, replace_e regenv e)
 and replace_exp regenv = function
   | Nop | Li _ | SetL _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Comment _ | Restore _ as exp -> exp
   | Mr(x) -> Mr(replace regenv x)
@@ -161,10 +163,10 @@ and replace_exp regenv = function
   | FCmp(c, x, y) -> FCmp(c, replace regenv x, replace regenv y)
   | Cmpa(c, x, y', z) -> Cmpa(c, replace regenv x, replace' regenv y', replace regenv z)
   | FCmpa(c, x, y, z) -> FCmpa(c, replace regenv x, replace regenv y, replace regenv z)
-  | CallCls(l, ys) -> CallCls(l, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)
-  | CallDir(f, ys) -> CallDir(f, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)
-  | While(x, ys, e) -> While(x, List.fold_left (fun l y -> l@[replace regenv y]) [] ys, replace_e regenv e)
-  | Continue(x, ys) -> Continue(x, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)
+  | CallCls(l, ys) -> CallCls(l, List.map (fun y -> replace regenv y) ys)
+  | CallDir(f, ys) -> CallDir(f, List.map (fun y -> replace regenv y) ys)
+  | While(x, yts, zs, e) -> While(x, List.map (fun (y, t) -> (replace regenv y, t)) yts, List.map (fun z -> replace regenv z) zs, replace_e regenv e)
+  | Continue(x, yts, zs) -> Continue(x, yts, List.map (fun z -> replace regenv z) zs)
   | If(c, x, y, e1, e2) -> If(c, replace regenv x, replace regenv y, replace_e regenv e1, replace_e regenv e2)
   | FIf(c, x, y, e1, e2) -> FIf(c, replace regenv x, replace regenv y, replace_e regenv e1, replace_e regenv e2)
   | IfThen(f, e1, t) -> IfThen(replace regenv f, replace_e regenv e1, List.fold_left (fun l y -> l@[replace regenv y]) [] t)
@@ -239,10 +241,13 @@ and makefv' dest contfv lcontfv exp =
   | IfThen(_, e, _) ->
      let _, tfv = makefv dest contfv lcontfv e in
      IfThenFv(tfv)
+  | While(_, _, _, e) ->
+     let _, tfv = makefv dest contfv lcontfv e in
+     WhileFv(tfv)
   | _ ->
      GenFv
 
-(* Callによるレジスタ再割当てコードの生成 *)
+(* Save, Restoreの生成 *)
 let rec i dest regenv = function
   | AnsFv(contfv, lcontfv, expfv), Ans exp ->
      let contfv', lcontfv' = concatfvs' (Ans(exp)) dest contfv lcontfv in
@@ -371,9 +376,11 @@ and i'' dest contfv lcontfv regenv ((_, exp) as exp') =
 	    Type.Int::dts
      ) keys ([], e1, t, M.empty, tvs, dts) in
      (List.fold_left (fun e (xts, exp) -> Let(xts, exp, e))
-	      (Let((unify_xt tvs dts), IfThen(replace regenv f, e1, List.fold_left (fun l y -> l@[replace regenv y]) [] t), Ans(Tuple(tvs')))) ins), regenv'
-  | WhileFv(efv), While(x, ys, e) ->
-     assert false
+	      (Let((unify_xt tvs dts), IfThen(replace regenv f, e1, List.map (fun y -> replace regenv y) t), Ans(Tuple(tvs')))) ins), regenv'
+  | WhileFv(efv), While(x, yts, zs, e) ->
+     let regenv = (List.fold_left (fun regenv (y, _) -> M.add y y regenv) regenv yts) in
+     let e, regenv' = i dest regenv (efv, e) in
+     Ans(While(x, List.map (fun (y, t) -> replace regenv y, t) yts, List.map (fun z -> replace regenv z) zs, e)), regenv'
   | GenFv, CallCls(l, ys) ->
      i''_call regenv contfv ys (CallCls(l, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)), M.empty
   | GenFv, CallDir(f, ys) ->
@@ -602,7 +609,7 @@ let j (regmap, pregmap, graph) =
   let vrmap = allocate false regmap pregmap graph vrmap in
   let vrmap =
     try
-      let _ = M.iter (fun k _ -> check k vrmap graph;()) graph  in
+      let _ = M.iter (fun k _ -> let _ = check k vrmap graph in ()) graph  in
       vrmap
     with RegAlloc_conflict ->
       allocate true regmap pregmap graph vrmap

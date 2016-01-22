@@ -18,6 +18,7 @@ let rec check_ans f  = function
 and check_ans_exp f = function
   | If(_, _, _, e1, e2) | FIf(_, _, _, e1, e2) -> check_ans f e1 && check_ans f e2
   | IfThen(_, e, _) -> check_ans f e && check_ans_exp f (Li(C(0)))
+  | While(_, _, _, e) -> check_ans f e
   | exp -> f exp
     
       
@@ -96,6 +97,9 @@ and g' env = function
      assert (List.length t = 0); 
      let e = g env e in
      h env (IfThen(f, e, t))
+  | While(x, yts, zs, e) ->
+     let e = g env e in
+     h env (While(x, yts, zs, e))
   | e -> h env e
 
 let rec j e =

@@ -25,8 +25,3 @@ let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
       )
   else
     e
-
-(* 
-グローバル変数ヒープ化
-引数の切り出し
-*)

@@ -21,6 +21,8 @@ type t =
   | FAbs of Id.t
   | Sqrt of Id.t
   | If of int * Id.t * Id.t * t * t
+  | While of Id.t * (Id.t * Type.t) list * Id.t list * t
+  | Continue of Id.t * (Id.t * Type.t) list  * Id.t list
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t
@@ -52,6 +54,7 @@ val size : t -> int
 val fv : t -> S.t
 val fv_let : Id.t -> S.t -> S.t -> S.t
 val fv_if : Id.t -> Id.t -> S.t -> S.t -> S.t
+val fv_while : (Id.t * Type.t) list -> Id.t list -> S.t -> S.t
 val fv_func : Id.t -> (Id.t * Type.t) list -> S.t -> S.t
 val fv_letrec : Id.t -> (Id.t * Type.t) list -> S.t -> S.t -> S.t
 val fv_lettuple : (Id.t * Type.t) list -> Id.t -> S.t -> S.t

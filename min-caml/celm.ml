@@ -9,17 +9,20 @@ let rec i venv env = function
      let env = M.fold (fun k d m -> if (M.mem k env1) && (M.mem k env2) then M.add k d m else m) env M.empty
      in
      If(c, x, y, e1, e2), env
+  | While(x, ys, zs, e) ->
+     let e, env = i venv env e in
+     While(x, ys, zs, e), env
   | Let((x, t), (Get(a, ix)), e2) when M.mem ix venv ->
      let av = Format.sprintf "%s_i%d" a (M.find ix venv) in
      (
        try
-	 (
-	   let v = M.find av env in
-	   let e2, env = i venv env e2 in
-	   Let((x, t), Var(v), e2), env 
-	 ) with Not_found ->
-	   let e2, env = i venv (M.add av x env) e2 in
-	   Let((x, t), (Get(a, ix)), e2), env
+	       (
+	         let v = M.find av env in
+	         let e2, env = i venv env e2 in
+	         Let((x, t), Var(v), e2), env 
+	       ) with Not_found ->
+	         let e2, env = i venv (M.add av x env) e2 in
+	         Let((x, t), (Get(a, ix)), e2), env
      )
   | Let((x, t), (GetTuple(a, ix)), e2) ->
      let av = Format.sprintf "%s_i%d" a ix in
