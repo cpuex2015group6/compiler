@@ -92,7 +92,7 @@ and g' env = function
   | While(x, yts, zs, e) ->
      let e, fve = g env e in
      While(x, yts, zs, e), fv_while yts zs fve
-  | Continue(x, yts, zs) -> genfv (Continue(x, yts, List.map (fun z -> replace env z) zs))
+  | Continue(x, yts, zs, ws, us) -> genfv (Continue(x, yts, List.map (fun z -> replace env z) zs, List.map (fun w -> replace env w) ws, List.map (fun u -> replace env u) us))
   
 let i { name = l; args = xs; body = e; ret = t } =
   { name = l; args = xs; body = fst (g M.empty e); ret = t }

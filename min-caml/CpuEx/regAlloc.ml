@@ -108,10 +108,11 @@ and g' dest live contfv exp =
   | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], M.empty), S.empty
   | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], M.empty), fvs_exp exp
   | While(_, yts, zs, e) ->
-     let (regmap, pregmap, graph), contfv' = g dest live contfv e in
+     let (regmap, pregmap, graph), contfv' = g dest (S.union (rm_reg_s (rm_t_s yts)) live) contfv (*S.union contfv (fvs_let (rm_t yts) S.empty (fvs e))*) e in
+     let graph = make_graph graph live contfv' yts exp in
      ((List.map2 (fun (y, _) z -> (y, z)) yts zs) @ regmap, pregmap, graph), fvs_while yts zs contfv'
-  | Continue(_, yts, zs) ->
-     (List.map2 (fun (y, _) z -> (y, z)) yts zs, [], M.empty), fvs_exp exp
+  | Continue(_, yts, zs, ws, us) ->
+     ((List.map2 (fun w u -> (w, u)) ws us) @ (List.map2 (fun (y, _) z -> (y, z)) yts zs), [], M.empty), fvs_exp exp
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) ->
      let (regmap1, pregmap1, graph1), contfv1 = g dest live contfv e1 in
      let (regmap2, pregmap2, graph2), contfv2 = g dest live contfv e2 in
@@ -166,7 +167,7 @@ and replace_exp regenv = function
   | CallCls(l, ys) -> CallCls(l, List.map (fun y -> replace regenv y) ys)
   | CallDir(f, ys) -> CallDir(f, List.map (fun y -> replace regenv y) ys)
   | While(x, yts, zs, e) -> While(x, List.map (fun (y, t) -> (replace regenv y, t)) yts, List.map (fun z -> replace regenv z) zs, replace_e regenv e)
-  | Continue(x, yts, zs) -> Continue(x, yts, List.map (fun z -> replace regenv z) zs)
+  | Continue(x, yts, zs, ws, us) -> Continue(x, yts, List.map (fun z -> replace regenv z) zs, ws, List.map (fun u -> replace regenv u) us)
   | If(c, x, y, e1, e2) -> If(c, replace regenv x, replace regenv y, replace_e regenv e1, replace_e regenv e2)
   | FIf(c, x, y, e1, e2) -> FIf(c, replace regenv x, replace regenv y, replace_e regenv e1, replace_e regenv e2)
   | IfThen(f, e1, t) -> IfThen(replace regenv f, replace_e regenv e1, List.fold_left (fun l y -> l@[replace regenv y]) [] t)
@@ -241,7 +242,10 @@ and makefv' dest contfv lcontfv exp =
   | IfThen(_, e, _) ->
      let _, tfv = makefv dest contfv lcontfv e in
      IfThenFv(tfv)
-  | While(_, _, _, e) ->
+  | While(_, yts, _, e) ->
+     (*let wfv = fvs_let (rm_t yts) S.empty (fvs e) in
+     let contfv = S.union contfv wfv in
+     let lcontfv = S.union lcontfv wfv in*)
      let _, tfv = makefv dest contfv lcontfv e in
      WhileFv(tfv)
   | _ ->
@@ -250,17 +254,14 @@ and makefv' dest contfv lcontfv exp =
 (* Save, Restoreの生成 *)
 let rec i dest regenv = function
   | AnsFv(contfv, lcontfv, expfv), Ans exp ->
-     let contfv', lcontfv' = concatfvs' (Ans(exp)) dest contfv lcontfv in
-     let sl, regenv = cl_vars contfv' lcontfv' regenv in
      let e, regenv = i' dest contfv lcontfv regenv (expfv, exp) in
-     let e, regenv = List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) e sl, regenv in
      let sl, regenv = cl_vars contfv lcontfv regenv in
+     let e = List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) e sl in
      let tmp = List.fold_left (fun tmp t -> tmp@[(Id.gentmp t, t)]) [] (rm_x dest) in
      concat e tmp (List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) (Ans(Tuple(rm_t tmp))) sl), regenv
   | LetFv(contfv, lcontfv, expfv, tfv), Let(xts, exp, e) ->
-     let contfv', lcontfv' = concatfvs' (Ans(exp)) xts contfv lcontfv in
-     let sl, regenv = cl_vars contfv' lcontfv' regenv in
      let exp, regenv = i' xts contfv lcontfv regenv (expfv, exp) in
+     let sl, regenv = cl_vars contfv lcontfv regenv in
      let e, regenv = i dest (List.fold_left (fun regenv x -> M.add x x regenv) regenv (rm_t xts)) (tfv, e) in
      List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) (concat exp xts e) sl, regenv
   | _ -> assert false
@@ -455,19 +456,33 @@ let j (regmap, pregmap, graph) =
   in
   (* 再優先割り当てマップをベースにして、他の強制割り当てが解決できる場合は解決しておく *)
   let regmap, vrmap = map regmap vrmap in
+  let oregmap = regmap in
   (* xが干渉グラフに抵触していないか調べる *)
   let check x vrmap graph =
-    assert (M.mem x vrmap);
-    let _ =
-      try
-        let x' = M.find x vrmap in
-        S.iter (fun y ->
-          try
-            if x' = (if is_reg y then y else M.find y vrmap) then
-              raise RegAlloc_conflict
-          with Not_found -> ()
-        ) (M.find x graph)
-      with Not_found -> () in
+    let rec check_sub1 x checked =
+      let check_sub2 x = 
+        assert (M.mem x vrmap);
+        try
+          let x' = M.find x vrmap in
+          S.iter (fun y ->
+                  try
+                    if x' = (if is_reg y then y else M.find y vrmap) then
+                      raise RegAlloc_conflict
+                  with Not_found -> ()
+                 ) (M.find x graph)
+        with Not_found -> ()
+      in
+      check_sub2 x;
+      List.iter (fun (y, z) ->
+                 match x = y, x = z with
+                 | true, false ->
+                    if not (S.mem z checked) then check_sub1 z (S.add x checked);
+                 | false, true ->
+                    if not (S.mem y checked) then check_sub1 y (S.add x checked);
+                 | _ -> ()
+                ) oregmap;
+    in
+    check_sub1 x S.empty;
     graph
   in
   (* 優先割り当てマップの中からレジスタに割り当てられる変数を割り当てる *)
@@ -585,7 +600,7 @@ let j (regmap, pregmap, graph) =
         else
           let _ = assert (not (is_reg target)) in
           let rec allocate_sub regmap graph vrmap list =
-	          let reg = try List.hd list with Failure "hd" -> raise RegAlloc_starvation in
+	          let reg = try List.hd list with Failure "hd" -> showmap "" (regmap, pregmap, graph) vrmap; prerr_endline target; raise RegAlloc_starvation in
 	          (try
 	             let vrmap = M.add target reg vrmap in
 	             let regmap, vrmap = map regmap vrmap in
@@ -606,16 +621,54 @@ let j (regmap, pregmap, graph) =
     let vrmap = allocate' f (S.elements (M.keys graph)) regmap pregmap graph vrmap in
     vrmap
   in
-  let vrmap = allocate false regmap pregmap graph vrmap in
+  let vrmap' = allocate false regmap pregmap graph vrmap in
   let vrmap =
     try
-      let _ = M.iter (fun k _ -> let _ = check k vrmap graph in ()) graph  in
-      vrmap
+      let _ = M.iter (fun k _ -> let _ = check k vrmap' graph in ()) graph  in
+      vrmap'
     with RegAlloc_conflict ->
-      allocate true regmap pregmap graph vrmap
+      (
+        let vrmap = allocate true regmap pregmap graph vrmap in
+        (* TODO 消しても良い？ *)
+        let _ = M.iter (fun k _ -> let _ = check k vrmap graph in ()) graph in
+        vrmap
+      )
   in
   vrmap
 
+(* whileループ内の重複Saveの除去 *)
+let rec k = function
+  | Ans(exp) ->
+     k' S.empty exp
+  | Let(xts, exp, e) ->
+     let e, env = k e in
+     let env = S.fold (fun x env -> S.remove x env) (S.of_list (rm_t xts)) env in
+     let exp, env = k' env exp in
+     concat exp xts e, env
+and k' env exp = match exp with
+  | If(c, x, y, e1, e2) ->
+     let e1, env1 = k e1 in
+     let e2, env2 = k e2 in
+     Ans(If(c, x, y, e1, e2)), S.union env (S.union env1 env2)
+  | FIf(c, x, y, e1, e2) ->
+     let e1, env1 = k e1 in
+     let e2, env2 = k e2 in
+     Ans(FIf(c, x, y, e1, e2)), S.union env (S.union env1 env2)
+  | IfThen(f, e, t) ->
+     let e, env' = k e in
+     Ans(IfThen(f, e, t)), S.union env env'
+  | While(x, yts, zs, e) ->
+     let e, env' = k e in
+     let env = S.union env env' in
+     let env = S.fold (fun x env -> S.remove x env) (S.of_list (rm_t yts)) env in
+     let e = S.fold (fun x e -> seq (Save(x, x), e)) env (Ans(While(x, yts, zs, e))) in
+     e, env
+  | Save(x, y) when x = y->
+     Ans(exp), S.add x env
+  | _ ->
+     Ans(exp), env
+
+                             
 let rec apply regmap e = try replace_e regmap e with RegNot_found r -> apply (M.add r regs.(0) regmap) e
     
 let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
@@ -624,9 +677,9 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
       (fun (i, e, arg_regs) y ->
        let r = regs.(i) in
        (i + 1,
-	Let([(y, Type.Int)], Mr(regs.(i)), e),
-	arg_regs @ [r]
-       ))
+	      Let([(y, Type.Int)], Mr(regs.(i)), e),
+	      arg_regs @ [r]
+      ))
       (0, e, [])
       ys in
   let a =
@@ -636,17 +689,20 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
   let e = specify_ret [(regs.(0), Type.Unit)] e in
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
+  let e, _ = k e in
   let map, _ = g [(a, t)] S.empty (fvs (Ans(Nop))) e in
   let vrmap = j map in
   let e = apply vrmap e in
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
+  show fundefs e;
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs = List.map h fundefs in
   let e = specify_ret [(regs.(0), Type.Unit)] e in
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
+  let e, _ = k e in
   let map, _ = g [(regs.(0), Type.Unit)] S.empty (fvs (Ans(Nop))) e in
   let map = j map in
   let e = apply map e in

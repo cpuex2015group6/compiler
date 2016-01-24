@@ -47,7 +47,7 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
   | While of Id.l * (Id.t * Type.t) list * Id.t list * t
-  | Continue of Id.l * (Id.t * Type.t) list  * Id.t list
+  | Continue of Id.l * (Id.t * Type.t) list  * Id.t list * Id.t list * Id.t list
   | Save of Id.t * Id.t (* レジスタ変数の値をスタック変数へ保存 *)
   | Restore of Id.t (* スタック変数から値を復元 *)
 type fundef =
@@ -129,7 +129,7 @@ let rec fv_exp = function
   | CallDir (_, ys) -> ys
   | While(_, yts, zs, e) ->
      fv_while yts zs (fv_o e)
-  | Continue(_, _, zs) -> zs
+  | Continue(_, _, zs, ws, us) -> zs @ us
 and fv_o = function 
   | Ans (exp) -> fv_exp exp
   | Let (xts, exp, e) ->
@@ -175,7 +175,7 @@ let rec fvs_exp = function
   | CallCls (x, ys) -> S.add x (S.of_list ys)
   | CallDir (_, ys) -> S.of_list ys
   | While(_, yts, zs, e) -> fvs_while yts zs (fvs e)
-  | Continue (_, _, zs) -> S.of_list zs
+  | Continue (_, _, zs, ws, us) -> S.of_list (zs @ us) 
 (* fvs : t -> S.t *)
 and fvs = function 
   | Ans (exp) -> fvs_exp exp
@@ -400,13 +400,19 @@ and j indent = function
      Printf.fprintf stdout "%sthen:\n" indent;
      let indent' = indent ^ "  " in
      i indent' (Tail, e);
-  | Continue(Id.L(x), yts, zs) ->
+  | Continue(Id.L(x), yts, zs, ws, us) ->
      Printf.fprintf stdout "continue %s, " x;
      Printf.fprintf stdout "vars:";
      List.iter (fun (y, _) -> Printf.fprintf stdout "%s, " y) yts;
      Printf.fprintf stdout " ";
      Printf.fprintf stdout "zs:";
      List.iter (fun z -> Printf.fprintf stdout "%s, " z) zs;
+     Printf.fprintf stdout " ";
+     Printf.fprintf stdout "fv:";
+     List.iter (fun w -> Printf.fprintf stdout "%s, " w) ws;
+     Printf.fprintf stdout " ";
+     Printf.fprintf stdout "us:";
+     List.iter (fun u -> Printf.fprintf stdout "%s, " u) us;
      Printf.fprintf stdout "\n"     
 
 let show fundefs e =

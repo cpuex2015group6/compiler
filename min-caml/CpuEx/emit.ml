@@ -103,6 +103,16 @@ let restore_lr oc =
 let is_no_effect f g = function
   | Li _ | SetL _ | Mr _ | Tuple _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
   | _ -> g ()
+           
+let rec look_while = function
+  | Ans(exp) -> look_while' exp
+  | Let(_, exp, e) -> if look_while' exp then true else look_while e
+and look_while' = function
+  | If(_, _, _, e1, e2) | FIf(_, _, _, e1, e2) -> look_while e1 || look_while e2
+  | IfThen(_, e, _) | While(_, _, _, e) -> look_while e
+  | CallCls _ | CallDir _ -> true
+  | _ -> false
+                                                         
     
 let rec g oc cflag = function (* 命令列のアセンブリ生成 *)
   | (dest, Ans (exp)) -> g' oc cflag (dest, exp)
@@ -303,11 +313,17 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      g'_non_tail_ifthen oc cflag x (NonTail(z)) (reg f) e
   | (_ as t, While(Id.L(x), yts, zs, e)) ->
      List.iter2 (fun (y, _) z -> assert (y = z)) yts zs;
-    print oc (Printf.sprintf "%s:\n" x);
-    g oc cflag (t, e)
+     let cflag =
+       if not cflag then
+         let cflag = look_while e in
+         (if cflag then store_lr oc);
+         cflag
+       else cflag in
+     print oc (Printf.sprintf "%s:\n" x);
+     g oc cflag (t, e)
   | (NonTail(_), Continue(_)) ->
      assert false
-  | (Tail, Continue(Id.L(x), yts, zs)) ->
+  | (Tail, Continue(Id.L(x), yts, zs, _, _)) ->
      op2l oc "jif" reg_tmp (reg reg_zero) x;
      cflag
   (* 関数呼び出しの仮想命令の実装 *)

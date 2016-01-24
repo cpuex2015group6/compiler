@@ -46,7 +46,7 @@ and exp =
   | CallCls of Id.t * Id.t list
   | CallDir of Id.l * Id.t list
   | While of Id.l * (Id.t * Type.t) list * Id.t list * t
-  | Continue of Id.l * (Id.t * Type.t) list  * Id.t list
+  | Continue of Id.l * (Id.t * Type.t) list  * Id.t list * Id.t list * Id.t list
   | Save of Id.t * Id.t (* レジスタ変数の値をスタック変数へ保存 *)
   | Restore of Id.t (* スタック変数から値を復元 *)
 type fundef =

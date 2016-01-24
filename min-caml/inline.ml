@@ -76,12 +76,12 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
      let e2' = g env fmap e2 in
      Let((x, t), e1', e2')
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) -> (* 関数定義の場合 (caml2html: inline_letrec) *)
-     if is_rec x e1 && is_loop x true e1 then
+(*     if is_rec x e1 && is_loop x true e1 then
        (* While展開 *)
        let e1 = While(x, yts, List.map fst yts, i x yts e1) in
        let e1 = Alpha.g M.empty e1 in
        LetRec({ name = (x, t); args = yts; body = e1 }, g env fmap e2)
-     else
+     else*)
        if not (M.mem x fmap) then
          g env fmap e2
        else

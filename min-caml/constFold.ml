@@ -259,16 +259,16 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | LetTuple(xts, y, e) ->
      let e, f = g env fenv fn e in
      LetTuple(xts, y, e), f
-  | Get(x, y) when mema x env && memi y env && findi y env <> 0  ->
+  | Get(x, y) when mema x env && memi y env && fst (finda x env) <> 0 ->
      let t1 = Id.genid "t" in
      let t2 = Id.genid "t" in
      let ax, at = (finda x env) in
-     Let((t1, at), Array(ax + (findi y env)), Let((t2, Type.Int), Int(0), Get(t1, t2))), false
-  | Put(x, y, z) when mema x env && memi y env && findi y env <> 0  ->
+     Let((t1, at), Array(0), Let((t2, Type.Int), Int(ax + (findi y env)), Get(t1, t2))), false
+  | Put(x, y, z) when mema x env && memi y env && fst (finda x env) <> 0 ->
      let t1 = Id.genid "t" in
      let t2 = Id.genid "t" in
      let ax, at = (finda x env) in
-     Let((t1, at), Array(ax + (findi y env)), Let((t2, Type.Int), Int(0), Put(t1, t2, z))), false
+     Let((t1, at), Array(0), Let((t2, Type.Int), Int(ax + (findi y env)), Put(t1, t2, z))), false
   | App(x, ys) as exp when M.mem x fenv && fn <> x ->
      let (zs, e, t) = M.find x fenv in
      let cys = gencys ys env in

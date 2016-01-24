@@ -830,7 +830,7 @@ in
 
 (**** ORマトリクス全体について交点を調べる。****)
 (*MINCAML*)let rec trace_or_matrix ofs or_network =
-(*NOMINCAML let rec trace_or_matrix ofs or_network =*)
+  (*NOMINCAML let rec trace_or_matrix ofs or_network =*)
   let head = or_network.(ofs) in
   let range_primitive = head.(0) in
   if range_primitive = -1 then (* 全オブジェクト終了 *)
@@ -840,14 +840,14 @@ in
     then (solve_one_or_network 1 head)
     else 
       (
-	(* range primitive の衝突しなければ交点はない *)
-	let t = solver range_primitive vscan viewpoint in
-	if t <> 0 then
-	  let tp = solver_dist.(0) in
-	  if tp < tmin.(0)
-	  then (solve_one_or_network 1 head)
-	  else ()
-	else ()
+	      (* range primitive の衝突しなければ交点はない *)
+	      let t = solver range_primitive vscan viewpoint in
+	      if t <> 0 then
+	        let tp = solver_dist.(0) in
+	        if tp < tmin.(0)
+	        then (solve_one_or_network 1 head)
+	        else ()
+	      else ()
       );
     trace_or_matrix (ofs + 1) or_network
   )
@@ -1056,18 +1056,18 @@ in
   if (not crashed_p) then
     if nref <> 0 then 
       ( 
-	let hl = -.(in_prod vscan light) in
-	(* 90°を超える場合は0 (光なし) *)
-	if 0.0 < hl then
-	  (
-	   (* ハイライト強度は角度の cos^3 に比例 *)
-	   let ihl = fsqr hl *. hl *. energy *. beam.(0) in
-	   rgb.(0) <- rgb.(0) +. ihl;
-	   rgb.(1) <- rgb.(1) +. ihl;
-	   rgb.(2) <- rgb.(2) +. ihl
-	  )
-	else ()
-       )
+	      let hl = -.(in_prod vscan light) in
+	      (* 90°を超える場合は0 (光なし) *)
+	      if 0.0 < hl then
+	        (
+	          (* ハイライト強度は角度の cos^3 に比例 *)
+	          let ihl = fsqr hl *. hl *. energy *. beam.(0) in
+	          rgb.(0) <- rgb.(0) +. ihl;
+	          rgb.(1) <- rgb.(1) +. ihl;
+	          rgb.(2) <- rgb.(2) +. ihl
+	        )
+	      else ()
+      )
     else ()
   else ();
   
@@ -1078,59 +1078,59 @@ in
       let cobj = objects.(crashed_object.(0)) in
       get_nvector cobj crashed_point;
       let bright = 
-	if (shadow_check_one_or_matrix 0 or_net.(0) crashed_point)
-	then 
-	  0.0 (* 影なので光は当たらない *)
-	else (
-	  let br = -.(in_prod nvector light) in
-	  let br1 = if 0.0 > br then 0.2 else br +. 0.2 in
-	  br1 *. energy *. o_diffuse cobj
-	 )
+	      if (shadow_check_one_or_matrix 0 or_net.(0) crashed_point)
+	      then 
+	        0.0 (* 影なので光は当たらない *)
+	      else (
+	        let br = -.(in_prod nvector light) in
+	        let br1 = if 0.0 > br then 0.2 else br +. 0.2 in
+	        br1 *. energy *. o_diffuse cobj
+	      )
       in
       utexture cobj crashed_point; (* テクスチャを計算 *)
       accumulate_vec_mul rgb texture_color bright;
 
       if nref > 4 then () else
-      if 0.1 < energy then 
-	( 
-	  (* 2. 反射光 *)
-	  let w = (-2.0) *. in_prod vscan nvector in
-	  (* 反射光の方向にトレース方向を変更 *)
-	  accumulate_vec_mul vscan nvector w;
-	  
-	  let m_surface = o_reflectiontype cobj in
-	  if m_surface = 1 then
-	    (* 乱反射 : ハイライトを計算 *)
-	    (
-	     if 0.0 = (o_hilight cobj) then 
-	       ()
-	     else
-	       let hl = -.(in_prod vscan light) in
-	       if 0.0 < hl then
-		 ( 
-		   let ihl =
-		     fsqr (fsqr hl) *. energy *. bright
-		       *. o_hilight cobj
-		   in
-		   rgb.(0) <- rgb.(0) +. ihl;
-		   rgb.(1) <- rgb.(1) +. ihl;
-		   rgb.(2) <- rgb.(2) +. ihl
-		  )
-	       else ()
-	    )
-	  else if m_surface = 2 then
-	    (* 鏡面反射: 再帰的にトレース *)
-	    ( 
-	      viewpoint.(0) <- crashed_point.(0);
-	      viewpoint.(1) <- crashed_point.(1);
-	      viewpoint.(2) <- crashed_point.(2);
-	      let energy2 = energy *. (1.0 -. o_diffuse cobj) in
-	      raytracing (nref + 1) energy2
-	     )
-	  else ()
-	 )
-      else ()
-     )
+        if 0.1 < energy then 
+	        ( 
+	          (* 2. 反射光 *)
+	          let w = (-2.0) *. in_prod vscan nvector in
+	          (* 反射光の方向にトレース方向を変更 *)
+	          accumulate_vec_mul vscan nvector w;
+	          
+	          let m_surface = o_reflectiontype cobj in
+	          if m_surface = 1 then
+	            (* 乱反射 : ハイライトを計算 *)
+	            (
+	              if 0.0 = (o_hilight cobj) then 
+	                ()
+	              else
+	                let hl = -.(in_prod vscan light) in
+	                if 0.0 < hl then
+		                ( 
+		                  let ihl =
+		                    fsqr (fsqr hl) *. energy *. bright
+		                    *. o_hilight cobj
+		                  in
+		                  rgb.(0) <- rgb.(0) +. ihl;
+		                  rgb.(1) <- rgb.(1) +. ihl;
+		                  rgb.(2) <- rgb.(2) +. ihl
+		                )
+	                else ()
+	            )
+	          else if m_surface = 2 then
+	            (* 鏡面反射: 再帰的にトレース *)
+	            ( 
+	              viewpoint.(0) <- crashed_point.(0);
+	              viewpoint.(1) <- crashed_point.(1);
+	              viewpoint.(2) <- crashed_point.(2);
+	              let energy2 = energy *. (1.0 -. o_diffuse cobj) in
+	              raytracing (nref + 1) energy2
+	            )
+	          else ()
+	        )
+        else ()
+    )
   else ()
 in
 
@@ -1193,7 +1193,6 @@ in
     rgb.(0) <- 0.0;
     rgb.(1) <- 0.0;
     rgb.(2) <- 0.0;
-
     (* Go! *)
     raytracing 0 1.0;
 

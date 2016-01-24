@@ -17,7 +17,7 @@ let expand xts ini addi =
     ini
     (fun (offset, acc) x t -> (offset + 1, addi x t offset acc))
 
-let rec g env = function (* 式の仮想マシンコード生成 *)
+let rec g env wenv = function (* 式の仮想マシンコード生成 *)
   | Closure.Unit -> Ans (Nop)
   | Closure.Int (i) ->
      if (i >= 0 && i < 32768) || (i = -1) then
@@ -83,17 +83,17 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
   | Closure.SetHp (x) -> Ans (SetHp (V(x)))
   | Closure.If (c, x, y, e1, e2) ->
      (match M.find x env with
-	    | Type.Bool | Type.Int -> Ans (If (c, x, y, g env e1, g env e2))
-	    | Type.Float -> Ans (FIf (c, x, y, g env e1, g env e2))
+	    | Type.Bool | Type.Int -> Ans (If (c, x, y, g env wenv e1, g env wenv e2))
+	    | Type.Float -> Ans (FIf (c, x, y, g env wenv e1, g env wenv e2))
 	    | _ -> failwith "comparition supported only for bool, int, and float")
-  | Closure.While(x, yts, zs, e) ->
+  | Closure.While(Id.L(x), yts, zs, e) ->
      let env = List.fold_left (fun env (y, t) -> M.add y t env) env yts in
-     let e = g env e in
-     Ans(While(x, yts, zs, e))
-  | Closure.Continue(x, yts, zs) -> Ans(Continue(x, yts, zs))
+     let e = g env (M.add x (List.fold_left (fun s (y, _) -> S.remove y s) (Closure.fv e) yts) wenv) e in
+     Ans(While(Id.L(x), yts, zs, e))
+  | Closure.Continue(Id.L(x), yts, zs) -> Ans(Continue(Id.L(x), yts, zs, S.elements (M.find x wenv), S.elements (M.find x wenv)))
   | Closure.Let ((x, t1), e1, e2) ->
-     let e1' = g env e1 in
-     let e2' = g (M.add x t1 env) e2 in
+     let e1' = g env wenv e1 in
+     let e2' = g (M.add x t1 env) wenv e2 in
      concat e1' [(x, t1)] e2'
   | Closure.Var (x) ->
      (match M.find x env with
@@ -101,7 +101,7 @@ let rec g env = function (* 式の仮想マシンコード生成 *)
 	    | _ -> Ans (Mr (x)))
   | Closure.MakeCls ((x, t), {Closure.entry = l; Closure.actual_fv = ys}, e2) ->
      (* closure のアドレスをセットしてからストア *)
-     let e2' = g (M.add x t env) e2 in
+     let e2' = g (M.add x t env) wenv e2 in
      let (offset, store_fv) = 
        expand
 	 (List.map (fun y -> (y, M.find y env)) ys)
@@ -150,7 +150,7 @@ let h { Closure.name = (Id.L(x), t); Closure.args = yts;
   let (offset, load) = 
     expand
       zts
-      (1, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) e)
+      (1, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) M.empty e)
       (fun z t offset load -> Let ([(z, t)], Ldw (reg_cl, C (offset)), load)) in
     match t with
       | Type.Fun (_, t2) ->
@@ -162,6 +162,6 @@ let f (Closure.Prog (fundefs, e)) =
   prerr_endline "generating virtual assembly...";
   data := [];
   let fundefs = List.map h fundefs in
-  let e = g M.empty e in
+  let e = g M.empty M.empty e in
   prerr_endline "virtual assembly generation end";
   Prog (!data, !vars, fundefs, e)

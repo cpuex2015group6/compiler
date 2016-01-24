@@ -24,7 +24,7 @@ type t = (* KÀµµ¬²½¸å¤Î¼° (caml2html: knormal_t) *)
   | Sqrt of Id.t
   | If of int * Id.t * Id.t * t * t (* Èæ³Ó + Ê¬´ô (caml2html: knormal_branch) *)
   | While of Id.t * (Id.t * Type.t) list * Id.t list * t
-  | Continue of Id.t * (Id.t * Type.t) list  * Id.t list 
+  | Continue of Id.t * (Id.t * Type.t) list  * Id.t list
   | Let of (Id.t * Type.t) * t * t
   | Var of Id.t
   | LetRec of fundef * t

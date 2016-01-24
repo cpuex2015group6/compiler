@@ -1,12 +1,14 @@
 (let rec mul a b =
+   let abs_a = if a < 0 then -a else a in
+   let abs_b = if b < 0 then -b else b in
    let rec mul_sub x i =
      if i = -1 then 
        x
      else
-       if (b land (1 lsl i)) = 0 then
+       if (abs_b land (1 lsl i)) = 0 then
          mul_sub x (i - 1)
        else
-          mul_sub (x + (a lsl i)) (i - 1)
+          mul_sub (x + (abs_a lsl i)) (i - 1)
    in
    let abs = (mul_sub 0 30) land 2147483647
    in
@@ -25,7 +27,9 @@
        else
          div_sub x a b (i - 1)
    in
-   let abs = (div_sub 0 a b 30) land 2147483647
+   let abs_a = if a < 0 then -a else a in
+   let abs_b = if b < 0 then -b else b in
+   let abs = (div_sub 0 abs_a abs_b 30) land 2147483647
    in
    if ((a lsr 31) lxor (b lsr 31)) = 0 then
      abs
