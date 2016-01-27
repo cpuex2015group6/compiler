@@ -101,7 +101,7 @@ let restore_lr oc =
   op2i oc "ldwi" reg_lr reg_sp ix
 
 let is_no_effect f g = function
-  | Li _ | SetL _ | Mr _ | Tuple _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
+  | Li _ | SetL _ | Mr _ | Tuple _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
   | _ -> g ()
            
 let rec look_while = function
@@ -246,18 +246,6 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
     cflag
   | (NonTail([x]), Out(y)) -> 
      op1 oc "out" (reg y) 0;
-    cflag
-  | (NonTail([x]), Count) -> 
-     op1 oc "count" (reg reg_zero) 0;
-    cflag
-  | (NonTail([x]), ShowExec) ->
-     op1 oc "showexec" (reg reg_zero) 0;
-    cflag
-  | (NonTail([x]), SetCurExec) ->
-     op1 oc "setcurexec" (reg reg_zero) 0;
-    cflag
-  | (NonTail([x]), GetExecDiff) ->
-     op1 oc "getexecdiff" (reg reg_zero) 0;
     cflag
   | (NonTail([x]), GetHp) -> 
      op3 oc "or" (reg x) (reg reg_hp) (reg reg_zero);

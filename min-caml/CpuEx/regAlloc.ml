@@ -64,7 +64,7 @@ let make_graph graph live contfv dest = function
 	      (S.fold (fun v graph -> if S.mem v contfv then add_graph dest v graph else graph) live graph), S.add x contfv
     in
     let graph, _ = make_graph_sub dest xs live contfv graph in
-    graph
+    graph, List.fold_left2 (fun l d x -> (d, x)::l) [] dest xs
   | _ ->
      let dest = rm_t dest in
      let rec make_graph_sub dest live graph =
@@ -76,15 +76,15 @@ let make_graph graph live contfv dest = function
 	      let graph = make_graph_sub contdest (if is_reg dest then live else S.add dest live) graph in
 	      S.fold (fun v graph -> if S.mem v contfv then add_graph dest v graph else graph) live graph
      in
-     make_graph_sub dest live graph
+     make_graph_sub dest live graph, []
   
   
 (* 各種マップ生成 *)
 let rec g dest live contfv = function
   | Ans exp ->
      let (regmap, pregmap, graph), fv = g' dest live S.empty exp in
-     let graph = make_graph graph live contfv dest exp in
-     (regmap, pregmap, graph), S.union (rm_reg_s fv) contfv
+     let graph, pregmap' = make_graph graph live contfv dest exp in
+     (regmap, pregmap @ pregmap', graph), S.union (rm_reg_s fv) contfv
   | Let(xts, exp, e) ->
      let live' = match exp with
        | CallCls _ | CallDir _ -> S.empty
@@ -93,11 +93,11 @@ let rec g dest live contfv = function
      let (regmap', pregmap', graph') as map, contfv = g dest (S.union (rm_reg_s (rm_t_s xts)) live') contfv e in
      let (regmap, pregmap, graph), fv = (g' xts live contfv exp) in
      let regmap, pregmap, graph = regmap @ regmap', pregmap @ pregmap', union_graph graph graph' in
-     let graph = make_graph graph live contfv xts exp in
-     (regmap, pregmap, graph), fvs_let (rm_t xts) (rm_reg_s fv) contfv
+     let graph, pregmap' = make_graph graph live contfv xts exp in
+     (regmap, pregmap @ pregmap', graph), fvs_let (rm_t xts) (rm_reg_s fv) contfv
 and g' dest live contfv exp =
   match exp with
-  | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Save _ | Restore _ ->
+  | Nop | Li _ | SetL _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Stw _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FAbA _ | FAbs _ | Sqrt _ | In | Out _ | GetHp | SetHp _ | Comment _ | Cmp _ | FCmp _ | Save _ | Restore _ ->
      ([], [], M.empty), fvs_exp exp
   | Mr(x) ->
      assert_single dest;
@@ -109,8 +109,8 @@ and g' dest live contfv exp =
   | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], M.empty), fvs_exp exp
   | While(_, yts, zs, e) ->
      let (regmap, pregmap, graph), contfv' = g dest (S.union (rm_reg_s (rm_t_s yts)) live) contfv (*S.union contfv (fvs_let (rm_t yts) S.empty (fvs e))*) e in
-     let graph = make_graph graph live contfv' yts exp in
-     ((List.map2 (fun (y, _) z -> (y, z)) yts zs) @ regmap, pregmap, graph), fvs_while yts zs contfv'
+     let graph, pregmap' = make_graph graph live contfv' yts exp in
+     ((List.map2 (fun (y, _) z -> (y, z)) yts zs) @ regmap, pregmap @ pregmap', graph), fvs_while yts zs contfv'
   | Continue(_, yts, zs, ws, us) ->
      ((List.map2 (fun w u -> (w, u)) ws us) @ (List.map2 (fun (y, _) z -> (y, z)) yts zs), [], M.empty), fvs_exp exp
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) ->
@@ -139,7 +139,7 @@ let rec replace_e regenv = function
   | Ans (exp) -> Ans(replace_exp regenv exp)
   | Let(xts, exp, e) -> Let(List.map (fun (x, t) -> (replace regenv x, t)) xts, replace_exp regenv exp, replace_e regenv e)
 and replace_exp regenv = function
-  | Nop | Li _ | SetL _ | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Comment _ | Restore _ as exp -> exp
+  | Nop | Li _ | SetL _ | In | GetHp | Comment _ | Restore _ as exp -> exp
   | Mr(x) -> Mr(replace regenv x)
   | Tuple(xs) -> Tuple(List.fold_left (fun xs x -> xs@[replace regenv x]) [] xs)
   | Add(x, y') -> Add(replace regenv x, replace' regenv y')
@@ -600,7 +600,7 @@ let j (regmap, pregmap, graph) =
         else
           let _ = assert (not (is_reg target)) in
           let rec allocate_sub regmap graph vrmap list =
-	          let reg = try List.hd list with Failure "hd" -> showmap "" (regmap, pregmap, graph) vrmap; prerr_endline target; raise RegAlloc_starvation in
+	          let reg = try List.hd list with Failure "hd" -> raise RegAlloc_starvation in
 	          (try
 	             let vrmap = M.add target reg vrmap in
 	             let regmap, vrmap = map regmap vrmap in
@@ -668,6 +668,29 @@ and k' env exp = match exp with
   | _ ->
      Ans(exp), env
 
+(* 二重Saveの除去 *)
+let rec l env = function
+  | Ans(Save(_, y)) when S.mem y env -> Ans(Nop)
+  | Ans(exp) -> Ans(l' env exp)
+  | Let(xts, Save(_, y), e) when S.mem y env -> l env e
+  | Let(xts, Save(x, y), e) -> Let(xts, Save(x, y), l (S.add y env) e)
+  | Let(xts, exp, e) -> Let(xts, l' env exp, l env e)
+and l' env = function
+  | If(c, x, y, e1, e2) ->
+     let e1 = l env e1 in
+     let e2 = l env e2 in
+     If(c, x, y, e1, e2)
+  | FIf(c, x, y, e1, e2) ->
+     let e1 = l env e1 in
+     let e2 = l env e2 in
+     FIf(c, x, y, e1, e2)
+  | IfThen(f, e, t) ->
+     let e = l env e in
+     IfThen(f, e, t)
+  | While(x, yts, zs, e) ->
+     let e = l env e in
+     While(x, yts, zs, e)
+  | _ as exp -> exp
                              
 let rec apply regmap e = try replace_e regmap e with RegNot_found r -> apply (M.add r regs.(0) regmap) e
     
@@ -690,19 +713,20 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
   let e, _ = k e in
+  let e = l S.empty e in
   let map, _ = g [(a, t)] S.empty (fvs (Ans(Nop))) e in
   let vrmap = j map in
   let e = apply vrmap e in
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
-  show fundefs e;
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs = List.map h fundefs in
   let e = specify_ret [(regs.(0), Type.Unit)] e in
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
   let e, _ = k e in
+  let e = l S.empty e in
   let map, _ = g [(regs.(0), Type.Unit)] S.empty (fvs (Ans(Nop))) e in
   let map = j map in
   let e = apply map e in

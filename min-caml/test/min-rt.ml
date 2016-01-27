@@ -968,9 +968,9 @@ let rec solver_second_fast2 m dconst sconst b0 b1 b2 =
     let d = (fsqr neg_bb) -. aa *. cc in
     if fispos d then (
       if o_isinvert m then
-	solver_dist.(0) <- (neg_bb +. sqrt d) *. dconst.(4)
+	      solver_dist.(0) <- (neg_bb +. sqrt d) *. dconst.(4)
       else
-	solver_dist.(0) <- (neg_bb -. sqrt d) *. dconst.(4);
+	      solver_dist.(0) <- (neg_bb -. sqrt d) *. dconst.(4);
       1)
     else 0
 in
@@ -1324,6 +1324,7 @@ in
 
 (**** ORマトリクス全体について交点を調べる。****)
 let rec trace_or_matrix ofs or_network dirvec =
+count ();
   let head = or_network.(ofs) in
   let range_primitive = head.(0) in
   if range_primitive = -1 then (* 全オブジェクト終了 *)
@@ -1375,33 +1376,33 @@ let rec solve_each_element_fast iand_ofs and_group dirvec =
       (
         (* 交点がある時は、その交点が他の要素の中に含まれるかどうか調べる。*)
         (* 今までの中で最小の t の値と比べる。*)
-       let t0p = solver_dist. (0) in
-       if (fless 0.0 t0p) then
-	 if (fless t0p tmin.(0)) then
-	   (
-	     
-	    let t = t0p +. 0.01 in
-	    let q0 = vec.(0) *. t +. startp_fast.(0) in
-	    let q1 = vec.(1) *. t +. startp_fast.(1) in
-	    let q2 = vec.(2) *. t +. startp_fast.(2) in
-	    if (* 0.9 *) check_all_inside 0 and_group q0 q1 q2 then 
-	      (
-		tmin.(0) <- t;
-		vecset intersection_point q0 q1 q2;
-		intersected_object_id.(0) <- iobj;
-		intsec_rectside.(0) <- t0;
-	       )
-	    else ();
-	   )
-	 else ()
-       else ();
-       solve_each_element_fast (iand_ofs + 1) and_group dirvec
+        let t0p = solver_dist. (0) in
+        if (fless 0.0 t0p) then
+	        if (fless t0p tmin.(0)) then
+	          (
+	            
+	            let t = t0p +. 0.01 in
+	            let q0 = vec.(0) *. t +. startp_fast.(0) in
+	            let q1 = vec.(1) *. t +. startp_fast.(1) in
+	            let q2 = vec.(2) *. t +. startp_fast.(2) in
+	            if (* 0.9 *) check_all_inside 0 and_group q0 q1 q2 then 
+	              (
+		              tmin.(0) <- t;
+		              vecset intersection_point q0 q1 q2;
+		              intersected_object_id.(0) <- iobj;
+		              intsec_rectside.(0) <- t0;
+	              )
+	            else ();
+	          )
+	        else ()
+        else ();
+        solve_each_element_fast (iand_ofs + 1) and_group dirvec
       )
     else 
-       (* 交点がなく、しかもその物体は内側が真ならこれ以上交点はない *)
+      (* 交点がなく、しかもその物体は内側が真ならこれ以上交点はない *)
       if o_isinvert (objects.(iobj)) then
-	solve_each_element_fast (iand_ofs + 1) and_group dirvec
-       else ()
+	      solve_each_element_fast (iand_ofs + 1) and_group dirvec
+      else ()
    )   
 in
 
@@ -1427,17 +1428,17 @@ let rec trace_or_matrix_fast ofs or_network dirvec =
     then (* 3.7 *) solve_one_or_network_fast 1 head dirvec
     else 
       (
-	(* range primitive の衝突しなければ交点はない *)
-	let t = solver_fast2 range_primitive dirvec in
-	if t <> 0 then
-	  let tp = solver_dist.(0) in
-	  if fless tp tmin.(0)
-	  then (* 5.0 *) solve_one_or_network_fast 1 head dirvec
-	  else ()
-	else ();
+	      (* range primitive の衝突しなければ交点はない *)
+	      let t = solver_fast2 range_primitive dirvec in
+	      if t <> 0 then
+	        let tp = solver_dist.(0) in
+	        if fless tp tmin.(0)
+	        then (* 5.0 *) solve_one_or_network_fast 1 head dirvec
+	        else ()
+	      else ();
       );
     trace_or_matrix_fast (ofs + 1) or_network dirvec
-   )
+  )
 in
 
 (**** トレース本体 ****)
@@ -2046,7 +2047,7 @@ let rec scan_pixel x y prev cur next =
       try_exploit_neighbors x y prev cur next 0;
     else
       do_without_neighbors cur.(x) 0;
-
+    
     (* 得られた値をPPMファイルに出力 *)
     write_rgb ();
 

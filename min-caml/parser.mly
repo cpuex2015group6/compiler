@@ -33,7 +33,6 @@ let addtyp x = (x, Type.gentyp ())
 %token FLESS
 %token INPUT
 %token OUTPUT
-%token COUNT
 %token SHOWEXEC
 %token SETCUREXEC
 %token GETEXECDIFF
@@ -179,9 +178,6 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
 | ARRAY_CREATE simple_exp simple_exp
     %prec prec_app
     { Array($2, $3) }
-| ARRAY_CREATE_ simple_exp simple_exp
-    %prec prec_app
-    { Array($2, $3) }
 | I2F simple_exp
     %prec prec_app
     { I2F($2) }
@@ -212,18 +208,6 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
 | OUTPUT simple_exp
     %prec prec_app
     { Out($2) }
-| COUNT simple_exp
-    %prec prec_app
-    { Count }
-| SHOWEXEC simple_exp
-    %prec prec_app
-    { ShowExec }
-| SETCUREXEC simple_exp
-    %prec prec_app
-    { SetCurExec }
-| GETEXECDIFF simple_exp
-    %prec prec_app
-    { GetExecDiff }
 | SET_HP simple_exp
     %prec prec_app
     { SetHp($2) }

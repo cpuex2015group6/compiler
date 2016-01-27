@@ -70,7 +70,6 @@ let rec search history e =
          | ExtFunApp(_) -> e
          | In(_) -> e
          | Out(_) -> e
-         | Count -> e
          | GetHp(_) -> e
          | SetHp(_) -> e
          | _  when e1 = e ->

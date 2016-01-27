@@ -100,7 +100,7 @@ rule token = parse
 | "Array.create" (* [XX] ad hoc *)
     { ARRAY_CREATE }
 | "create_array"
-    { ARRAY_CREATE_ }
+    { ARRAY_CREATE }
 | "i2f"
     { I2F }
 | "f2i"
@@ -119,18 +119,6 @@ rule token = parse
     { INPUT }
 | "output"
     { OUTPUT }
-| "count"
-    { COUNT }
-| "showexec"
-    { SHOWEXEC }
-| "setcurexec"
-    { SETCUREXEC }
-| "sce"
-    { SETCUREXEC }
-| "getexecdiff"
-    { GETEXECDIFF }
-| "ged"
-    { GETEXECDIFF }
 | "set_hp"
     { SET_HP }
 | "get_hp"

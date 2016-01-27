@@ -3,7 +3,7 @@ open KNormal
 let rec effect = function (* 副作用の有無 (caml2html: elim_effect) *)
   | Let(_, e1, e2) | If(_, _, _, e1, e2) -> effect e1 || effect e2
   | While(_, _, _, e) | LetRec(_, e) | LetTuple(_, _, e) -> effect e
-  | App _ | Put _ | ExtFunApp _ | In _ | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Continue _ -> true
+  | App _ | Put _ | ExtFunApp _ | In _ | Out _ | SetHp _ | Continue _ -> true
   | _ -> false
 
 let log = ref ""

@@ -69,10 +69,6 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
   | A2I(x) -> A2I(find x env)
   | In(x) -> In(find x env)
   | Out(x) -> Out(find x env)
-  | Count -> Count
-  | ShowExec -> ShowExec
-  | SetCurExec -> SetCurExec
-  | GetExecDiff -> GetExecDiff
   | GetHp(x) -> GetHp(find x env)
   | SetHp(x) -> SetHp(find x env)
   | ExtFunApp(x, ys) -> ExtFunApp(x, List.map (fun y -> find y env) ys)

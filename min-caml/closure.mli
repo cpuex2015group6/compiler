@@ -27,10 +27,6 @@ type t =
   | A2I of Id.t
   | In
   | Out of Id.t
-  | Count
-  | ShowExec
-  | SetCurExec
-  | GetExecDiff
   | GetHp
   | SetHp of Id.t
   | If of int * Id.t * Id.t * t * t

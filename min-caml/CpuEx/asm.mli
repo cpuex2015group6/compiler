@@ -27,10 +27,6 @@ and exp =
   | Sqrt of Id.t
   | In
   | Out of Id.t
-  | Count
-  | ShowExec
-  | SetCurExec
-  | GetExecDiff
   | GetHp
   | SetHp of id_or_imm
   | Comment of string

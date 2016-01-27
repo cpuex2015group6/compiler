@@ -1,7 +1,7 @@
 open KNormal
 
 let exenv = ref M.empty
-let ofenv = ref S.empty
+let optenv = ref M.empty
 
 let memi x env =
   try (match M.find x env with Int(_), _ -> true | _ -> false)
@@ -229,6 +229,11 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
      If(c, x, y, e1, e2), f1 || f2
   | While(x, yts, zs, e) ->
      let e, f = g env fenv fn e in
+     let fvs = fv e in
+     let cfvs = M.fold (fun k _ cfvs -> if S.mem k fvs then S.add k cfvs else cfvs) env S.empty in
+     let cenv = S.fold (fun cfv cenv -> M.add cfv (Id.genid cfv) cenv) cfvs M.empty in
+     let e = if M.cardinal cenv = 0 then e else Alpha.g cenv e in
+     let e = M.fold (fun ov nv e -> let v, t = M.find ov env in Let((nv, t), v, e)) cenv e in
      While(x, yts, zs, e), f
   | Let((x, t), e1, e2) -> (* letのケース (caml2html: constfold_let) *)
      let e1, f1 = g env fenv fn e1 in
@@ -282,20 +287,20 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
        App(fn, genarg cys), f
      in
      let opt fn limit e =
-       let rec opt_sub e =
-	       let e', f = g env fenv x (Assoc.f (Beta.f e)) in
-	       if e = e' || KNormal.size e > limit then
-	         (
-	           if e <> e' then ofenv := S.add fn !ofenv;
-	           e, f
-	         )
-	       else
-	         let e', f' = opt_sub e' in
-	         e', f || f'
-       in
-       let e', f = opt_sub e in
-       let e = Elim.f e' in
-       e, f
+       try M.find fn !optenv with
+       | Not_found ->
+          let rec opt_sub e =
+	          let e', f = g env fenv x (Assoc.f (Beta.f e)) in
+	          if e = e' || KNormal.size e > limit then
+	            e, f
+	          else
+	            let e', f' = opt_sub e' in
+	            e', f || f'
+          in
+          let e', f = opt_sub e in
+          let e = Elim.f e' in
+          optenv := M.add fn (e, f) !optenv;
+          e, f
      in
      if lc <> M.empty then
        (
@@ -305,23 +310,17 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
 	         ffold body
 	       else
 	         if not (Inline.is_rec x body) then
-	           if S.mem fn !ofenv then
-	             exp, false
+	           let body', f = opt fn ((KNormal.size e) * 2) body in
+	           if KNormal.size body' < (KNormal.size e) / 2 || f then
+		           ffold body'
 	           else
-	             let body', f = opt fn ((KNormal.size e) * 2) body in
-	             if KNormal.size body' < (KNormal.size e) / 2 || f then
-		             ffold body'
-	             else
-		             exp, false
+		           exp, false
 	         else
              exp, false
 	     (*
          let body, sflag, r = h M.empty x (M.fold (fun k (y,t) a -> Let((k, t), y, a)) lc body) in
 	       if not sflag || r > 1 then
 	       exp, false
-	       else
-	       if S.mem fn !ofenv then
-		     exp, false
 	       else
 		     let body', f = opt fn ((KNormal.size e) * 4) body in
 		     if KNormal.size body' < 2 * KNormal.size e || f then
@@ -353,7 +352,7 @@ let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfo
   | e -> e, false
 
 let rec f e =
-  ofenv := S.empty;
   exenv := M.empty;
+  optenv := M.empty;
   let e, _ = g M.empty M.empty "" e in
   e

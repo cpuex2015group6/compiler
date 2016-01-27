@@ -222,6 +222,13 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 
 let f e =
   extenv := M.empty;
+  extenv := M.add "count" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "showexec" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "setcurexec" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "sce" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "getexecdiff" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "ged" (Type.Fun([Type.Unit], Type.Unit)) !extenv;
+  extenv := M.add "generic" (Type.Fun([Type.Int; Type.Int; Type.Int; Type.Int], Type.Int)) !extenv;
 (*
   (match deref_typ (g M.empty e) with
   | Type.Unit -> ()

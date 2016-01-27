@@ -29,10 +29,6 @@ and exp = (* 一つ一つの命令に対応する式 *)
   | Sqrt of Id.t
   | In
   | Out of Id.t
-  | Count
-  | ShowExec
-  | SetCurExec
-  | GetExecDiff
   | GetHp
   | SetHp of id_or_imm
   | Comment of string
@@ -108,7 +104,7 @@ let rec fv_while yts zs e =
 let rec fv_let xs exp e =
   exp @ remove_and_uniq (S.of_list xs) e
 let rec fv_exp = function
-  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> []
+  | Nop | In | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> []
   | Mr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> [x]
   | Tuple(xs) -> xs
   | SetHp (x) -> fv_id_or_imm x
@@ -155,7 +151,7 @@ let rec fvs_while yts zs e =
 let rec fvs_let xs exp e =
   S.union exp (List.fold_left (fun s x -> S.remove x s) e xs)
 let rec fvs_exp = function
-  | Nop | In | Count | ShowExec | SetCurExec | GetExecDiff | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> S.empty
+  | Nop | In | GetHp | Li (_) | SetL (_) | Comment (_) | Restore (_) -> S.empty
   | Mr (x) | FAbs(x) | Save (x, _) | Sqrt (x) | Out (x) -> S.singleton x
   | Tuple(xs) -> S.of_list xs
   | SetHp (x) -> fvs_id_or_imm x
@@ -215,7 +211,7 @@ let rec effect = function (* 副作用の有無 *)
   | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) -> is_ereg x || is_ereg y || effect' e1 || effect' e2
   | IfThen(f, e, t) -> is_ereg f || effect' e || effect (Tuple(t))
   | While(_, _, _, e) -> effect' e
-  | Stw _ | In | Out _ | Count | ShowExec | SetCurExec | GetExecDiff | SetHp _ | Comment _ | CallCls _ | CallDir _ | Continue _ | Save _ | Restore _ -> true
+  | Stw _ | In | Out _ | SetHp _ | Comment _ | CallCls _ | CallDir _ | Continue _ | Save _ | Restore _ -> true
   | Ldw _ | Nop | Li _ | SetL _ | GetHp -> false
   | Mr(x) | FAbs(x) | Sqrt(x) -> is_ereg x
   | Tuple(xs) -> List.fold_left (fun f x -> f || is_ereg x) false xs
@@ -321,14 +317,6 @@ and j indent = function
      Printf.fprintf stdout "in\n"
   | Out(y) -> 
      Printf.fprintf stdout "out %s\n" y
-  | Count -> 
-     Printf.fprintf stdout "count\n"
-  | ShowExec -> 
-     Printf.fprintf stdout "showexec\n"
-  | SetCurExec ->
-     Printf.fprintf stdout "setcurexec\n"
-  | GetExecDiff ->
-     Printf.fprintf stdout "getexecdiff\n"
   | GetHp -> 
      Printf.fprintf stdout "gethp\n"
   | SetHp(V(y)) -> 
