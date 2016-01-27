@@ -66,12 +66,15 @@ let rec search history e =
     | [] -> e
     | (v, e1)::xs ->
        match e1 with
-         | App(_) -> e
-         | ExtFunApp(_) -> e
-         | In(_) -> e
-         | Out(_) -> e
-         | GetHp(_) -> e
-         | SetHp(_) -> e
+         | App(_)
+         | ExtFunApp(_)
+         | In(_)
+         | Out(_)
+         | GetHp(_)
+         | SetHp(_)
+         | Get (_)
+         | Put(_) ->
+            e
          | _  when e1 = e ->
             Var(v)
          | _ ->
