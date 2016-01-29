@@ -44,6 +44,7 @@
 
 (let rec read_byte u = input u);
 
+(* -2147483648はどんまい *)
 (let rec print_int a =
    let rec print_int_sub a =
      if a < 10 then
@@ -140,7 +141,7 @@
      let i = if i > 0 then i else -i in
      let top = search_top i in
      if top > 23 then
-       i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top) + ((1 lsl (top - 23)) - 1)) lsr (top - 23)))
+       i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsr (top - 23)))
      else
        i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
 

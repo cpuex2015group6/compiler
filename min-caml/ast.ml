@@ -234,18 +234,6 @@ let rec g indent e = (* AST表示ルーチン *)
      print_string indent;
      print_string "Out\n";
      g (indent ^ "  ") e1;
-  | Count ->
-     print_string indent;
-     print_string "Count\n";
-  | ShowExec ->
-     print_string indent;
-     print_string "ShowExec\n";
-  | SetCurExec ->
-     print_string indent;
-     print_string "SetCurExec\n";
-  | GetExecDiff ->
-     print_string indent;
-     print_string "GetExecDiff\n";
   | SetHp(e1) ->
      print_string indent;
      print_string "SetHp\n";

@@ -28,3 +28,18 @@ let conv_int i =
       f
     else
       -.f
+
+let rec conv_large_int i =
+  if i >= 2147483648 then
+    conv_large_int (i - 4294967296)
+  else if i < -2147483648 then
+    conv_large_int (i + 4294967296)
+  else
+    i
+
+let conv_unsigned i =
+  if i < 0 then
+    i + 4294967296
+  else
+    i
+  

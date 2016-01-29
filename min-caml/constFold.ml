@@ -17,6 +17,7 @@ let mema x env =
   with Not_found -> false
 
 let findi x env = (match M.find x env with Int(i), _ -> i | _ -> raise Not_found)
+let findui x env = (match M.find x env with Int(i), _ -> Type.conv_unsigned i | _ -> raise Not_found)
 let findf x env = (match M.find x env with Float(d), _ -> d | _ -> raise Not_found)
 let findt x env = (match M.find x env with Tuple(ys), _ -> ys | _ -> raise Not_found)	
 let finda x env = (match M.find x env with Array(i), t -> i, t | _ -> raise Not_found)
@@ -37,18 +38,25 @@ let rec expandconst y env =
 (* プログラム解析 *)
 (* gethp, sethp, get, setについては必要ないので省略 *)
 (* 戻り値：停止性(bool)、爆発性（int）*)
-let rec h env fn = function
+let rec h env fn exp =
+  let exp, f, r = h' env fn exp in
+  let exp = match exp with
+    | Int(i) -> Int(Type.conv_large_int i)
+    | _ -> exp
+  in
+  exp, f, r
+and h' env fn = function
   | Var(x) when memi x env -> (Int(findi x env), true, 0)
   | Var(x) when memf x env -> (Float(findf x env), true, 0)
   | Var(x) when memt x env -> (Tuple(findt x env), true, 0)
   | Neg(x) when memi x env -> (Int(-(findi x env)), true, 0)
   | Add(x, y) when memi x env && memi y env -> (Int(findi x env + findi y env), true, 0) (* 足し算のケース (caml2html: constfold_add) *)
   | Sub(x, y) when memi x env && memi y env -> (Int(findi x env - findi y env), true, 0)
-  | Xor(x, y) when memi x env && memi y env -> (Int(findi x env lxor findi y env), true, 0)
-  | Or(x, y) when memi x env && memi y env -> (Int(findi x env lor findi y env), true, 0)
-  | And(x, y) when memi x env && memi y env -> (Int(findi x env land findi y env), true, 0)
-  | Sll(x, y) when memi x env && memi y env -> (Int(findi x env lsl findi y env), true, 0)
-  | Srl(x, y) when memi x env && memi y env -> (Int(findi x env lsr findi y env), true, 0)
+  | Xor(x, y) when memi x env && memi y env -> (Int(findui x env lxor findui y env), true, 0)
+  | Or(x, y) when memi x env && memi y env -> (Int(findui x env lor findui y env), true, 0)
+  | And(x, y) when memi x env && memi y env -> (Int(findui x env land findui y env), true, 0)
+  | Sll(x, y) when memi x env && memi y env -> (Int(let y = findi y env in if y >= 32 then 0 else (findui x env lsl y)), true, 0)
+  | Srl(x, y) when memi x env && memi y env -> (Int(let y = findi y env in if y >= 32 then 0 else (findui x env lsr y)), true, 0)
   | FNeg(x) when memf x env -> (Float(-.(findf x env)), true, 0)
   | FAdd(x, y) when memf x env && memf y env -> (Float(findf x env +. findf y env), true, 0)
   | FSub(x, y) when memf x env && memf y env -> (Float(findf x env -. findf y env), true, 0)
@@ -180,21 +188,27 @@ let genarg cys =
 	| _ -> assert false
     ) [] cys
     
-let rec g env fenv fn = function (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
+let rec g env fenv fn exp = (* 定数畳み込みルーチン本体 (caml2html: constfold_g) *)
+  let exp, f = g' env fenv fn exp in
+  let exp = match exp with
+    | Int(i) -> Int(Type.conv_large_int i)
+    | _ -> exp
+  in
+  exp, f
+and g' env fenv fn = function
   | Var(x) when memi x env -> Int(findi x env), false
   | Var(x) when memf x env -> Float(findf x env), false
   | Var(x) when memt x env -> Tuple(findt x env), false
   | Neg(x) when memi x env -> Int(-(findi x env)), false
   | Add(x, y) when memi x env && memi y env -> Int(findi x env + findi y env), false
   | Sub(x, y) when memi x env && memi y env -> Int(findi x env - findi y env), false
-  | Xor(x, y) when memi x env && memi y env -> Int(findi x env lxor findi y env), false
-  | Or(x, y) when memi x env && memi y env -> Int(findi x env lor findi y env), false
-  | And(x, y) when memi x env && memi y env -> Int(findi x env land findi y env), false
+  | Xor(x, y) when memi x env && memi y env -> Int(findui x env lxor findui y env), false
+  | Or(x, y) when memi x env && memi y env -> Int(findui x env lor findui y env), false
+  | And(x, y) when memi x env && memi y env -> Int(findui x env land findui y env), false
   | And(x, y) when memi x env && (findi x env = 2147483647) -> FAbs(y), false
   | And(x, y) when memi y env && (findi y env = 2147483647) -> FAbs(x), false
-  | Sll(x, y) when memi x env && memi y env -> Int(findi x env lsl findi y env), false
-  | Srl(x, y) when memi x env && memi y env -> Int(findi x env lsr findi y env), false
-  | FNeg(x) when memf x env -> Float(-.(findf x env)), false
+  | Sll(x, y) when memi x env && memi y env -> Int(let y = findi y env in if y >= 32 then 0 else (findui x env lsl y)), false
+  | Srl(x, y) when memi x env && memi y env -> Int(let y = findi y env in if y >= 32 then 0 else (findui x env lsr y)), false
   | FAdd(x, y) when memf x env && memf y env -> Float(findf x env +. findf y env), false
   | FSub(x, y) when memf x env && memf y env -> Float(findf x env -. findf y env), false
   | FMul(x, y) when memf x env && memf y env -> Float(findf x env *. findf y env), false

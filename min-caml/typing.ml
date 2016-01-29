@@ -109,10 +109,6 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
   try
     match e with
     | Unit -> Type.Unit
-    | Count -> Type.Unit
-    | ShowExec -> Type.Unit
-    | SetCurExec -> Type.Unit
-    | GetExecDiff -> Type.Unit
     | Bool(_) -> Type.Bool
     | Int(_) -> Type.Int
     | Float(_) -> Type.Float
