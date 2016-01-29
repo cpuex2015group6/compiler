@@ -139,7 +139,10 @@
      let sign = if i > 0 then 0 else 1 in
      let i = if i > 0 then i else -i in
      let top = search_top i in
-     i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
+     if top > 23 then
+       i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top) + ((1 lsl (top - 23)) - 1)) lsr (top - 23)))
+     else
+       i2f((sign lsl 31) + ((top + 127) lsl 23) + ((i lxor (1 lsl top)) lsl (23 - top))));
 
 (let rec floor i =
    let rec floor_sub i =

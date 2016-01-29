@@ -30,5 +30,5 @@ let rec test_float_of_int i =
   else
     test_float_of_int (i + 1)
 in
-test_float_of_int 0;
+test_float_of_int 16777217;
  
