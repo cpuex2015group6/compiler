@@ -52,17 +52,14 @@ let rec h' = function
 let h e =
   List.fold_left (fun m x -> try M.add x (1 + (M.find x m)) m with Not_found -> M.add x 1 m) M.empty (h' e)
 
-
-(* While化ルーチン *)
-let rec i f yts = function
-  | If(c, x, y, e1, e2) -> If(c, x, y, i f yts e1, i f yts e2)
-  | While(x, yts, zs, e) -> While(x, yts, zs, i f yts e)
-  | Let(xt, e1, e2) -> Let(xt, i f yts e1, i f yts e2)
+let rec apply f = function
+  | If(c, x, y, e1, e2) -> f (If(c, x, y, apply f e1, apply f e2))
+  | While(x, yts, zs, e) -> f (While(x, yts, zs, apply f e))
+  | Let(xt, e1, e2) -> f (Let(xt, apply f e1, apply f e2))
   | LetRec(_) -> assert false
-  | App(x, ys) when x = f -> Continue(f, yts, ys)
-  | LetTuple(xts, y, e) -> LetTuple(xts, y, i f yts e)
-  | _ as e -> e
-     
+  | LetTuple(xts, y, e) -> f (LetTuple(xts, y, apply f e))
+  | e -> f e
+
 let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g) *)
   | If(c, x, y, e1, e2) ->
      let e1' = g env fmap e1 in
@@ -78,7 +75,8 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
   | LetRec({ name = (x, t); args = yts; body = e1 }, e2) -> (* 関数定義の場合 (caml2html: inline_letrec) *)
      if is_rec x e1 && is_loop x true e1 then
        (* While展開 *)
-       let e1 = While(x, yts, List.map fst yts, i x yts e1) in
+       let we = apply (fun e -> match e with | App(f, ys) when x = f -> Continue(f, yts, ys) | _ -> e) e1 in
+       let e1 = apply (fun e -> match e with | App(f, ys) when x = f -> While(x, yts, ys, we) | _ -> e) e1 in
        let e1 = Alpha.g M.empty e1 in
        LetRec({ name = (x, t); args = yts; body = e1 }, g env fmap e2)
      else

@@ -68,7 +68,7 @@ let rec g env fenv fn = function
        | Some(ry) -> M.add ry z env'
        | None -> env') M.empty rys zs in
      let e = if env' = M.empty then e else Alpha.g env' e in
-     While(x, rm_arg_t yts rys, rm_arg zs rys, g env fenv fn e)
+       While(x, rm_arg_t yts rys, rm_arg zs rys, g env fenv fn e)
   | Let((x, t), e1, e2) ->
      let e1 = g env fenv fn e1 in
      let e2 = g (M.add x (e1, t) env) fenv fn e2 in

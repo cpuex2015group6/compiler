@@ -12,7 +12,7 @@ let locate x =
     | y :: zs when x = y -> 0 :: List.map succ (loc zs)
     | y :: zs -> List.map succ (loc zs) in
     loc !stackmap
-let offset x = 1 * List.hd (locate x)
+let offset x = try 1 * List.hd (locate x) with Failure("hd") -> prerr_endline ("variable '" ^ x ^ "' doesn't exist in stackmap");assert false
 let stacksize () = align ((List.length !stackmap + 1) * 1)
 
 let reg r = 

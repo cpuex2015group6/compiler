@@ -60,7 +60,7 @@ let seq (e1, e2) = Let ([(Id.gentmp Type.Unit, Type.Unit)], e1, e2)
 
 let regs = [| "%r07"; "%r08"; "%r09"; "%r0A"; "%r0B"; "%r0C"; "%r0D"; "%r0E"; "%r0F";
               "%r10"; "%r11"; "%r12"; "%r13"; "%r14"; "%r15"; "%r16"; "%r17";
-	      "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; |]
+	            "%r18"; "%r19"; "%r1A"; "%r1B"; "%r1C"; "%r1D"; "%r1E"; |]
 let allregs = Array.to_list regs
 let reg_cl = regs.(Array.length regs - 1) (* closure address *)
 let reg_sw = regs.(Array.length regs - 2) (* temporary for swap *)
@@ -326,7 +326,7 @@ and j indent = function
   | Comment(s) ->
      Printf.fprintf stdout "comment %s\n" s
   | Save(x, y) ->
-     Printf.fprintf stdout "save %s, %s\n" y x
+     Printf.fprintf stdout "save %s, %s\n" x y
   | Restore(y) ->
      Printf.fprintf stdout "restore %s\n" y
   | Cmp(c, x, V(y)) ->
