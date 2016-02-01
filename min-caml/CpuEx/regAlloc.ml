@@ -723,7 +723,6 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
   let e = specify_ret [(regs.(0), Type.Unit)] e in
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
-  show [] e;
   (*let e, _ = k e in*)
   (*  let e = l S.empty e in*)
   let map, _ = g [(a, t)] S.empty (fvs (Ans(Nop))) e in
