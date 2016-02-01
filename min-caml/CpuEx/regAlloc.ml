@@ -646,39 +646,6 @@ let j (regmap, pregmap, graph) =
   in
   vrmap
 
-(* whileループ内の重複Saveの除去 *)
-(* TODO 失敗してない？未定義変数を事前Saveしそう *)
-let rec k = function
-  | Ans(exp) ->
-     k' S.empty exp
-  | Let(xts, exp, e) ->
-     let e, env = k e in
-     let env = S.fold (fun x env -> S.remove x env) (S.of_list (rm_t xts)) env in
-     let exp, env = k' env exp in
-     concat exp xts e, env
-and k' env exp = match exp with
-  | If(c, x, y, e1, e2) ->
-     let e1, env1 = k e1 in
-     let e2, env2 = k e2 in
-     Ans(If(c, x, y, e1, e2)), S.union env (S.union env1 env2)
-  | FIf(c, x, y, e1, e2) ->
-     let e1, env1 = k e1 in
-     let e2, env2 = k e2 in
-     Ans(FIf(c, x, y, e1, e2)), S.union env (S.union env1 env2)
-  | IfThen(f, e, t) ->
-     let e, env' = k e in
-     Ans(IfThen(f, e, t)), S.union env env'
-  | While(x, yts, zs, e) ->
-     let e, env' = k e in
-     let env = S.union env env' in
-     let env = S.fold (fun x env -> S.remove x env) (S.of_list (rm_t yts)) env in
-     let e = S.fold (fun x e -> seq (Save(x, x), e)) env (Ans(While(x, yts, zs, e))) in
-     e, env
-  | Save(x, y) when x = y->
-     Ans(exp), S.add x env
-  | _ ->
-     Ans(exp), env
-
 (* 二重Saveの除去 *)
 let rec l env = function
   | Ans(Save(_, y)) when S.mem y env -> Ans(Nop)
@@ -704,7 +671,17 @@ and l' env = function
   | _ as exp -> exp
                              
 let rec replace_reg regmap e = try replace_e regmap e with RegNot_found r -> replace_reg (M.add r regs.(0) regmap) e
-    
+
+let k dest e =
+  let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
+  let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
+  show [] e;
+  let e = l S.empty e in
+  let map, _ = g [dest] S.empty (fvs (Ans(Nop))) e in
+  let vrmap = j map in
+  let e = replace_reg vrmap e in
+  e
+  
 let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
   let _, e, arg_regs =
     List.fold_left
@@ -721,14 +698,7 @@ let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当
     | Type.Unit -> Id.gentmp Type.Unit
     | _ -> regs.(0) in
   let e = specify_ret [(regs.(0), Type.Unit)] e in
-  let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
-  let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
-  show [] e;
-  (*let e, _ = k e in*)
-  (*  let e = l S.empty e in*)
-  let map, _ = g [(a, t)] S.empty (fvs (Ans(Nop))) e in
-  let vrmap = j map in
-  let e = replace_reg vrmap e in
+  let e = k (a, t) e in
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
@@ -736,12 +706,6 @@ let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml
   show fundefs e;
   let fundefs = List.map h fundefs in
   let e = specify_ret [(regs.(0), Type.Unit)] e in
-  let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
-  let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
-  let e, _ = k e in
-  let e = l S.empty e in
-  let map, _ = g [(regs.(0), Type.Unit)] S.empty (fvs (Ans(Nop))) e in
-  let map = j map in
-  let e = replace_reg map e in
+  let e = k (regs.(0), Type.Unit) e in
   let p = Prog(data, vars, fundefs, e) in
   p
