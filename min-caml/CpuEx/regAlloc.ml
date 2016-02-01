@@ -675,7 +675,6 @@ let rec replace_reg regmap e = try replace_e regmap e with RegNot_found r -> rep
 let k dest e =
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _ = i [(regs.(0), Type.Unit)] M.empty (tfv, e) in
-  show [] e;
   let e = l S.empty e in
   let map, _ = g [dest] S.empty (fvs (Ans(Nop))) e in
   let vrmap = j map in
