@@ -545,7 +545,6 @@ and i'' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
        if List.mem k (rm_t dest) then
          e, regenv, tvs, dts
        else
-         let _ = prerr_endline k in
          let t = Id.genid k in
          add_return dts k' (apply_exp (fun exp -> match exp with | Continue (x', yts, zs, ws, us) when x = x' -> Ans(Continue(x, yts, zs, k'::ws, k'::us)) | _ -> Ans(exp)) e),
          M.add k (t, sk) regenv,
@@ -892,9 +891,7 @@ let rec k' dest e =
   let map, _ = g dest S.empty (fvs (Ans(Nop))) e in
   try
     let vrmap = j map in
-    showmap "" map vrmap;
     let vrmap = M.mapi (fun _ r -> (r, "")) vrmap in
-    show [] e;
     replace_reg vrmap e
   with RegAlloc_starvation r ->
     let _, _, graph = map in
@@ -937,7 +934,7 @@ let rec k' dest e =
               )
     ) [((regs.(0), Type.Unit))] M.empty M.empty (tfv, e) in
   print_endline "";
-    if !vars' = vars then (prerr_int (S.cardinal vars);prerr_endline "";S.iter (fun x -> prerr_string (x^" ")) vars; prerr_endline "");
+    if !vars' = vars then (prerr_int (S.cardinal vars);prerr_endline "";S.iter (fun x -> prerr_string (x^" ")) vars; prerr_endline ""; showmap "" map M.empty);
     if !vars' = vars then raise (RegAlloc_starvation r);
     k' dest e
 
@@ -946,10 +943,12 @@ let k dest e =
   let e = apply_exp (fun exp ->
     match exp with
     | Continue(x, yts, zs, ws, us) ->
-       let tzs = List.map (fun z -> Id.genid z) zs in
-       List.fold_left2 (fun e tz z -> Let([(tz, Type.Int)], Mr(z), e)) (Ans(Continue(x, yts, tzs, ws, us))) tzs zs
+       let tzs1 = List.map (fun z -> Id.genid z) zs in
+       let tzs2 = List.map (fun z -> Id.genid z) zs in
+       List.fold_left2 (fun e tz2 z -> Let([tz2, Type.Int], Mr(z), e)) (List.fold_left2 (fun e tz1 tz2 -> Let([tz1, Type.Int], Mr(tz2), e)) (Ans(Continue(x, yts, tzs1, ws, us))) tzs1 tzs2) tzs2 zs
     | _ -> Ans(exp)
   ) e in
+    show [] e;
   let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
   let e, _, _ = i (fun _ _ -> []) [(regs.(0), Type.Unit)] M.empty M.empty (tfv, e) in
   (*let e = l S.empty e in*)
