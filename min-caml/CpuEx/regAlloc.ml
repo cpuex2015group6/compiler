@@ -58,6 +58,7 @@ let union_graph g1 g2 =
   ) (S.union s1 s2) M.empty
     
 (* 複数の返り値を適切に代入できるよう、相互依存関係を作成 *)
+(* TODO もうちょっとなんとかならないか *)
 let make_graph graph live contfv dest = function
   | Tuple(xs) ->
      assert (List.length dest = List.length xs);
@@ -91,7 +92,7 @@ let make_graph graph live contfv dest = function
 (* 各種マップ生成 *)
 let rec g dest live contfv = function
   | Ans exp ->
-     let (regmap, pregmap, graph), fv = g' dest live S.empty exp in
+     let (regmap, pregmap, graph), fv = g' dest live contfv exp in
      let graph, pregmap' = make_graph graph live contfv dest exp in
      (regmap, pregmap @ pregmap', graph), S.union (rm_reg_s fv) contfv
   | Let(xts, exp, e) ->
@@ -117,7 +118,7 @@ and g' dest live contfv exp =
   | CallCls _ | CallDir _ -> (pair regs.(0) [] (rm_t dest), [], M.empty), S.empty
   | Cmpa(_, _, _, w) | FCmpa(_, _, _, w)-> (pair w [] (rm_t dest), [], M.empty), fvs_exp exp
   | While(_, yts, zs, e) ->
-     let (regmap, pregmap, graph), contfv' = g dest (S.union (rm_reg_s (rm_t_s yts)) live) contfv (*S.union contfv (fvs_let (rm_t yts) S.empty (fvs e))*) e in
+     let (regmap, pregmap, graph), contfv' = g dest (S.union (rm_reg_s (rm_t_s yts)) live) contfv e in
      let graph, pregmap' = make_graph graph live contfv' yts exp in
      ((List.map2 (fun (y, _) z -> (y, z)) yts zs) @ regmap, pregmap @ pregmap', graph), fvs_while yts zs contfv'
   | Continue(_, yts, zs, ws, us) ->
@@ -891,6 +892,7 @@ let rec k' dest e =
   let map, _ = g dest S.empty (fvs (Ans(Nop))) e in
   try
     let vrmap = j map in
+    showmap "" map vrmap;
     let vrmap = M.mapi (fun _ r -> (r, "")) vrmap in
     show [] e;
     replace_reg vrmap e
