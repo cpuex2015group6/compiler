@@ -1324,7 +1324,6 @@ in
 
 (**** ORマトリクス全体について交点を調べる。****)
 let rec trace_or_matrix ofs or_network dirvec =
-count ();
   let head = or_network.(ofs) in
   let range_primitive = head.(0) in
   if range_primitive = -1 then (* 全オブジェクト終了 *)

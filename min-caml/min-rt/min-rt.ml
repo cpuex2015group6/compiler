@@ -279,10 +279,12 @@ in
 (*NOMINCAML let read_nth_object n =*)
 (*  if dbg.(0) then
     Format.printf "object #%d.@." n;*)
+print_byte 48;
 
   let texture = read_int () in (* 0 *)
   if texture <> -1 then
-    ( 
+    (
+      print_int texture;
       let form = read_int () in (* 1 *)
       let refltype = read_int () in
       let isrot_p = read_int () in
@@ -313,13 +315,19 @@ in
       color.(2) <- read_float (); (* 15 *)
 
       let rotation = Array.create 3 0.0 in
+print_byte 56;
       if isrot_p <> 0 then
-	(
+	      (
+          print_byte 52;
 	 rotation.(0) <- rad (read_float ());
+          print_byte 54;
 	 rotation.(1) <- rad (read_float ());
-	 rotation.(2) <- rad (read_float ()) (* 18 *)
+          print_byte 55;
+	 rotation.(2) <- rad (read_float ()) (* 18 *);
+     print_byte 53;
 	) 
-      else ();
+      else (print_byte 54);
+print_byte 50;
 
       (* パラメータの正規化 *)
 
@@ -352,10 +360,11 @@ in
 	normalize_vector abc (not m_invert)
       else
 	();
+print_byte 51;
 
       if isrot_p <> 0 then
 	(
-	 cs_temp.(10) <- cos rotation.(0);
+	  cs_temp.(10) <- cos rotation.(0);
 	 cs_temp.(11) <- sin rotation.(0);
 	 cs_temp.(12) <- cos rotation.(1);
 	 cs_temp.(13) <- sin rotation.(1);
@@ -397,10 +406,14 @@ in
    Format.eprintf "OBJ #%d: %d (%f %f %f) (%f %f %f) [%f %f %f]@."
    n form abc.(0) abc.(1) abc.(2) xyz.(0) xyz.(0) xyz.(0) 
    rotation.(0) rotation.(1) rotation.(2);*)
+print_byte 49;
       true
      )
   else
-    false (* データの終了 *)
+    (
+print_byte 49;
+      false (* データの終了 *)
+    )
 in
 
 (**** 物体データ全体の読み込み ****)

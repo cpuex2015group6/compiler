@@ -309,9 +309,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
        else cflag in
      print oc (Printf.sprintf "%s:\n" x);
      g oc cflag (t, e)
-  | (NonTail(_), Continue(_)) ->
-     assert false
-  | (Tail, Continue(Id.L(x), yts, zs, _, _)) ->
+  | (_, Continue(Id.L(x), yts, zs, _, _)) ->
      op2l oc "jif" reg_tmp (reg reg_zero) x;
      cflag
   (* 関数呼び出しの仮想命令の実装 *)
@@ -435,6 +433,7 @@ let h oc { name = Id.L(x); args = _; body = e; ret = _ } =
        
 let f oc (Prog(data, vars, fundefs, e)) =
   show fundefs e;
+  print_endline "";
   Format.eprintf "generating assembly...@.";
   Printf.fprintf oc "\t.text\n";
   Printf.fprintf oc "\t.globl  _min_caml_init\n";

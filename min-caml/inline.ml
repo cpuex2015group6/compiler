@@ -3,8 +3,6 @@ open KNormal
 (* インライン展開する関数の最大サイズ (caml2html: inline_threshold) *)
 let threshold = ref 50 (* Mainで-inlineオプションによりセットされる *)
 
-let log = ref ""
-  
 let rec is_rec x = function
   | If(_, _, _, e1, e2) -> (is_rec x e1) || (is_rec x e2)
   | While(_, _, _, e) -> is_rec x e
@@ -78,6 +76,7 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
        let we = apply (fun e -> match e with | App(f, ys) when x = f -> Continue(f, yts, ys) | _ -> e) e1 in
        let e1 = apply (fun e -> match e with | App(f, ys) when x = f -> While(x, yts, ys, we) | _ -> e) e1 in
        let e1 = Alpha.g M.empty e1 in
+       let e1 = g env fmap e1 in
        LetRec({ name = (x, t); args = yts; body = e1 }, g env fmap e2)
      else
        if not (M.mem x fmap) then
@@ -87,22 +86,22 @@ let rec g env fmap = function (* インライン展開ルーチン本体 (caml2html: inline_g
          LetRec({ name = (x, t); args = yts; body = g env fmap e1}, g env fmap e2)
   | App(x, ys) as exp when M.mem x env -> (* 関数適用の場合 (caml2html: inline_app) *)
      let (zs, e) = M.find x env in
-     if is_rec x e = false && has_while e = false (*&& ((size e) < 50 || (M.find x fmap) <= 3)*) then
-       ((*log := !log ^ (Format.sprintf "inlining %s@." x);*)
+     if is_rec x e = false && ((M.find x fmap) <= 1 || has_while e = false) then
+       ((*prerr_endline ("inlining " ^ x ^ ".");*)
 	       let env' =
 	         List.fold_left2
   	         (fun env' (z, t) y -> M.add z y env')
 	           M.empty
 	           zs
 	           ys in
-	       Alpha.g env' e)
+	       let e = Alpha.g env' e in
+         g env fmap e
+       )
      else
        exp
   | LetTuple(xts, y, e) -> LetTuple(xts, y, g env fmap e)
   | e -> e
 
 let f e =
-  log := "";
   let e = g M.empty (h e) e in
-  (*  prerr_string !log;*)
   e

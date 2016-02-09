@@ -1,13 +1,24 @@
 let limit = ref 100
 
 let flag = true
+
+let g s f e =
+  let e' = f e in
+  (*if e <> e' then prerr_endline s;*)
+  e'
   
 let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
   if flag then
     let rec iter1 m e = 
       Format.eprintf "iteration %d, %d@." n m;
       if m = 0 then e else
-	      let e' = (HpAlloc.f (ConstFold.f (Celm.h (Union.f (Assoc.f (Beta.f e)))))) in
+	      let e' = (g "elarg" ElArg.f
+                    (g "hpalloc" HpAlloc.f
+                       (g "constfold" ConstFold.f
+                          (g "celm" Celm.h
+                             (g "union" Union.f
+                                (g "assoc" Assoc.f
+                                   (g "beta" Beta.f e))))))) in
 	      if e = e' then
 	        e
 	      else
@@ -15,8 +26,9 @@ let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
     in
     if n = 0 then e else
       (
-        let e = Elim.f e in
-        let e' = (Elim.f (Inline.f (ElArg.f (iter1 !limit e)))) in
+        let e' = (g "elim" Elim.f
+                    (g "inline" Inline.f
+                       (iter1 !limit e))) in
         if e = e' then
 	        (prerr_endline "iteration end.";
 	         e)

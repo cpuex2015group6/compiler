@@ -54,7 +54,7 @@ let pat = [
      let t1 = Id.genid "t" in
      Let([(t1, Type.Int)], Mr(f), Ans(FCmpa(c, x, y, t1)));
   | _ -> raise Unmatched);
-  (fun env -> function
+(*  (fun env -> function
   | If(c, x, y, e, Ans(Li(C(0)))) ->
      let t1 = Id.genid "t" in
      Let([(t1, Type.Int)], Cmp(c, x, V(y)), Ans(IfThen(t1, e, [])));
@@ -63,7 +63,7 @@ let pat = [
   | FIf(c, x, y, e, Ans(Li(C(0)))) ->
      let t1 = Id.genid "t" in
      Let([(t1, Type.Int)], FCmp(c, x, y), Ans(IfThen(t1, e, [])));
-    | _ -> raise Unmatched);
+    | _ -> raise Unmatched);*)
 ]
 
 let h env e = 
