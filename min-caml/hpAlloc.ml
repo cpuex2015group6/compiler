@@ -12,11 +12,12 @@ let rec h fenv = function
   | App(x, _) -> (try M.find x fenv with Not_found ->false)
   | ExtFunApp(_) -> false
   | e -> true
-  
+
+(* TODO : While内でループ最後でのみallocateされるなら分離できるよね *)
 let rec g env fenv = function
   | If(c, x, y, e1, e2) -> If(c, x, y, g env fenv e1, g env fenv e2)
   | While(x, ys, zs, e) ->
-     While(x, ys, zs, g env fenv e)
+     While(x, ys, zs, e)
   | Add(x, y) when M.mem x env && M.mem y env -> Int(M.find x env + M.find y env)
   | Let((x, t), e1, e2) as exp ->
      if !hp = None then

@@ -101,7 +101,7 @@ let restore_lr oc =
   op2i oc "ldwi" reg_lr reg_sp ix
 
 let is_no_effect f g = function
-  | Li _ | SetL _ | Mr _ | Tuple _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | GetHp | SetHp _ | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
+  | Li _ | SetL _ | Mr _ | Tuple _ | Add _ | Sub _ | Xor _ | Or _ | And _ | Sll _ | Srl _ | Ldw _ | Cmp _ | Cmpa _ | In | GetHp | FAdd _ | FSub _ | FMul _ | FDiv _ | FCmp _ | FCmpa _ | FAbA _ | FAbs _ | Sqrt _ -> f ()
   | _ -> g ()
            
 let rec look_while = function
