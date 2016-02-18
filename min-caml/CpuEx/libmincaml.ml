@@ -88,7 +88,7 @@
    else
      false);
 
-(let rec read_int u =
+(*let rec read_int u =
    let rec read_int_sub b x =
      if is_number b then
        read_int_sub (read_byte ()) ((mul x 10) + (b - 48))
@@ -103,7 +103,8 @@
      if b = 45 then
        -(read_int_sub (read_byte ()) 0)
      else
-       read_int u);
+  read_int u*);
+(let rec read_int u = read_byte u);
 
 (let rec abs_float i =
    i2f(f2i(i) land 2147483647));
@@ -208,7 +209,7 @@
    prerr_float_sub p 5;
    prerr_byte 0);
 
-(let rec read_float u =
+(*let rec read_float u =
    let rec read_float_sub1 b f = 
      if is_number b then
        read_float_sub1 (read_byte ()) ((f *. 10.0) +. (float_of_int (b - 48)))
@@ -232,7 +233,8 @@
      if b = 45 then
        0.0 -. (read_float_sub1 (read_byte ()) 0.0)
      else
-       read_float u);
+  read_float u*);
+(let rec read_float u = i2f (read_byte u));
 
 (let rec fispos x =
   x > 0.0);
