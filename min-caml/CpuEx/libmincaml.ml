@@ -104,7 +104,12 @@
        -(read_int_sub (read_byte ()) 0)
      else
   read_int u*);
-(let rec read_int u = read_byte u);
+(let rec read_int u =
+   let b0 = read_byte u in
+   let b1 = read_byte u in
+   let b2 = read_byte u in
+   let b3 = read_byte u in
+   b0 + (b1 lsl 8) + (b2 lsl 16) + (b3 lsl 24));
 
 (let rec abs_float i =
    i2f(f2i(i) land 2147483647));
@@ -234,7 +239,7 @@
        0.0 -. (read_float_sub1 (read_byte ()) 0.0)
      else
   read_float u*);
-(let rec read_float u = i2f (read_byte u));
+(let rec read_float u = i2f (read_int u));
 
 (let rec fispos x =
   x > 0.0);
