@@ -272,12 +272,60 @@ and makefv' dest contfv lcontfv exp =
 
 let mfind x map = if M.mem x map then M.find x map else assert false
 
+let i_solve_conflict cvars regenv sregenv exp =
+  (* TODO 既にSave済み変数があれば、そちらに回す *)
+  let rvs = 
+    if S.is_empty cvars then
+      []
+    else
+      let vars = S.filter (fun v -> M.mem v regenv) cvars in
+      if S.is_empty vars then
+        []
+      else
+            (* 全変数の探索(letによる除去も行わない) *)
+        let rec scan = function
+          | Ans(exp) -> scan' exp
+          | Let(_, exp, e) -> S.union (scan' exp) (scan e)
+        and scan' = function
+          | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) -> S.add x (S.add y (S.union (scan e1) (scan e2)))
+          | IfThen(x, e, t) -> S.add x (S.union (scan e) (S.of_list t))
+          | While(_, yts, zs, e) -> S.union (S.of_list zs) (scan e)
+          | exp -> fvs_exp exp
+        in
+        match exp with
+        | While(_)
+        | If(_) | FIf(_) ->
+           let fv = scan' exp in
+           let sfvs = S.filter (fun x -> not (S.mem x fv)) vars in
+           if sfvs = vars then
+                 (* 関係ないのでスルー *)
+             []
+           else
+             if S.is_empty sfvs then
+               (* While内部での退避を期待 *)
+               []
+             else
+               (* 退避 *)
+               [S.choose sfvs]
+        | _ -> []
+  in
+  let oregenv = regenv in
+  let regenv, sregenv = List.fold_left (fun (regenv, sregenv) r ->
+    let sr = get_sreg oregenv r in
+    M.remove r regenv, M.add r sr sregenv
+  ) (regenv, sregenv) rvs in
+  let cvars = List.fold_left (fun cvars rv -> if S.mem rv cvars then S.empty else cvars) cvars rvs in
+  let rvs = List.map (fun r -> replace oregenv r, get_sreg oregenv r) rvs in
+  rvs, cvars, regenv, sregenv
+    
 (* Save, Restoreの生成 *)
-let rec i f dest regenv sregenv = function
+let rec i dest regenv sregenv cvars = function
   | AnsFv(contfv, lcontfv, expfv), Ans exp ->
+     let rvs, cvars, regenv, sregenv  = i_solve_conflict cvars regenv sregenv exp in
      let oregenv = regenv in
-     let e, regenv, sregenv = i' f dest contfv lcontfv regenv sregenv (expfv, exp) in
+     let e, cvars, regenv, sregenv = i' dest contfv lcontfv regenv sregenv cvars (expfv, exp) in
      let sl, regenv, sregenv = save_vars contfv lcontfv regenv sregenv oregenv in
+     let sl = sl @ rvs in
      let regenv, sregenv = clean_vars contfv lcontfv regenv sregenv in
      let e = 
        if List.length sl = 0 then
@@ -287,17 +335,19 @@ let rec i f dest regenv sregenv = function
          let tmp = List.fold_left (fun tmp t -> tmp@[(Id.gentmp t, t)]) [] (rm_x dest) in
          concat e tmp (Ans(Tuple(rm_t tmp)))
      in
-     e, regenv, sregenv
+     e, cvars, regenv, sregenv
   | LetFv(contfv, lcontfv, expfv, tfv), Let(xts, exp, e) ->
+     let rvs, cvars, regenv, sregenv = i_solve_conflict cvars regenv sregenv exp in
      let oregenv = regenv in
-     let exp, regenv, sregenv = i' f xts contfv lcontfv regenv sregenv (expfv, exp) in
+     let exp, cvars, regenv, sregenv = i' xts contfv lcontfv regenv sregenv cvars (expfv, exp) in
      let sl, regenv, sregenv = save_vars contfv lcontfv regenv sregenv oregenv in
-     let e, regenv, sregenv = i f dest regenv sregenv (tfv, e) in       
-     List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) (concat exp xts e) sl, regenv, sregenv
+     let sl = sl @ rvs in
+     let e, cvars, regenv, sregenv = i dest regenv sregenv cvars (tfv, e) in       
+     List.fold_left (fun e (r', r) -> seq(Save(r', r), e)) (concat exp xts e) sl, cvars, regenv, sregenv
   | _ -> assert false
-and i' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
+and i' dest contfv lcontfv regenv sregenv cvars ((_, exp) as exp') =
   try
-    i'' f dest contfv lcontfv regenv sregenv exp'
+    i'' dest contfv lcontfv regenv sregenv cvars exp'
   with RegNot_found r ->
     let id = Id.genid r in
     let sr =
@@ -307,19 +357,25 @@ and i' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
         assert false
     in
     let sregenv = M.remove r sregenv in
-    let exp, regenv, sregenv = i' f dest contfv lcontfv (M.add r (id, sr) regenv) sregenv exp' in
-    Let([(id, Type.Int)], Restore(sr), exp), regenv, sregenv
-and i'' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
+    let exp, cvars, regenv, sregenv = i' dest contfv lcontfv (M.add r (id, sr) regenv) sregenv cvars exp' in
+    Let([(id, Type.Int)], Restore(sr), exp), cvars,  regenv, sregenv
+and i'' dest contfv lcontfv regenv sregenv cvars ((_, exp) as exp') =
   match exp' with
-  | IfFv(e1fv, e2fv), If(c, x, y, e1, e2) ->
+  | IfFv(e1fv, e2fv), If(c, x, y, e1, e2)
+  | IfFv(e1fv, e2fv), FIf(c, x, y, e1, e2) ->
      let dts = rm_x dest in
-     let tvs = List.fold_left (fun tvs dt -> tvs@[Id.gentmp dt]) [] dts in
+     let tvs = List.map (fun dt -> Id.gentmp dt) dts in
      let tvs' = tvs in
      let x = replace regenv x in
      let y = replace regenv y in
      let oregenv = regenv in
-     let e1, regenv1, sregenv1 = i f dest regenv sregenv (e1fv, e1) in
-     let e2, regenv2, sregenv2 = i f dest regenv sregenv (e2fv, e2) in
+     let e1, cvars1, regenv1, sregenv1 = i dest regenv sregenv cvars (e1fv, e1) in
+     let e2, cvars2, regenv2, sregenv2 = i dest regenv sregenv cvars (e2fv, e2) in
+     let cvars = if cvars1 <> cvars || cvars2 <> cvars then
+         S.empty
+       else
+         cvars
+     in
      let keys = S.union (M.keys regenv2) (M.keys regenv1) in
      let keys = List.fold_left (fun keys (d, _) -> S.remove d keys) keys dest in
      let e1, e2, regenv, tvs, dts = S.fold (fun k (e1, e2, regenv, tvs, dts) ->
@@ -360,6 +416,83 @@ and i'' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
 	        t2::tvs,
 	        Type.Int::dts
      ) keys (e1, e2, M.empty, tvs, dts) in
+     (* If文内を通過する変数が原因でコンフリクトが発生する場合、まずはIf内部で死ぬようにする *)
+     let rec kill' = function
+       | Let(xts, exp, e) ->
+          let e, svs = kill' e in
+          Let(xts, exp, e), svs
+       | Ans(Tuple(xs)) ->
+         let x's, xs = List.fold_left (fun (x's, xs) x ->
+           if S.mem x cvars && M.mem x oregenv then
+             let x' = Id.genid x in
+             (x', x)::x's, xs@[x']
+           else
+             x's, xs@[x]
+         ) ([], []) xs in
+         List.fold_left (fun e (x', x) ->
+           Let([(x', Type.Int)], Restore(get_sreg oregenv x), e)
+         ) (Ans(Tuple(xs))) x's, List.map (fun (_, x) -> x) x's
+       | Ans(Mr(x)) as e ->
+         if S.mem x cvars && M.mem x oregenv then
+           let x' = Id.genid x in
+           Let([(x', Type.Int)], Restore(get_sreg oregenv x), Ans(Mr(x'))), [x]
+         else
+           e, []
+       | Ans(exp) as e ->
+          e, []
+     in
+     let kill e =
+       let e, svs = kill' e in
+       List.fold_left (fun e sv -> seq(Save(sv, get_sreg oregenv sv), e)) e svs
+     in
+     let e1 = kill e1 in
+     let e2 = kill e2 in
+     (* 次に、末尾で同じ変数からRestoreをしている場合は除去する *)
+     let rec get_tail regenv = function
+       | Let([(x, t)], Restore(x'), e) -> get_tail (M.add x x' regenv) e
+       | Let(_, _, e) -> get_tail regenv e
+       | Ans(Tuple(xs)) -> regenv, Some(xs)
+       | Ans(Mr(x)) -> regenv, Some([x])
+       | Ans(_) -> regenv, None
+     in
+     let rregenv1, e1t = get_tail M.empty e1 in
+     let rregenv2, e2t = get_tail M.empty e2 in
+     let tvs, dts, rvs, cvars, e1, e2 = match e1t, e2t with
+       | Some(e1t), Some(e2t) ->
+          assert ((List.length tvs = List.length e1t) && (List.length e1t = List.length e2t));
+         let rec fold_left4 f a l1 l2 l3 l4 =
+           match l1, l2, l3, l4 with
+           | [], [], [], [] -> a
+           | x1::l1', x2::l2', x3::l3', x4::l4' -> fold_left4 f (f a x1 x2 x3 x4) l1' l2' l3' l4'
+           | _ -> assert false
+         in
+         let tvs, dts, rvs, cvars, e1t, e2t =
+           fold_left4 (fun (tvs, dts, rvs, cvars, e1t, e2t) tv dt t1 t2 ->
+           try 
+             if M.find t1 rregenv1  = M.find t2 rregenv2 then
+               (tvs, dts, ((tv, dt), M.find t1 rregenv1)::rvs,
+                (if S.mem t1 cvars || S.mem t2 cvars then S.empty else cvars), e1t, e2t)
+             else
+               (tvs@[tv], dts@[dt], rvs, cvars, e1t@[t1], e2t@[t2])
+           with Not_found ->
+             tvs@[tv], dts@[dt], rvs, cvars, e1t@[t1], e2t@[t2]
+           ) ([], [], [], cvars, [], []) tvs dts e1t e2t
+         in
+         let rec replace_tail xs = function
+           | Let(xts, exp, e) -> Let(xts, exp, replace_tail xs e)
+           | Ans(Tuple(_)) -> Ans(Tuple(xs))
+           | Ans(Mr(_)) -> Ans(Tuple(xs))
+           | Ans(_) -> assert false
+         in
+         tvs, dts, rvs, cvars, replace_tail e1t e1, replace_tail e2t e2
+       | _ ->
+          tvs, dts, [], cvars, e1, e2
+     in
+     let exp = match exp' with
+       | _, If(_) -> If(c, x, y, e1, e2)
+       | _, FIf(_) -> FIf(c, x, y, e1, e2)
+       | _ -> assert false
+     in
      let regenv = List.fold_left (fun regenv (k, _) ->
        if is_reg k then
          regenv
@@ -379,98 +512,23 @@ and i'' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
          )
      ) regenv dest in
      let sregenv = S.fold (fun k sregenv -> assert (M.find k sregenv1 = M.find k sregenv2); M.add k (M.find k sregenv1) sregenv) (S.inter (M.keys sregenv1) (M.keys sregenv2)) M.empty in
-     (if List.length tvs = List.length tvs' then
-         Ans(If(c, x, y, e1, e2))
+     (if List.length tvs = List.length tvs' &&
+        List.fold_left2 (fun f tv tv' -> f && (tv = tv')) true tvs tvs' &&
+        List.length rvs = 0 then
+         Ans(exp)
       else
-         Let((unify_xt tvs dts), If(c, x, y, e1, e2), Ans(Tuple(tvs')))
-     ), regenv, sregenv
-  | IfFv(e1fv, e2fv), FIf(c, x, y, e1, e2) ->
-     let dts = rm_x dest in
-     let tvs = List.fold_left (fun tvs dt -> tvs@[Id.gentmp dt]) [] dts in
-     let tvs' = tvs in
-     let x = replace regenv x in
-     let y = replace regenv y in
-     let oregenv = regenv in
-     let e1, regenv1, sregenv1 = i f dest regenv sregenv (e1fv, e1) in
-     let e2, regenv2, sregenv2 = i f dest regenv sregenv (e2fv, e2) in
-     let keys = S.union (M.keys regenv1) (M.keys regenv2) in
-     let keys = List.fold_left (fun keys (d, _) -> S.remove d keys) keys dest in
-     let e1, e2, regenv, tvs, dts = S.fold (fun k (e1, e2, regenv, tvs, dts) ->
-       let t1 = Id.genid k in
-       let t2 = Id.genid k in
-       match mem k regenv1, mem k regenv2 with
-       | true, true ->
-          assert (not (M.mem k sregenv1));
-         assert (not (M.mem k sregenv2));
-         let sk' = if mem k oregenv then get_sreg oregenv k else k in
-         let sk = if get_sreg regenv1 k = get_sreg regenv2 k then get_sreg regenv1 k else sk' in
-	       if replace regenv1 k = replace regenv2 k then
-           let k' = replace regenv1 k in
-	         e1, e2, M.add k (k', sk) regenv, tvs, dts
-	       else
-	         add_return dts (replace regenv1 k) e1,
-	         add_return dts (replace regenv2 k) e2,
-	         M.add k (t2, sk) regenv,
-	         t2::tvs,
-	         Type.Int::dts
-       | false, false -> assert false
-       | true, false ->
-          assert (not (M.mem k sregenv1));
-         assert (M.mem k sregenv2);
-         let sk = M.find k sregenv2 in
-	       add_return dts (replace regenv1 k) e1,
-	       add_return_with_restore dts t1 sk e2,
-	       M.add k (t2, sk) regenv,
-	       t2::tvs,
-	       Type.Int::dts
-       | false, true ->
-          assert (M.mem k sregenv1);
-          assert (not (M.mem k sregenv2));
-         let sk = M.find k sregenv1 in
-	       add_return_with_restore dts t1 sk e1,
-	       add_return dts (replace regenv2 k) e2,
-	       M.add k (t2, sk) regenv,
-	       t2::tvs,
-	       Type.Int::dts
-     ) keys (e1, e2, M.empty, tvs, dts) in
-     let regenv = List.fold_left (fun regenv (k, _) ->
-       if is_reg k then
-         regenv
-       else
-         (
-           assert (M.mem k regenv1 = M.mem k regenv2);
-           if M.mem k regenv1 then
-             (
-               assert (replace regenv1 k = k);
-               assert (replace regenv2 k = k);
-               let sk' = k in
-               let sk = if get_sreg regenv1 k = get_sreg regenv2 k then get_sreg regenv1 k else sk' in
-	             M.add k (k, sk) regenv
-             )
-           else
-             regenv
-         )
-     ) regenv dest in
-     let sregenv = S.fold (fun k sregenv -> assert (M.find k sregenv1 = M.find k sregenv2); M.add k (M.find k sregenv1) sregenv) (S.inter (M.keys sregenv1) (M.keys sregenv2)) M.empty in
-     (if List.length tvs = List.length tvs' then
-         Ans(FIf(c, x, y, e1, e2))
-      else
-         Let((unify_xt tvs dts), FIf(c, x, y, e1, e2), Ans(Tuple(tvs')))
-     ), regenv, sregenv
+         Let((unify_xt tvs dts), exp, List.fold_left (fun e (rxt, rv) -> Let([rxt], Restore(rv), e)) (Ans(Tuple(tvs'))) rvs)
+     ), cvars, regenv, sregenv
   | IfThenFv(efv), IfThen(x, e1, t) ->
      assert false;
-  | WhileFv(efv), (While(x, yts, zs, e) as exp) ->
-     (* TODO varsの取り扱いについて検討 *)
+  | WhileFv(efv), While(x, yts, zs, e) ->
      let dts = rm_x dest in
      let tvs = List.fold_left (fun tvs dt -> tvs@[Id.gentmp dt]) [] dts in
      let tvs' = tvs in
-     let rvs = f exp regenv in
-     let oregenv = regenv in
      let zs = List.map (fun z -> replace regenv z) zs in
-     let regenv = List.fold_left (fun regenv r -> M.remove r regenv) regenv rvs in
      let e = apply_exp (fun exp -> match exp with | Continue(x', yts, zs, ws, us) when x = x' -> Ans(Continue(x, yts, zs, List.map (fun w -> replace regenv w) ws, us)) | _ -> Ans(exp)) e in
      let regenv = (List.fold_left (fun regenv (y, _) -> M.add y (y, y) regenv) regenv yts) in
-     let e, regenv, sregenv = i f dest regenv sregenv (efv, e) in
+     let e, cvars, regenv, sregenv = i dest regenv sregenv cvars (efv, e) in
      let e, regenv, tvs, dts = M.fold (fun k (k', sk) (e, regenv, tvs, dts) ->
        if List.mem k (rm_t dest) then
          e, regenv, tvs, dts
@@ -488,25 +546,17 @@ and i'' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
        else
          Let((unify_xt tvs dts), exp, Ans(Tuple(tvs')))
      in
-     if List.length rvs = 0 then
-       exp, regenv, sregenv
-     else
-       let e = List.fold_left (fun e r ->
-         seq(Save(replace oregenv r, get_sreg oregenv r), e)
-       ) e rvs in
-       let sregenv = List.fold_left (fun sregenv r ->
-         let sr = get_sreg oregenv r in
-         M.add r sr sregenv
-       ) sregenv rvs in
-       e, regenv, sregenv
+     exp, cvars, regenv, sregenv
   | GenFv, CallCls(l, ys) ->
      let e, sregenv = i''_call regenv sregenv contfv ys (CallCls(l, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)) in
-     e, List.fold_left (fun regenv (d, _) -> if is_reg d then regenv else M.add d (d, d) regenv) M.empty dest, sregenv
+     e, cvars, List.fold_left (fun regenv (d, _) -> if is_reg d then regenv else M.add d (d, d) regenv) M.empty dest, sregenv
   | GenFv, CallDir(f, ys) ->
      let e, sregenv = i''_call regenv sregenv contfv ys (CallDir(f, List.fold_left (fun l y -> l@[replace regenv y]) [] ys)) in
-     e, List.fold_left (fun regenv (d, _) -> if is_reg d then regenv else M.add d (d, d) regenv) M.empty dest, sregenv
+     e, cvars, List.fold_left (fun regenv (d, _) -> if is_reg d then regenv else M.add d (d, d) regenv) M.empty dest, sregenv
   | GenFv, _ ->
-     Ans(replace_exp regenv exp), (
+     Ans(match exp with
+     | Save(r, _) when not (M.mem r regenv) -> Nop
+     | _ -> replace_exp regenv exp), cvars, (
        match exp with
        | CallCls _ | CallDir _ -> assert false
        | If _ | FIf _ | IfThen _ -> assert false
@@ -516,7 +566,10 @@ and i'' f dest contfv lcontfv regenv sregenv ((_, exp) as exp') =
          let d = fst (List.hd dest) in
          M.add d (d, r) regenv
        | Save(r, r') ->
-          assert (M.mem r regenv && get_sreg regenv r = r');
+          if M.mem r regenv then
+            assert (get_sreg regenv r = r')
+          else
+            assert (M.mem r sregenv && r' = M.find r sregenv);
           regenv
        | Mr(r) ->
           assert_single dest;
@@ -564,12 +617,12 @@ let j (regmap, pregmap, graph) =
     | true, true -> assert (x = y); regmap, vrmap
     | true, false ->
        (try
-	  if M.find y vrmap <> x then
-	    raise RegAlloc_conflict
-	  else
-	    regmap, vrmap
-	with Not_found ->
-	  regmap, M.add y x vrmap)
+	        if M.find y vrmap <> x then
+	          raise RegAlloc_conflict
+	        else
+	          regmap, vrmap
+	      with Not_found ->
+	        regmap, M.add y x vrmap)
     | false, true ->
        (try
 	        if M.find x vrmap <> y then
@@ -809,60 +862,73 @@ let rec replace_reg regmap e =
   try replace_e regmap e with
   | RegNot_found r -> replace_reg (M.add r (regs.(0), "") regmap) e
 
-let rec k' dest e =
+(* restoreされた変数を実際に使う場所まで動かす *)
+let rec move_restore vars regenv = function
+  | Let(xts, Restore(sx), e) ->
+     assert_single xts;
+    let (x, t) = List.hd xts in
+    move_restore vars (M.add x sx regenv) e
+  | Let(xts, exp, e) ->
+     let rvs, regenv = S.fold (fun fv (rvs, regenv) ->
+       if M.mem fv regenv then
+         (fv, M.find fv regenv)::rvs, M.remove fv regenv
+       else
+         rvs, regenv
+     ) (fvs_exp exp) ([], regenv)
+     in
+     let vars = M.fold (fun k _ vars -> if S.mem k vars then S.empty else vars) regenv vars in
+     let exp, vars = move_restore' vars exp in
+     let e, vars = move_restore vars regenv e in
+     List.fold_left (fun e (x, sx) ->
+       Let([(x, Type.Int)], Restore(sx), e)
+     ) (Let(xts, exp, e)) rvs, vars
+  | Ans(exp) ->
+     let rvs, regenv = S.fold (fun fv (rvs, regenv) ->
+       if M.mem fv regenv then
+         (fv, M.find fv regenv)::rvs, M.remove fv regenv
+       else
+         rvs, regenv
+     ) (fvs_exp exp) ([], regenv)
+     in
+     let vars = M.fold (fun k _ vars -> if S.mem k vars then S.empty else vars) regenv vars in
+     let exp, vars = move_restore' vars exp in
+     List.fold_left (fun e (x, sx) ->
+       Let([(x, Type.Int)], Restore(sx), e)
+     ) (Ans(exp)) rvs, vars
+and move_restore' vars = function
+  | If(c, x, y, e1, e2) ->
+     let e1, vars1 = move_restore vars M.empty e1 in
+     let e2, vars2 = move_restore vars M.empty e2 in
+     If(c, x, y, e1, e2), S.inter vars1 vars2
+  | FIf(c, x, y, e1, e2) ->
+     let e1, vars1 = move_restore vars M.empty e1 in
+     let e2, vars2 = move_restore vars M.empty e2 in
+     FIf(c, x, y, e1, e2), S.inter vars1 vars2
+  | While(x, yts, zs, e) ->
+     let e, vars = move_restore vars M.empty e in
+     While(x, yts, zs, e), vars
+  | IfThen(_) -> assert false
+  | _ as exp -> exp, vars
+       
+let rec k' dest live e =
   S.iter (fun x -> prerr_endline x) (S.filter (fun r -> not (is_reg r)) (fvs e));
-  assert (S.is_empty (S.filter (fun r -> not (is_reg r)) (fvs e)));
-  let map, _ = g dest S.empty (fvs (Ans(Nop))) e in
+  assert (S.is_empty (S.filter (fun r -> not (is_reg r)) (fvs e))); (* 未定義自由変数（本来は存在してはならない） *)
+  let map, _ = g dest live (fvs (Ans(Nop))) e in
   try
     let vrmap = j map in
+    showmap "" map vrmap;
     let vrmap = M.mapi (fun _ r -> (r, "")) vrmap in
     replace_reg vrmap e
   with RegAlloc_starvation r ->
     let _, _, graph = map in
     let vars = S.add r (M.find r graph) in
-    let vars' = ref vars in
-    let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
-    let e, _, _ = i (fun exp regmap ->
-      (* TODO 既にSave済み変数があれば、そちらに回す *)
-      if !vars' <> vars then
-        []
-      else
-        let vars = S.filter (fun v -> M.mem v regmap) vars in
-        if S.is_empty vars then
-          []
-        else
-          let rec scan = function
-            | Ans(exp) -> scan' exp
-            | Let(_, exp, e) -> S.union (scan' exp) (scan e)
-          and scan' = function
-            | If(_, x, y, e1, e2) | FIf(_, x, y, e1, e2) -> S.add x (S.add y (S.union (scan e1) (scan e2)))
-            | IfThen(x, e, t) -> S.add x (S.union (scan e) (S.of_list t))
-            | While(_, yts, zs, e) -> S.union (S.of_list zs) (scan e)
-            | exp -> fvs_exp exp
-          in
-          let fv = scan' exp in
-          let sfvs = S.filter (fun x -> not (S.mem x fv)) vars in
-          if sfvs = vars then
-          (* 関係ないのでスルー *)
-            []
-          else
-            if S.is_empty sfvs then
-            (* While内部での退避を期待 *)
-              []
-            else
-              (
-                (* 退避 *)
-                let r = S.choose sfvs in
-                vars' := S.remove r vars;
-                [r]
-              )
-    ) [((regs.(0), Type.Unit))] M.empty M.empty (tfv, e) in
-  print_endline "";
-    if !vars' = vars then (prerr_int (S.cardinal vars);prerr_endline "";S.iter (fun x -> prerr_string (x^" ")) vars; prerr_endline "";);
-    if !vars' = vars then raise (RegAlloc_starvation r);
-    k' dest e
+    let _, tfv = makefv dest (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
+    let e, vars', _, _ = i dest M.empty M.empty vars (tfv, e) in
+    let e, vars' = move_restore vars' M.empty e in
+    if vars' = vars then raise (RegAlloc_starvation r);
+    k' dest live e
 
-let k dest e =
+let k dest live e =
   (* レジスタ依存関係による衝突回避のため *)
   let e = apply_exp (fun exp ->
     match exp with
@@ -872,35 +938,37 @@ let k dest e =
        List.fold_left2 (fun e tz2 z -> Let([tz2, Type.Int], Mr(z), e)) (List.fold_left2 (fun e tz1 tz2 -> Let([tz1, Type.Int], Mr(tz2), e)) (Ans(Continue(x, yts, tzs1, ws, us))) tzs1 tzs2) tzs2 zs
     | _ -> Ans(exp)
   ) e in
-  let _, tfv = makefv [(regs.(0), Type.Unit)] (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
-  let e, _, _ = i (fun _ _ -> []) [(regs.(0), Type.Unit)] M.empty M.empty (tfv, e) in
+  let _, tfv = makefv dest (fvs (Ans(Nop))) (fvs (Ans(Nop))) e in
+  let e, _, _, _ = i dest M.empty M.empty S.empty (tfv, e) in
   (*let e = l S.empty e in*)
-  k' dest e
+  k' dest live e
       
 let h { name = Id.L(x); args = ys; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
   prerr_endline x;
-  let _, e, arg_regs =
+  let _, arg_regs, dest =
     List.fold_left
-      (fun (i, e, arg_regs) y ->
-       let r = regs.(i) in
-       (i + 1,
-	      Let([(y, Type.Int)], Mr(regs.(i)), e),
-	      arg_regs @ [r]
-      ))
-      (0, e, [])
-      ys in
+      (fun (i, arg_regs, dest) y ->
+        let r = regs.(i) in
+        (i + 1, r::arg_regs, y::dest)
+      )
+      (0, [], [])
+      ys in  
+  let e = Let(List.map (fun d -> (d, Type.Int)) dest, Tuple(arg_regs), e) in
   let a =
     match t with
     | Type.Unit -> Id.gentmp Type.Unit
     | _ -> regs.(0) in
-  let e = specify_ret [(regs.(0), Type.Unit)] e in
-  let e = k [(a, t)] e in
+  let e = specify_ret [(a, t)] e in
+  let e = k [(a, t)] (S.of_list arg_regs) e in
   { name = Id.L(x); args = arg_regs; body = e; ret = t }
 
 let f (Prog(data, vars, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
+  show fundefs e;
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";
   let fundefs = List.map h fundefs in
   let e = specify_ret [(regs.(0), Type.Unit)] e in
-  let e = k [(regs.(0), Type.Unit)] e in
+  let e = k [(regs.(0), Type.Unit)] S.empty e in
   let p = Prog(data, vars, fundefs, e) in
+  show fundefs e;
   p
+

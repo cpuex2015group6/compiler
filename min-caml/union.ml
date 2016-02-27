@@ -96,11 +96,11 @@ let pat = [
      let e2v = get_val e2 in
      (match e1, e2, e1v, e2v with
      | Int(1), Int(0), _, _ ->
-	raise Unmatched
+	      raise Unmatched
      | Int(1), _, _, Int(0) ->
-	Let((Id.genid "t", Type.Unit), If(c, x, y, rm_val e1, rm_val e2), If(c, x, y, Int(1), Int(0)))
+	      Let((Id.genid "t", Type.Unit), If(c, x, y, rm_val e1, rm_val e2), If(c, x, y, Int(1), Int(0)))
      | _, Int(0), Int(1), _ ->
-	Let((Id.genid "t", Type.Unit), If(c, x, y, rm_val e1, rm_val e2), If(c, x, y, Int(1), Int(0)))
+	      Let((Id.genid "t", Type.Unit), If(c, x, y, rm_val e1, rm_val e2), If(c, x, y, Int(1), Int(0)))
      | _ -> raise Unmatched)
   | _ -> raise Unmatched)
 ]

@@ -171,7 +171,7 @@ let rec fvs_exp = function
   | CallCls (x, ys) -> S.add x (S.of_list ys)
   | CallDir (_, ys) -> S.of_list ys
   | While(_, yts, zs, e) -> fvs_while yts zs (fvs e)
-  | Continue (_, _, zs, ws, us) -> S.of_list (zs @ us) 
+  | Continue (_, _, zs, _, us) -> S.of_list (zs @ us) 
 (* fvs : t -> S.t *)
 and fvs = function 
   | Ans (exp) -> fvs_exp exp

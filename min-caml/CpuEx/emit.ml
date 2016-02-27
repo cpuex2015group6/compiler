@@ -300,6 +300,7 @@ and g' oc cflag = function (* 各命令のアセンブリ生成 *)
      List.iter2 (fun x dv -> assert (x = dv)) t tdest;
      g'_non_tail_ifthen oc cflag x (NonTail(z)) (reg f) e
   | (_ as t, While(Id.L(x), yts, zs, e)) ->
+     prerr_endline x;
      List.iter2 (fun (y, _) z -> assert (y = z)) yts zs;
      let cflag =
        if not cflag then

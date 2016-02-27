@@ -95,7 +95,15 @@ let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
   | Tuple(xs) | ExtFunApp(_, xs) -> S.of_list xs
   | Put(x, y, z) -> S.of_list [x; y; z]
   | LetTuple(xs, y, e) -> fv_lettuple xs y (fv e)
-     
+
+let rec has_while = function
+  | If(_, _, _, e1, e2) -> (has_while e1) || (has_while e2)
+  | While(_, _, _, _) -> true
+  | Let(_, e1, e2) -> (has_while e1) || (has_while e2)
+  | LetRec(_) -> assert false
+  | LetTuple(_, _, e) -> has_while e
+  | e -> false     
+
 let insert_let (e, t) k = (* letを挿入する補助関数 (caml2html: knormal_insert) *)
   match e with
   | Var(x) -> k x

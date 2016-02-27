@@ -111,8 +111,8 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2html: closure
      (* 関数定義let rec x y1 ... yn = e1 in e2の場合は、
 	 xに自由変数がない(closureを介さずdirectに呼び出せる)
 	と仮定し、knownに追加してe1をクロージャ変換してみる *)
-     (*Format.eprintf "function size of %s is %d@." x (KNormal.size e1);
-       Format.eprintf "%!";*)
+    (*Format.eprintf "function size of %s is %d@." x (KNormal.size e1);
+      Format.eprintf "%!";*)
     let toplevel_backup = !toplevel in
      let env' = M.add x t env in
      let known' = S.add x known in

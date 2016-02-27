@@ -3,8 +3,9 @@ let limit = ref 100
 let flag = true
 
 let g s f e =
+  prerr_endline s;
   let e' = f e in
-  (*if e <> e' then prerr_endline s;*)
+  if e <> e' then prerr_endline ("opt:"^s);
   e'
   
 let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
@@ -13,12 +14,13 @@ let rec f n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
       Format.eprintf "iteration %d, %d@." n m;
       if m = 0 then e else
 	      let e' = (g "elarg" ElArg.f
-                    (g "hpalloc" HpAlloc.f
-                       (g "constfold" ConstFold.f
-                          (g "celm" Celm.h
-                             (g "union" Union.f
-                                (g "assoc" Assoc.f
-                                   (g "beta" Beta.f e))))))) in
+                    (g "while" While.f
+                       (g "hpalloc" HpAlloc.f
+                          (g "constfold" ConstFold.f
+                             (g "celm" Celm.h
+                                (g "union" Union.f
+                                   (g "assoc" Assoc.f
+                                      (g "beta" Beta.f e)))))))) in
 	      if e = e' then
 	        e
 	      else

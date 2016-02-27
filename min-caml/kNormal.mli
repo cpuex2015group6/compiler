@@ -54,4 +54,5 @@ val fv_while : (Id.t * Type.t) list -> Id.t list -> S.t -> S.t
 val fv_func : Id.t -> (Id.t * Type.t) list -> S.t -> S.t
 val fv_letrec : Id.t -> (Id.t * Type.t) list -> S.t -> S.t -> S.t
 val fv_lettuple : (Id.t * Type.t) list -> Id.t -> S.t -> S.t
+val has_while : t -> bool
 val f : Syntax.t -> t

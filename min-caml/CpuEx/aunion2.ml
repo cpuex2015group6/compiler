@@ -28,13 +28,13 @@ let pat = [
   (fun dest -> function
   | Mr(x)
       when (try List.fold_left2 (fun f d z -> f && (d = z)) true dest [x]
-	with Invalid_argument _ -> false) ->
+	      with Invalid_argument _ -> false) ->
      Ans(Nop);
   | _ -> raise Unmatched);
   (fun dest -> function
   | Tuple(xs)
       when (try List.fold_left2 (fun f d z -> f && (d = z)) true dest xs
-	with Invalid_argument _ -> false) ->
+	      with Invalid_argument _ -> false) ->
      Ans(Nop);
   | _ -> raise Unmatched);
   (fun dest -> function
